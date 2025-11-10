@@ -28,6 +28,8 @@ export function useAuth() {
         }
     }
 
+    api.setRefreshTokenFn(refreshAccessToken)
+
     const getToken = async (): Promise<string | null> => {
         const token = localStorage.getItem('access_token')
         const expiresAt = localStorage.getItem('token_expires_at')

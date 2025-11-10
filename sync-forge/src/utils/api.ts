@@ -1,11 +1,17 @@
-import axios, { type AxiosError, type AxiosResponse, type InternalAxiosRequestConfig } from 'axios'
+import axios, { type AxiosError, type AxiosResponse, type InternalAxiosRequestConfig, type AxiosInstance } from 'axios'
 
 export type TokenRefreshFn = () => Promise<string | null>
 
-export const createApiClient = (refreshToken?: TokenRefreshFn) => {
+export interface ApiClient extends AxiosInstance {
+  setRefreshTokenFn: (fn: TokenRefreshFn) => void
+}
+
+export const createApiClient = (): ApiClient => {
+  let refreshToken: TokenRefreshFn | undefined
+
   const api = axios.create({
     timeout: 10000
-  })
+  }) as ApiClient
 
   api.interceptors.request.use((config: InternalAxiosRequestConfig) => {
     const token = localStorage.getItem('access_token')
@@ -28,6 +34,10 @@ export const createApiClient = (refreshToken?: TokenRefreshFn) => {
       return Promise.reject(err)
     }
   )
+
+  api.setRefreshTokenFn = (fn: TokenRefreshFn) => {
+    refreshToken = fn
+  }
 
   return api
 }

@@ -61,7 +61,7 @@ describe('AuthCallback', () => {
             })
         )
 
-        expect(api.get).toHaveBeenCalledWith("https://www.googleapis.com/oauth2/v2/userinfo")
+        expect(api.get).toHaveBeenCalledWith("http://localhost:3001/api/auth/validate")
         
         expect(loginSpy).toHaveBeenCalledWith({
             id: '123',

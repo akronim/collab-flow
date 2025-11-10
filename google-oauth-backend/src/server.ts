@@ -106,8 +106,37 @@ app.post('/api/auth/refresh', async (req: Request, res: Response) => {
     }
 })
 
+app.get('/api/auth/validate', async (req: Request, res: Response) => {
+    const authHeader = req.headers.authorization
+
+    if (!authHeader || !authHeader.startsWith('Bearer ')) {
+        return res.status(401).json({ error: 'Missing or invalid Authorization header' })
+    }
+
+    const accessToken = authHeader.split(' ')[1]
+
+    try {
+        const response = await axios.get('https://www.googleapis.com/oauth2/v2/userinfo', {
+            headers: {
+                Authorization: `Bearer ${accessToken}`,
+            },
+            timeout: 10000,
+        })
+
+        res.json(response.data)
+
+    } catch (error: any) {
+        console.error('Token validation failed:', error.response?.data)
+        res.status(401).json({ error: 'Token validation failed', details: error.response?.data })
+    }
+})
+
+
 const PORT = process.env.PORT || 3001
+
 app.listen(PORT, () => {
     console.log(`Backend running on http://localhost:${PORT}`)
     console.log(`POST /api/auth/token → Google OAuth2 Token Exchange`)
 })
+
+export default app

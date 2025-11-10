@@ -6,7 +6,8 @@ import api from '@/utils/api'
 
 vi.mock('@/utils/api', () => ({
   default: {
-    post: vi.fn()
+    post: vi.fn(),
+    setRefreshTokenFn: vi.fn()
   }
 }))
 

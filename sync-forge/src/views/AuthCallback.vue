@@ -47,7 +47,7 @@ onMounted(async () => {
         localStorage.setItem('token_expires_at', String(expiresAt))
 
         const profileResp = await api.get<GoogleProfile>(
-            'https://www.googleapis.com/oauth2/v2/userinfo'
+            `${BACKEND_URL}/api/auth/validate`
         )
 
         console.log(profileResp)

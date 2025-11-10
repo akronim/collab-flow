@@ -88,10 +88,10 @@ describe('createApiClient', () => {
   describe('response interceptor (401 retry)', () => {
     it('retries request with fresh token on 401', async () => {
       const mockRefreshToken = vi.fn().mockResolvedValue('new-token')
-      createApiClient(mockRefreshToken)
+      const instance = createApiClient()
+      instance.setRefreshTokenFn(mockRefreshToken)
 
-      const instance = mockCreate.mock.results[0]?.value
-      const responseUseSpy = instance.interceptors.response.use
+      const responseUseSpy = mockCreate.mock.results[0]?.value.interceptors.response.use
       const errorHandler = responseUseSpy.mock.calls[0]?.[1]
 
       const error = {
@@ -99,22 +99,22 @@ describe('createApiClient', () => {
         config: { headers: { Authorization: 'Bearer old-token' } }
       }
 
-      instance.request.mockResolvedValue({ data: 'success' })
+      mockCreate.mock.results[0]?.value.request.mockResolvedValue({ data: 'success' })
 
       const result = await errorHandler(error)
 
       expect(mockRefreshToken).toHaveBeenCalledTimes(1)
       expect(error.config.headers.Authorization).toBe('Bearer new-token')
-      expect(instance.request).toHaveBeenCalledWith(error.config)
+      expect(mockCreate.mock.results[0]?.value.request).toHaveBeenCalledWith(error.config)
       expect(result).toEqual({ data: 'success' })
     })
 
     it('rejects if refresh returns null', async () => {
       const mockRefreshToken = vi.fn().mockResolvedValue(null)
-      createApiClient(mockRefreshToken)
+      const instance = createApiClient()
+      instance.setRefreshTokenFn(mockRefreshToken)
 
-      const instance = mockCreate.mock.results[0]?.value
-      const responseUseSpy = instance.interceptors.response.use
+      const responseUseSpy = mockCreate.mock.results[0]?.value.interceptors.response.use
       const errorHandler = responseUseSpy.mock.calls[0]?.[1]
 
       const error = {
@@ -124,7 +124,7 @@ describe('createApiClient', () => {
 
       await expect(errorHandler(error)).rejects.toEqual(error)
       expect(mockRefreshToken).toHaveBeenCalledTimes(1)
-      expect(instance.request).not.toHaveBeenCalled()
+      expect(mockCreate.mock.results[0]?.value.request).not.toHaveBeenCalled()
     })
 
     it('rejects if no refreshToken function provided', async () => {
@@ -144,10 +144,10 @@ describe('createApiClient', () => {
 
     it('passes through non-401 errors', async () => {
       const mockRefreshToken = vi.fn()
-      createApiClient(mockRefreshToken)
+      const instance = createApiClient()
+      instance.setRefreshTokenFn(mockRefreshToken)
 
-      const instance = mockCreate.mock.results[0]?.value
-      const responseUseSpy = instance.interceptors.response.use
+      const responseUseSpy = mockCreate.mock.results[0]?.value.interceptors.response.use
       const errorHandler = responseUseSpy.mock.calls[0]?.[1]
 
       const error = {
