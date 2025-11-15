@@ -1,23 +1,37 @@
 import { describe, it, expect, vi, beforeEach, Mocked } from 'vitest'
 import request from 'supertest'
-import app from '@/server' 
-import axios from 'axios'
+import app from '../server'
+import { googleApi } from '../utils/axios'
+import { apiEndpoints, ErrorMessages, GoogleOAuthEndpoints } from '../constants'
 
-vi.mock('axios', () => ({
+vi.mock('../config', () => ({
   default: {
+    port: '3001',
+    google: {
+      clientId: 'test_client_id',
+      clientSecret: 'test_client_secret',
+      redirectUri: 'http://localhost:5173/auth/callback',
+    },
+    cors: {
+      origin: 'http://localhost:5173',
+    }
+  }
+}));
+
+vi.mock('../utils/axios', () => ({
+  googleApi: {
     post: vi.fn(),
     get: vi.fn(),
   },
 }))
 
-const mockedAxios = axios as Mocked<typeof axios>
+const mockedGoogleApi = googleApi as Mocked<typeof googleApi>
 
 describe('Backend API Tests', () => {
+  const API_BASE_PATH = '/api'; 
+
   beforeEach(() => {
     vi.clearAllMocks()
-    process.env.GOOGLE_CLIENT_ID = 'test_client_id'
-    process.env.GOOGLE_CLIENT_SECRET = 'test_client_secret'
-    process.env.REDIRECT_URI = 'http://localhost:5173/auth/callback'
   })
 
   describe('GET /', () => {
@@ -28,19 +42,19 @@ describe('Backend API Tests', () => {
     })
   })
 
-  describe('POST /api/auth/token', () => {
+  describe(`POST ${API_BASE_PATH}${apiEndpoints.TOKEN}`, () => {
     it('should return 400 if code or codeVerifier is missing', async () => {
-      const response1 = await request(app).post('/api/auth/token').send({ code: 'some_code' })
+      const response1 = await request(app).post(`${API_BASE_PATH}${apiEndpoints.TOKEN}`).send({ code: 'some_code' })
       expect(response1.status).toBe(400)
-      expect(response1.body.message).toBe('Missing code or codeVerifier')
+      expect(response1.body.error).toBe(ErrorMessages.MISSING_CODE_OR_VERIFIER)
 
-      const response2 = await request(app).post('/api/auth/token').send({ codeVerifier: 'some_verifier' })
+      const response2 = await request(app).post(`${API_BASE_PATH}${apiEndpoints.TOKEN}`).send({ codeVerifier: 'some_verifier' })
       expect(response2.status).toBe(400)
-      expect(response2.body.message).toBe('Missing code or codeVerifier')
+      expect(response2.body.error).toBe(ErrorMessages.MISSING_CODE_OR_VERIFIER)
     })
 
     it('should exchange code for tokens successfully', async () => {
-      mockedAxios.post.mockResolvedValueOnce({
+      mockedGoogleApi.post.mockResolvedValueOnce({
         data: {
           access_token: 'mock_access_token',
           refresh_token: 'mock_refresh_token',
@@ -50,7 +64,7 @@ describe('Backend API Tests', () => {
       })
 
       const response = await request(app)
-        .post('/api/auth/token')
+        .post(`${API_BASE_PATH}${apiEndpoints.TOKEN}`)
         .send({ code: 'auth_code', codeVerifier: 'code_verifier' })
 
       expect(response.status).toBe(200)
@@ -60,15 +74,14 @@ describe('Backend API Tests', () => {
       expect(response.body).toHaveProperty('id_token', 'mock_id_token')
       expect(response.body).toHaveProperty('expires_at')
 
-      expect(mockedAxios.post).toHaveBeenCalledWith(
-        'https://oauth2.googleapis.com/token',
-        expect.stringContaining('client_id=test_client_id'),
-        expect.any(Object)
+      expect(mockedGoogleApi.post).toHaveBeenCalledWith(
+        GoogleOAuthEndpoints.TOKEN_EXCHANGE,
+        expect.stringContaining('client_id=test_client_id')
       )
     })
 
     it('should handle token exchange failure from Google', async () => {
-      mockedAxios.post.mockRejectedValueOnce({
+      mockedGoogleApi.post.mockRejectedValueOnce({
         response: {
           status: 401,
           data: { error: 'invalid_grant', error_description: 'Bad code' },
@@ -76,24 +89,24 @@ describe('Backend API Tests', () => {
       })
 
       const response = await request(app)
-        .post('/api/auth/token')
+        .post(`${API_BASE_PATH}${apiEndpoints.TOKEN}`)
         .send({ code: 'bad_code', codeVerifier: 'code_verifier' })
 
       expect(response.status).toBe(401)
-      expect(response.body.error).toBe('Token exchange failed')
+      expect(response.body.error).toBe(ErrorMessages.TOKEN_EXCHANGE_FAILED)
       expect(response.body.details.error).toBe('invalid_grant')
     })
   })
 
-  describe('POST /api/auth/refresh', () => {
+  describe(`POST ${API_BASE_PATH}${apiEndpoints.REFRESH}`, () => {
     it('should return 400 if refresh_token is missing', async () => {
-      const response = await request(app).post('/api/auth/refresh').send({})
+      const response = await request(app).post(`${API_BASE_PATH}${apiEndpoints.REFRESH}`).send({})
       expect(response.status).toBe(400)
-      expect(response.body.error).toBe('Missing refresh_token')
+      expect(response.body.error).toBe(ErrorMessages.MISSING_REFRESH_TOKEN)
     })
 
     it('should refresh token successfully', async () => {
-      mockedAxios.post.mockResolvedValueOnce({
+      mockedGoogleApi.post.mockResolvedValueOnce({
         data: {
           access_token: 'new_access_token',
           expires_in: 3600,
@@ -101,22 +114,21 @@ describe('Backend API Tests', () => {
       })
 
       const response = await request(app)
-        .post('/api/auth/refresh')
+        .post(`${API_BASE_PATH}${apiEndpoints.REFRESH}`)
         .send({ refresh_token: 'mock_refresh_token' })
 
       expect(response.status).toBe(200)
       expect(response.body).toHaveProperty('access_token', 'new_access_token')
       expect(response.body).toHaveProperty('expires_in', 3600)
 
-      expect(mockedAxios.post).toHaveBeenCalledWith(
-        'https://oauth2.googleapis.com/token',
-        expect.stringContaining('grant_type=refresh_token'),
-        expect.any(Object)
+      expect(mockedGoogleApi.post).toHaveBeenCalledWith(
+        GoogleOAuthEndpoints.TOKEN_EXCHANGE,
+        expect.stringContaining('grant_type=refresh_token')
       )
     })
 
     it('should handle refresh failure from Google', async () => {
-      mockedAxios.post.mockRejectedValueOnce({
+      mockedGoogleApi.post.mockRejectedValueOnce({
         response: {
           status: 400,
           data: { error: 'invalid_grant', error_description: 'Invalid refresh token' },
@@ -124,32 +136,32 @@ describe('Backend API Tests', () => {
       })
 
       const response = await request(app)
-        .post('/api/auth/refresh')
+        .post(`${API_BASE_PATH}${apiEndpoints.REFRESH}`)
         .send({ refresh_token: 'invalid_refresh_token' })
 
       expect(response.status).toBe(400)
-      expect(response.body.error).toBe('Refresh failed')
+      expect(response.body.error).toBe(ErrorMessages.REFRESH_FAILED)
       expect(response.body.details.error).toBe('invalid_grant')
     })
   })
 
-  describe('GET /api/auth/validate', () => {
+  describe(`GET ${API_BASE_PATH}${apiEndpoints.VALIDATE}`, () => {
     it('should return 401 if Authorization header is missing', async () => {
-      const response = await request(app).get('/api/auth/validate')
+      const response = await request(app).get(`${API_BASE_PATH}${apiEndpoints.VALIDATE}`)
       expect(response.status).toBe(401)
-      expect(response.body.error).toBe('Missing or invalid Authorization header')
+      expect(response.body.error).toBe(ErrorMessages.MISSING_AUTH_HEADER)
     })
 
     it('should return 401 if Authorization header is invalid', async () => {
       const response = await request(app)
-        .get('/api/auth/validate')
+        .get(`${API_BASE_PATH}${apiEndpoints.VALIDATE}`)
         .set('Authorization', 'InvalidToken')
       expect(response.status).toBe(401)
-      expect(response.body.error).toBe('Missing or invalid Authorization header')
+      expect(response.body.error).toBe(ErrorMessages.MISSING_AUTH_HEADER)
     })
 
     it('should validate token and return user info successfully', async () => {
-      mockedAxios.get.mockResolvedValueOnce({
+      mockedGoogleApi.get.mockResolvedValueOnce({
         data: {
           id: 'google_id_123',
           email: 'test@example.com',
@@ -158,7 +170,7 @@ describe('Backend API Tests', () => {
       })
 
       const response = await request(app)
-        .get('/api/auth/validate')
+        .get(`${API_BASE_PATH}${apiEndpoints.VALIDATE}`)
         .set('Authorization', 'Bearer valid_access_token')
 
       expect(response.status).toBe(200)
@@ -166,8 +178,8 @@ describe('Backend API Tests', () => {
       expect(response.body).toHaveProperty('email', 'test@example.com')
       expect(response.body).toHaveProperty('name', 'Test User')
 
-      expect(mockedAxios.get).toHaveBeenCalledWith(
-        'https://www.googleapis.com/oauth2/v2/userinfo',
+      expect(mockedGoogleApi.get).toHaveBeenCalledWith(
+        GoogleOAuthEndpoints.USER_INFO,
         expect.objectContaining({
           headers: { Authorization: 'Bearer valid_access_token' },
         })
@@ -175,7 +187,7 @@ describe('Backend API Tests', () => {
     })
 
     it('should handle token validation failure from Google', async () => {
-      mockedAxios.get.mockRejectedValueOnce({
+      mockedGoogleApi.get.mockRejectedValueOnce({
         response: {
           status: 401,
           data: { error: 'invalid_token', error_description: 'Token expired' },
@@ -183,12 +195,12 @@ describe('Backend API Tests', () => {
       })
 
       const response = await request(app)
-        .get('/api/auth/validate')
+        .get(`${API_BASE_PATH}${apiEndpoints.VALIDATE}`)
         .set('Authorization', 'Bearer expired_access_token')
 
       expect(response.status).toBe(401)
-      expect(response.body.error).toBe('Token validation failed')
+      expect(response.body.error).toBe(ErrorMessages.TOKEN_VALIDATION_FAILED)
       expect(response.body.details.error).toBe('invalid_token')
     })
   })
-})
+});

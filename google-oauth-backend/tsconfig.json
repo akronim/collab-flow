@@ -14,10 +14,6 @@
     "removeComments": true,
     "moduleResolution": "node",
     "allowSyntheticDefaultImports": true,
-    "baseUrl": ".",
-    "paths": {
-      "@/*": ["src/*"]
-    },
     "types": ["vitest/globals"]
   },
   "include": ["src/**/*"],

@@ -39,3 +39,7 @@ test-results/
 playwright-report/
 
 .env
+GEMINI.md
+PROJECT_PLAN.md
+INSTRUCTIONS.md
+PROJECT_STRUCTURE.md

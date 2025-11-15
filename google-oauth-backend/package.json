@@ -13,10 +13,12 @@
   "license": "ISC",
   "description": "",
   "dependencies": {
+    "@types/helmet": "^0.0.48",
     "axios": "^1.13.1",
     "cors": "^2.8.5",
     "dotenv": "^17.2.3",
-    "express": "^5.1.0"
+    "express": "^5.1.0",
+    "helmet": "^8.1.0"
   },
   "devDependencies": {
     "@types/cors": "^2.8.19",
