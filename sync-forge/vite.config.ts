@@ -6,6 +6,7 @@ import vueDevTools from 'vite-plugin-vue-devtools'
 import tailwindcss from '@tailwindcss/vite'
 
 // https://vitejs.dev/config/
+// eslint-disable-next-line @typescript-eslint/no-unused-vars
 export default defineConfig((_config: ConfigEnv) => {
   return {
     plugins: [

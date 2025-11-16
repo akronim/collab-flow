@@ -4,6 +4,8 @@ import { useAuthStore } from '@/stores'
 import { setActivePinia, createPinia } from 'pinia'
 import api from '@/utils/api'
 
+vi.mock('axios')
+
 vi.mock('@/utils/api', () => ({
   default: {
     post: vi.fn(),

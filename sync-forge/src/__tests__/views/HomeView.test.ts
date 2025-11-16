@@ -6,12 +6,6 @@ import { createRouter, createMemoryHistory } from 'vue-router'
 import { routes } from '@/router'
 import { useAuthStore } from '@/stores'
 
-vi.mock('@/composables/useAuth', () => ({
-    useAuth: () => ({
-        isTokenValid: vi.fn().mockReturnValue(true),
-    }),
-}))
-
 describe('HomeView', () => {
     let router: ReturnType<typeof createRouter>
 
