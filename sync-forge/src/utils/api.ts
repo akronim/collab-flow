@@ -42,6 +42,5 @@ export const createApiClient = (): ApiClient => {
   return api
 }
 
-// Default instance (no auto-refresh yet)
 const api = createApiClient()
 export default api

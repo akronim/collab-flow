@@ -4,3 +4,9 @@ export interface GoogleProfile {
   name: string
   picture?: string
 }
+
+export interface User {
+  id: string
+  email: string
+  name: string
+}
