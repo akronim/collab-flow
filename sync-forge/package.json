@@ -18,8 +18,11 @@
   },
   "dependencies": {
     "@tailwindcss/vite": "^4.1.16",
+    "ace-builds": "^1.43.4",
     "axios": "^1.13.1",
     "i18next": "^25.6.0",
+    "jodit": "^4.7.9",
+    "js-beautify": "^1.15.4",
     "luxon": "^3.7.2",
     "pinia": "^3.0.3",
     "tailwindcss": "^4.1.16",
@@ -29,6 +32,7 @@
   "devDependencies": {
     "@playwright/test": "^1.56.1",
     "@tsconfig/node22": "^22.0.2",
+    "@types/js-beautify": "^1.14.3",
     "@types/jsdom": "^27.0.0",
     "@types/luxon": "^3.7.1",
     "@types/node": "^22.18.11",

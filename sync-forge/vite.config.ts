@@ -1,6 +1,6 @@
 import { fileURLToPath, URL } from 'node:url'
 
-import { ConfigEnv, defineConfig } from 'vite'
+import { ConfigEnv, defineConfig, UserConfig } from 'vite'
 import vue from '@vitejs/plugin-vue'
 import vueDevTools from 'vite-plugin-vue-devtools'
 import tailwindcss from '@tailwindcss/vite'
@@ -19,6 +19,6 @@ export default defineConfig((_config: ConfigEnv) => {
         '@': fileURLToPath(new URL('./src', import.meta.url))
       },
     },
-  }
+  } satisfies UserConfig
 })
 

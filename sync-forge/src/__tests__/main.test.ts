@@ -8,7 +8,7 @@ vi.mock('@/utils/api', () => ({
     },
 }))
 
-describe.only('main.ts', () => {
+describe('main.ts', () => {
     beforeEach(() => {
         vi.clearAllMocks()
         document.body.innerHTML = '<div id="app"></div>'
