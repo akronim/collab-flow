@@ -30,9 +30,10 @@ describe('createApiClient', () => {
     localStorage.clear()
   })
 
-  it('creates instance with correct timeout', () => {
+  it('creates instance with correct config', () => {
     createApiClient()
     expect(mockCreate).toHaveBeenCalledWith({
+      baseURL: 'http://localhost:3001',
       timeout: 10000
     })
   })
@@ -93,23 +94,23 @@ describe('createApiClient', () => {
 
       const responseUseSpy = mockCreate.mock.results[0]?.value.interceptors.response.use
       const errorHandler = responseUseSpy.mock.calls[0]?.[1]
+      const mockRequest = mockCreate.mock.results[0]?.value.request
 
-      const error = {
-        response: { status: 401 },
-        config: { headers: { Authorization: 'Bearer old-token' } }
-      }
+      const errorConfig = { headers: { Authorization: 'Bearer old-token' } }
+      const error = { response: { status: 401 }, config: errorConfig }
 
-      mockCreate.mock.results[0]?.value.request.mockResolvedValue({ data: 'success' })
+      mockRequest.mockResolvedValue({ data: 'success' })
 
       const result = await errorHandler(error)
 
       expect(mockRefreshToken).toHaveBeenCalledTimes(1)
-      expect(error.config.headers.Authorization).toBe('Bearer new-token')
-      expect(mockCreate.mock.results[0]?.value.request).toHaveBeenCalledWith(error.config)
+      expect(mockRequest).toHaveBeenCalledWith(expect.objectContaining({
+        headers: expect.objectContaining({ Authorization: 'Bearer new-token' })
+      }))
       expect(result).toEqual({ data: 'success' })
     })
 
-    it('rejects if refresh returns null', async () => {
+    it('rejects with a specific error if refresh returns null', async () => {
       const mockRefreshToken = vi.fn().mockResolvedValue(null)
       const instance = createApiClient()
       instance.setRefreshTokenFn(mockRefreshToken)
@@ -122,7 +123,7 @@ describe('createApiClient', () => {
         config: { headers: {} }
       }
 
-      await expect(errorHandler(error)).rejects.toEqual(error)
+      await expect(errorHandler(error)).rejects.toThrow('Token refresh failed')
       expect(mockRefreshToken).toHaveBeenCalledTimes(1)
       expect(mockCreate.mock.results[0]?.value.request).not.toHaveBeenCalled()
     })
@@ -168,6 +169,47 @@ describe('createApiClient', () => {
         expect.any(Function),
         expect.any(Function)
       )
+    })
+
+    it('handles concurrent 401s by debouncing refresh token call', async () => {
+      const mockRefreshToken = vi.fn().mockResolvedValue('new-token')
+      const instance = createApiClient()
+      instance.setRefreshTokenFn(mockRefreshToken)
+
+      const responseUseSpy = mockCreate.mock.results[0]?.value.interceptors.response.use
+      const errorHandler = responseUseSpy.mock.calls[0]?.[1]
+
+      const mockRequest = mockCreate.mock.results[0]?.value.request
+
+      // Mock the retried requests
+      mockRequest.mockResolvedValueOnce({ data: 'success-1' }).mockResolvedValueOnce({ data: 'success-2' })
+
+      const error1 = { response: { status: 401 }, config: { _retry: false, url: '/test-1' } }
+      const error2 = { response: { status: 401 }, config: { _retry: false, url: '/test-2' } }
+
+      const promise1 = errorHandler(error1)
+      const promise2 = errorHandler(error2)
+
+      // Check that the queued request is marked for retry
+      expect(error2.config._retry).toBe(true)
+
+      const results = await Promise.all([promise1, promise2])
+
+      expect(mockRefreshToken).toHaveBeenCalledTimes(1)
+      expect(mockRequest).toHaveBeenCalledTimes(2)
+
+      // Check that both requests were retried with the new token
+      expect(mockRequest).toHaveBeenCalledWith(expect.objectContaining({
+        url: '/test-1',
+        headers: expect.objectContaining({ Authorization: 'Bearer new-token' })
+      }))
+      expect(mockRequest).toHaveBeenCalledWith(expect.objectContaining({
+        url: '/test-2',
+        headers: expect.objectContaining({ Authorization: 'Bearer new-token' })
+      }))
+
+      expect(results[0]).toEqual({ data: 'success-1' })
+      expect(results[1]).toEqual({ data: 'success-2' })
     })
   })
 })

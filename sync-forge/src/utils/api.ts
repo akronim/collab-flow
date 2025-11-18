@@ -1,21 +1,49 @@
 import axios, { type AxiosError, type AxiosResponse, type InternalAxiosRequestConfig, type AxiosInstance } from 'axios'
 
+interface AxConfig extends InternalAxiosRequestConfig {
+  _retry?: boolean;
+}
+
+type QueueItem = {
+  resolve: (token: string) => void
+  reject: (error: unknown) => void
+}
+
 export type TokenRefreshFn = () => Promise<string | null>
 
 export interface ApiClient extends AxiosInstance {
   setRefreshTokenFn: (fn: TokenRefreshFn) => void
 }
 
+const BACKEND_URL = import.meta.env.VITE_BACKEND_URL || 'http://localhost:3001'
+
 export const createApiClient = (): ApiClient => {
-  let refreshToken: TokenRefreshFn | undefined
+  let refreshTokenFn: TokenRefreshFn | undefined
+  let isRefreshing = false
+  let failedQueue: QueueItem[] = []
+
+  const processQueue = (error: unknown = null, token: string | null = null) => {
+    failedQueue.forEach(({ resolve, reject }) => {
+      if (error) {
+        reject(error)
+      } else if (token) {
+        resolve(token)
+      } else {
+        reject(new Error('Token refresh failed'))
+      }
+    })
+    failedQueue = []
+  }
 
   const api = axios.create({
+    baseURL: BACKEND_URL,
     timeout: 10000
   }) as ApiClient
 
   api.interceptors.request.use((config: InternalAxiosRequestConfig) => {
     const token = localStorage.getItem('access_token')
     if (token) {
+      config.headers = config.headers || {}
       config.headers.Authorization = `Bearer ${token}`
     }
     return config
@@ -24,19 +52,64 @@ export const createApiClient = (): ApiClient => {
   api.interceptors.response.use(
     (res: AxiosResponse) => res,
     async (err: AxiosError) => {
-      if (err.response?.status === 401 && err.config && refreshToken) {
-        const newToken = await refreshToken()
-        if (newToken) {
-          err.config.headers.Authorization = `Bearer ${newToken}`
-          return api.request(err.config)
-        }
+      const config = err.config as AxConfig
+
+      if (err.response?.status !== 401 || !config || !refreshTokenFn) {
+        return Promise.reject(err)
       }
-      return Promise.reject(err)
+
+      if (config._retry) {
+        return Promise.reject(err)
+      }
+
+      if (isRefreshing) {
+        return new Promise<string>((resolve, reject) => {
+          config._retry = true // Point #4: Mark queued requests as "to be retried"
+          failedQueue.push({ resolve, reject })
+        })
+          .then(token => {
+            // Point #3: Clone config for queued requests
+            const retryConfig = {
+                ...config,
+                headers: { ...config.headers, Authorization: `Bearer ${token}` }
+            }
+            return api.request(retryConfig)
+          })
+          .catch(queueError => Promise.reject(queueError))
+      }
+
+      isRefreshing = true
+      config._retry = true
+
+      try {
+        const newToken = await refreshTokenFn()
+
+        if (!newToken) {
+          const refreshError = new Error('Token refresh failed')
+          processQueue(refreshError)
+          return Promise.reject(refreshError) // Point #6: Reject with a specific error
+        }
+
+        processQueue(null, newToken)
+        
+        // Point #3: Clone config for the original request
+        const retryConfig = {
+            ...config,
+            headers: { ...config.headers, Authorization: `Bearer ${newToken}` }
+        }
+        return api.request(retryConfig)
+      } catch (refreshError) {
+        console.error('Token refresh error:', refreshError)
+        processQueue(refreshError)
+        return Promise.reject(refreshError)
+      } finally {
+        isRefreshing = false
+      }
     }
   )
 
   api.setRefreshTokenFn = (fn: TokenRefreshFn) => {
-    refreshToken = fn
+    refreshTokenFn = fn
   }
 
   return api

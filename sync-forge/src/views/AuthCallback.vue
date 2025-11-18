@@ -38,24 +38,20 @@ onMounted(async () => {
 
         const { access_token, refresh_token, expires_in } = tokenResp.data
 
-        if (!access_token) throw new Error('Missing access_token')
-        if (!refresh_token) throw new Error('Missing refresh_token')
-
-        const expiresAt = Date.now() + Number(expires_in) * 1000
-        localStorage.setItem('access_token', access_token)
-        localStorage.setItem('refresh_token', refresh_token)
-        localStorage.setItem('token_expires_at', String(expiresAt))
+        if (!access_token || !refresh_token) {
+          throw new Error('Missing tokens in auth response')
+        }
 
         const profileResp = await api.get<GoogleProfile>(
             `${BACKEND_URL}/api/auth/validate`
         )
 
-        console.log(profileResp)
-
-        authStore.login({
-            id: profileResp.data.id,
-            email: profileResp.data.email,
-            name: profileResp.data.name
+        authStore.setSession({
+          user: profileResp.data,
+          accessToken: access_token,
+          refreshToken: refresh_token,
+          expiresIn: expires_in,
+          isGoogleLogin: true
         })
 
         router.replace('/')

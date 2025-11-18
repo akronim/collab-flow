@@ -1,4 +1,4 @@
-import { describe, it, expect, beforeEach, vi, afterEach } from 'vitest'
+import { describe, it, expect, beforeEach, vi } from 'vitest'
 import { setActivePinia, createPinia } from 'pinia'
 import { useAuthStore } from '@/stores'
 import axios from 'axios'
@@ -29,21 +29,32 @@ describe('useAuthStore', () => {
 
   it('should login and set user', () => {
     const store = useAuthStore()
-    store.login({ id: '1', email: 'john@example.com', name: 'John' })
+    store.setSession({
+      user: { id: '1', email: 'john@example.com', name: 'John' },
+      accessToken: 'test-token',
+      refreshToken: 'test-refresh',
+      expiresIn: 3600,
+    })
     expect(store.user).toEqual({ id: '1', email: 'john@example.com', name: 'John' })
     expect(store.isAuthenticated).toBe(true)
   })
 
   it('should logout and clear', async () => {
     const store = useAuthStore()
-    store.login({ id: '1', email: 'x', name: 'x' })
+    store.setSession({
+      user: { id: '1', email: 'x', name: 'x' },
+      accessToken: 'test-token',
+      refreshToken: 'test-refresh',
+      expiresIn: 3600,
+    })
     await store.logout()
     expect(store.user).toBeNull()
     expect(store.isAuthenticated).toBe(false)
   })
 
-  it('revokes token with axios.post', async () => {
+  it('revokes token with axios.post for Google logins', async () => {
     localStorage.setItem('access_token', 'fake-token')
+    localStorage.setItem('is_google_login', 'true')
     const authStore = useAuthStore()
 
     await authStore.logout()
@@ -58,6 +69,14 @@ describe('useAuthStore', () => {
     )
   })
 
+  it('does not revoke token for non-Google login', async () => {
+    localStorage.setItem('access_token', 'fake-token')
+    // Note: is_google_login is not set
+    const authStore = useAuthStore()
+    await authStore.logout()
+    expect(axios.post).not.toHaveBeenCalled()
+  })
+
   it('does not call axios if no token', async () => {
     const authStore = useAuthStore()
     await authStore.logout()
@@ -66,6 +85,7 @@ describe('useAuthStore', () => {
 
   it('clears storage even if revoke fails', async () => {
     localStorage.setItem('access_token', 'bad-token')
+    localStorage.setItem('is_google_login', 'true')
     vi.mocked(axios.post).mockRejectedValue(new Error('Network error'))
 
     const authStore = useAuthStore()
@@ -97,6 +117,39 @@ describe('useAuthStore', () => {
       expect(await store.getToken()).toBeNull()
       expect(logoutSpy).toHaveBeenCalled()
     })
+
+    it('should only trigger one refresh for concurrent calls', async () => {
+      localStorage.setItem('access_token', 'old-access')
+      localStorage.setItem('token_expires_at', String(Date.now() + 30000)) // Near expiry
+      localStorage.setItem('refresh_token', 'refresh-me')
+
+      vi.mocked(axios.post).mockResolvedValue({
+        data: { access_token: 'new-fresh-access', expires_in: 3600 },
+      })
+
+      const store = useAuthStore()
+
+      const promises = [
+        store.getToken(),
+        store.getToken(),
+        store.getToken(),
+      ]
+
+      const results = await Promise.all(promises)
+
+      expect(results).toEqual([
+        'new-fresh-access',
+        'new-fresh-access',
+        'new-fresh-access',
+      ])
+
+      // Most importantly, ensure the refresh endpoint was only called once
+      expect(axios.post).toHaveBeenCalledOnce()
+      expect(axios.post).toHaveBeenCalledWith(
+        'http://localhost:3001/api/auth/refresh',
+        { refresh_token: 'refresh-me' }
+      )
+    })
   })
 
   describe('isTokenValid', () => {
@@ -114,10 +167,9 @@ describe('useAuthStore', () => {
       expect(await store.refreshAccessToken()).toBe(null)
     })
 
-    it('refreshes token and updates storage on success', async () => {
+    it('refreshes access token and updates storage on success', async () => {
       localStorage.setItem('refresh_token', 'old-refresh')
-      const mockApi = axios.create()
-      vi.mocked(mockApi.post).mockResolvedValue({
+      vi.mocked(axios.post).mockResolvedValue({
         data: { access_token: 'new-access', expires_in: 3600 },
       })
 
@@ -131,10 +183,25 @@ describe('useAuthStore', () => {
       expect(expiresAt).toBeGreaterThan(Date.now() + 3500000)
     })
 
+    it('updates refresh token if rotated token is returned', async () => {
+      localStorage.setItem('refresh_token', 'old-refresh')
+      vi.mocked(axios.post).mockResolvedValue({
+        data: { 
+          access_token: 'new-access', 
+          expires_in: 3600,
+          refresh_token: 'new-rotated-refresh' 
+        },
+      })
+
+      const store = useAuthStore()
+      await store.refreshAccessToken()
+
+      expect(localStorage.getItem('refresh_token')).toBe('new-rotated-refresh')
+    })
+
     it('returns null on API error', async () => {
       localStorage.setItem('refresh_token', 'bad-refresh')
-      const mockApi = axios.create()
-      vi.mocked(mockApi.post).mockRejectedValue(new Error('network error'))
+      vi.mocked(axios.post).mockRejectedValue(new Error('network error'))
 
       const store = useAuthStore()
       const result = await store.refreshAccessToken()
@@ -144,13 +211,30 @@ describe('useAuthStore', () => {
 
     it('returns null if no access_token in response', async () => {
       localStorage.setItem('refresh_token', 'old-refresh')
-      const mockApi = axios.create()
-      vi.mocked(mockApi.post).mockResolvedValue({ data: { expires_in: 3600 } })
+      vi.mocked(axios.post).mockResolvedValue({ data: { expires_in: 3600 } })
 
       const store = useAuthStore()
       const result = await store.refreshAccessToken()
 
       expect(result).toBeNull()
+    })
+
+    it('restores user from localStorage on successful refresh if state is null', async () => {
+      const user = { id: '1', name: 'Test User', email: 'test@test.com' }
+      localStorage.setItem('user', JSON.stringify(user))
+      localStorage.setItem('refresh_token', 'old-refresh')
+      vi.mocked(axios.post).mockResolvedValue({
+        data: { access_token: 'new-access', expires_in: 3600 },
+      })
+
+      const store = useAuthStore()
+      // At this point, store.user is null because getSavedUser fails without a valid expiry
+      expect(store.user).toBeNull()
+
+      await store.refreshAccessToken()
+
+      expect(store.user).toEqual(user)
+      expect(store.isAuthenticated).toBe(true)
     })
   })
 
@@ -159,8 +243,7 @@ describe('useAuthStore', () => {
     localStorage.setItem('token_expires_at', String(Date.now() + 30000)) // 30s left
     localStorage.setItem('refresh_token', 'refresh-me')
 
-    const mockApi = axios.create()
-    vi.mocked(mockApi.post).mockResolvedValue({
+    vi.mocked(axios.post).mockResolvedValue({
       data: { access_token: 'fresh-access', expires_in: 3600 },
     })
 
@@ -168,69 +251,5 @@ describe('useAuthStore', () => {
     const token = await store.getToken()
 
     expect(token).toBe('fresh-access')
-  })
-
-
-  describe('token refresh interval', () => {
-    beforeEach(() => {
-      vi.useFakeTimers()
-    })
-
-    afterEach(() => {
-      vi.restoreAllMocks()
-    })
-
-    it('starts refresh interval on init', () => {
-      const store = useAuthStore()
-      const getTokenSpy = vi.spyOn(store, 'getToken')
-
-      store.login({ id: '1', email: 'test@example.com', name: 'Test' })
-      store.init()
-
-      // Fast-forward 10 minutes
-      vi.advanceTimersByTime(10 * 60 * 1000)
-
-      expect(getTokenSpy).toHaveBeenCalled()
-    })
-
-    it('does not refresh if user is not authenticated', () => {
-      const store = useAuthStore()
-      const getTokenSpy = vi.spyOn(store, 'getToken')
-
-      store.init()
-
-      // Fast-forward 10 minutes
-      vi.advanceTimersByTime(10 * 60 * 1000)
-
-      expect(getTokenSpy).not.toHaveBeenCalled()
-    })
-
-    it('clears interval on logout', async () => {
-      const store = useAuthStore()
-      const getTokenSpy = vi.spyOn(store, 'getToken')
-
-      store.login({ id: '1', email: 'test@example.com', name: 'Test' })
-      store.init()
-
-      await store.logout()
-
-      // Fast-forward 10 minutes after logout
-      vi.advanceTimersByTime(10 * 60 * 1000)
-
-      expect(getTokenSpy).not.toHaveBeenCalled()
-    })
-
-    it('refreshes token periodically while authenticated', () => {
-      const store = useAuthStore()
-      const getTokenSpy = vi.spyOn(store, 'getToken')
-
-      store.login({ id: '1', email: 'test@example.com', name: 'Test' })
-      store.init()
-
-      // Fast-forward 30 minutes (should call 3 times)
-      vi.advanceTimersByTime(30 * 60 * 1000)
-
-      expect(getTokenSpy).toHaveBeenCalledTimes(3)
-    })
   })
 })

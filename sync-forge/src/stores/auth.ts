@@ -7,19 +7,21 @@ const BACKEND_URL = import.meta.env.VITE_BACKEND_URL || 'http://localhost:3001'
 
 interface AuthState {
   user: User | null
-  refreshIntervalId?: ReturnType<typeof setInterval>
+  activeRefreshPromise: Promise<string | null> | null
 }
 
 const getSavedUser = (): User | null => {
   const savedUser = localStorage.getItem('user')
   const expiresAt = localStorage.getItem('token_expires_at')
 
-  if (savedUser && expiresAt && Date.now() < Number(expiresAt)) {
+  if (savedUser && expiresAt) {
     try {
-      return JSON.parse(savedUser)
+      const user = JSON.parse(savedUser)
+      if (Date.now() < Number(expiresAt)) {
+        return user
+      }
     } catch (e) {
       console.warn('Failed to parse saved user', e)
-      return null
     }
   }
   return null
@@ -29,7 +31,7 @@ export const useAuthStore = defineStore('auth', {
 
   state: (): AuthState => ({
     user: getSavedUser(),
-    refreshIntervalId: undefined
+    activeRefreshPromise: null
   }),
 
   getters: {
@@ -38,28 +40,36 @@ export const useAuthStore = defineStore('auth', {
 
   actions: {
     init() {
-      api.setRefreshTokenFn(this.refreshAccessToken)
-      this.startTokenRefreshInterval()
+      api.setRefreshTokenFn(this.refreshAccessToken.bind(this))
     },
 
-    startTokenRefreshInterval() {
-      if (this.refreshIntervalId) {
-        clearInterval(this.refreshIntervalId)
+    setSession(payload: {
+      user: User
+      accessToken: string
+      refreshToken: string
+      expiresIn: number
+      isGoogleLogin?: boolean
+    }) {
+      const expiresAt = Date.now() + payload.expiresIn * 1000
+      this.user = payload.user
+      localStorage.setItem('user', JSON.stringify(payload.user))
+      localStorage.setItem('access_token', payload.accessToken)
+      localStorage.setItem('refresh_token', payload.refreshToken)
+      localStorage.setItem('token_expires_at', String(expiresAt))
+      if (payload.isGoogleLogin) {
+        localStorage.setItem('is_google_login', 'true')
       }
-
-      this.refreshIntervalId = setInterval(() => {
-        if (this.isAuthenticated) {
-          this.getToken()
-        }
-      }, 10 * 60 * 1000) // 10 minutes
     },
 
-    login(payload: User) {
-      this.user = payload
-      localStorage.setItem('user', JSON.stringify(payload))
+    clearAuthStorage() {
+      ['access_token', 'refresh_token', 'token_expires_at', 'user', 'is_google_login'].forEach(key =>
+        localStorage.removeItem(key)
+      )
     },
 
     async revokeGoogleToken() {
+      if (localStorage.getItem('is_google_login') !== 'true') return
+
       const token = localStorage.getItem('access_token')
       if (!token) return
 
@@ -75,39 +85,65 @@ export const useAuthStore = defineStore('auth', {
 
     async logout() {
       await this.revokeGoogleToken()
-
-      if (this.refreshIntervalId) {
-        clearInterval(this.refreshIntervalId)
-        this.refreshIntervalId = undefined
-      }
-
       this.user = null
-      localStorage.removeItem('access_token')
-      localStorage.removeItem('refresh_token')
-      localStorage.removeItem('token_expires_at')
-      localStorage.removeItem('user')
+      this.clearAuthStorage()
     },
 
-    async refreshAccessToken(): Promise<string | null> {
-      const refresh = localStorage.getItem('refresh_token')
-      if (!refresh) return null
-
-      try {
-        const resp = await api.post(`${BACKEND_URL}/api/auth/refresh`, {
-          refresh_token: refresh,
-        })
-        const { access_token, expires_in } = resp.data
-        if (!access_token) return null
-
-        const expiresAt = Date.now() + Number(expires_in) * 1000
-        localStorage.setItem('access_token', access_token)
-        localStorage.setItem('token_expires_at', String(expiresAt))
-        return access_token
-      } catch (err) {
-        console.error('Refresh failed:', err)
-        this.logout()
-        return null
+    refreshAccessToken(): Promise<string | null> {
+      if (this.activeRefreshPromise) {
+        return this.activeRefreshPromise
       }
+
+      this.activeRefreshPromise = (async () => {
+        const refreshToken = localStorage.getItem('refresh_token')
+        if (!refreshToken) {
+          await this.logout()
+          return null
+        }
+
+        try {
+          const { data } = await axios.post(`${BACKEND_URL}/api/auth/refresh`, {
+            refresh_token: refreshToken,
+          })
+
+          const { access_token, expires_in, refresh_token: new_refresh_token } = data
+
+          if (!access_token) {
+            await this.logout()
+            return null
+          }
+
+          const expiresAt = Date.now() + Number(expires_in) * 1000
+          localStorage.setItem('access_token', access_token)
+          localStorage.setItem('token_expires_at', String(expiresAt))
+          if (new_refresh_token) {
+            localStorage.setItem('refresh_token', new_refresh_token)
+          }
+
+          if (!this.user) {
+            const savedUser = localStorage.getItem('user')
+            if (savedUser) {
+              try {
+                this.user = JSON.parse(savedUser)
+              } catch (e) {
+                console.warn('Failed to parse saved user after refresh', e)
+                await this.logout()
+                return null
+              }
+            }
+          }
+
+          return access_token
+        } catch (err) {
+          console.error('Token refresh failed:', err)
+          await this.logout()
+          return null
+        }
+      })().finally(() => {
+        this.activeRefreshPromise = null
+      })
+
+      return this.activeRefreshPromise
     },
 
     async getToken(): Promise<string | null> {
@@ -115,23 +151,23 @@ export const useAuthStore = defineStore('auth', {
       const expiresAt = localStorage.getItem('token_expires_at')
 
       if (!token || !expiresAt) {
-        this.logout()
         return null
       }
 
       const expiresInMs = Number(expiresAt) - Date.now()
-      if (expiresInMs > 60_000) return token
 
-      const newToken = await this.refreshAccessToken()
-      if (newToken) return newToken
+      if (expiresInMs > 60_000) {
+        return token
+      }
 
-      this.logout()
-      return null
+      return this.refreshAccessToken()
     },
 
-    isTokenValid() {
+    isTokenValid(): boolean {
       const expiresAt = localStorage.getItem('token_expires_at')
-      return expiresAt ? Date.now() < Number(expiresAt) - 60_000 : false
+      if (!expiresAt) return false
+
+      return Date.now() < Number(expiresAt) - 60_000
     },
   },
 })

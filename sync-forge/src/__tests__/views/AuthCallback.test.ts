@@ -48,7 +48,7 @@ describe('AuthCallback', () => {
         })
 
         const authStore = useAuthStore()
-        const loginSpy = vi.spyOn(authStore, 'login')
+        const setSessionSpy = vi.spyOn(authStore, 'setSession')
 
         mount(AuthCallback, { global: { plugins: [router] } })
         await flushPromises()
@@ -63,10 +63,12 @@ describe('AuthCallback', () => {
 
         expect(api.get).toHaveBeenCalledWith("http://localhost:3001/api/auth/validate")
         
-        expect(loginSpy).toHaveBeenCalledWith({
-            id: '123',
-            email: 'test@google.com',
-            name: 'Test User'
+        expect(setSessionSpy).toHaveBeenCalledWith({
+            user: { id: '123', email: 'test@google.com', name: 'Test User' },
+            accessToken: 'new-access',
+            refreshToken: 'new-refresh',
+            expiresIn: 3600,
+            isGoogleLogin: true
         })
 
         expect(localStorage.getItem('access_token')).toBe('new-access')
