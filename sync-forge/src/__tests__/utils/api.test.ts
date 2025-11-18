@@ -129,7 +129,7 @@ describe('createApiClient', () => {
     })
 
     it('rejects if no refreshToken function provided', async () => {
-      createApiClient() // No refresh function
+      createApiClient()
 
       const instance = mockCreate.mock.results[0]?.value
       const responseUseSpy = instance.interceptors.response.use
@@ -181,7 +181,6 @@ describe('createApiClient', () => {
 
       const mockRequest = mockCreate.mock.results[0]?.value.request
 
-      // Mock the retried requests
       mockRequest.mockResolvedValueOnce({ data: 'success-1' }).mockResolvedValueOnce({ data: 'success-2' })
 
       const error1 = { response: { status: 401 }, config: { _retry: false, url: '/test-1' } }
@@ -190,7 +189,6 @@ describe('createApiClient', () => {
       const promise1 = errorHandler(error1)
       const promise2 = errorHandler(error2)
 
-      // Check that the queued request is marked for retry
       expect(error2.config._retry).toBe(true)
 
       const results = await Promise.all([promise1, promise2])
@@ -198,7 +196,6 @@ describe('createApiClient', () => {
       expect(mockRefreshToken).toHaveBeenCalledTimes(1)
       expect(mockRequest).toHaveBeenCalledTimes(2)
 
-      // Check that both requests were retried with the new token
       expect(mockRequest).toHaveBeenCalledWith(expect.objectContaining({
         url: '/test-1',
         headers: expect.objectContaining({ Authorization: 'Bearer new-token' })

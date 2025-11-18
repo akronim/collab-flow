@@ -19,8 +19,6 @@ const route = useRoute()
 const router = useRouter()
 const authStore = useAuthStore()
 
-const BACKEND_URL = import.meta.env.VITE_BACKEND_URL || 'http://localhost:3001'
-
 onMounted(async () => {
     const code = route.query.code as string | undefined
     const codeVerifier = localStorage.getItem('code_verifier')
@@ -32,26 +30,26 @@ onMounted(async () => {
 
     try {
         const tokenResp = await api.post(
-            `${BACKEND_URL}/api/auth/token`,
+            '/api/auth/token',
             { code, codeVerifier }
         )
 
         const { access_token, refresh_token, expires_in } = tokenResp.data
 
         if (!access_token || !refresh_token) {
-          throw new Error('Missing tokens in auth response')
+            throw new Error('Missing tokens in auth response')
         }
 
         const profileResp = await api.get<GoogleProfile>(
-            `${BACKEND_URL}/api/auth/validate`
+            '/api/auth/validate'
         )
 
         authStore.setSession({
-          user: profileResp.data,
-          accessToken: access_token,
-          refreshToken: refresh_token,
-          expiresIn: expires_in,
-          isGoogleLogin: true
+            user: profileResp.data,
+            accessToken: access_token,
+            refreshToken: refresh_token,
+            expiresIn: expires_in,
+            isGoogleLogin: true
         })
 
         router.replace('/')

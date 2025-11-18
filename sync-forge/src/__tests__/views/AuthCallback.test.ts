@@ -54,15 +54,15 @@ describe('AuthCallback', () => {
         await flushPromises()
 
         expect(api.post).toHaveBeenCalledWith(
-            'http://localhost:3001/api/auth/token',
+            '/api/auth/token',
             expect.objectContaining({
                 code: 'auth-code-123',
                 codeVerifier: "verifier-abc"
             })
         )
 
-        expect(api.get).toHaveBeenCalledWith("http://localhost:3001/api/auth/validate")
-        
+        expect(api.get).toHaveBeenCalledWith("/api/auth/validate")
+
         expect(setSessionSpy).toHaveBeenCalledWith({
             user: { id: '123', email: 'test@google.com', name: 'Test User' },
             accessToken: 'new-access',
@@ -73,7 +73,7 @@ describe('AuthCallback', () => {
 
         expect(localStorage.getItem('access_token')).toBe('new-access')
         expect(localStorage.getItem('refresh_token')).toBe('new-refresh')
-        expect(localStorage.getItem('code_verifier')).toBeNull() // cleaned up
+        expect(localStorage.getItem('code_verifier')).toBeNull()
 
         expect(router.currentRoute.value.path).toBe('/')
     })

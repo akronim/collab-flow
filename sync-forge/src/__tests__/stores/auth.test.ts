@@ -1,30 +1,32 @@
-import { describe, it, expect, beforeEach, vi } from 'vitest'
+import { describe, it, expect, beforeEach, vi, type Mock } from 'vitest'
 import { setActivePinia, createPinia } from 'pinia'
 import { useAuthStore } from '@/stores'
+import api from '@/utils/api'
 import axios from 'axios'
 
-vi.mock('axios', () => {
-  const mockAxiosInstance = {
-    interceptors: {
-      request: { use: vi.fn() },
-      response: { use: vi.fn() },
-    },
+vi.mock('@/utils/api', () => ({
+  default: {
     post: vi.fn(),
     get: vi.fn(),
+    setRefreshTokenFn: vi.fn(),
+  },
+}))
+
+vi.mock('axios', () => ({
+  default: {
+    post: vi.fn(),
   }
-  return {
-    default: {
-      create: () => mockAxiosInstance,
-      post: vi.fn(),
-    },
-  }
-})
+}))
 
 describe('useAuthStore', () => {
   beforeEach(() => {
     setActivePinia(createPinia())
     vi.clearAllMocks()
     localStorage.clear()
+    const mockedApiPost = api.post as Mock
+    const mockedAxiosPost = axios.post as Mock
+    mockedApiPost.mockClear()
+    mockedAxiosPost.mockClear()
   })
 
   it('should login and set user', () => {
@@ -71,7 +73,6 @@ describe('useAuthStore', () => {
 
   it('does not revoke token for non-Google login', async () => {
     localStorage.setItem('access_token', 'fake-token')
-    // Note: is_google_login is not set
     const authStore = useAuthStore()
     await authStore.logout()
     expect(axios.post).not.toHaveBeenCalled()
@@ -86,7 +87,7 @@ describe('useAuthStore', () => {
   it('clears storage even if revoke fails', async () => {
     localStorage.setItem('access_token', 'bad-token')
     localStorage.setItem('is_google_login', 'true')
-    vi.mocked(axios.post).mockRejectedValue(new Error('Network error'))
+      ; (axios.post as Mock).mockRejectedValue(new Error('Network error'))
 
     const authStore = useAuthStore()
     await authStore.logout()
@@ -123,31 +124,20 @@ describe('useAuthStore', () => {
       localStorage.setItem('token_expires_at', String(Date.now() + 30000)) // Near expiry
       localStorage.setItem('refresh_token', 'refresh-me')
 
-      vi.mocked(axios.post).mockResolvedValue({
-        data: { access_token: 'new-fresh-access', expires_in: 3600 },
-      })
+        ; (api.post as Mock).mockResolvedValue({
+          data: { access_token: 'new-fresh-access', expires_in: 3600 },
+        })
 
       const store = useAuthStore()
-
-      const promises = [
-        store.getToken(),
-        store.getToken(),
-        store.getToken(),
-      ]
-
+      const promises = [store.getToken(), store.getToken(), store.getToken()]
       const results = await Promise.all(promises)
 
-      expect(results).toEqual([
-        'new-fresh-access',
-        'new-fresh-access',
-        'new-fresh-access',
-      ])
-
-      // Most importantly, ensure the refresh endpoint was only called once
-      expect(axios.post).toHaveBeenCalledOnce()
-      expect(axios.post).toHaveBeenCalledWith(
-        'http://localhost:3001/api/auth/refresh',
-        { refresh_token: 'refresh-me' }
+      expect(results).toEqual(['new-fresh-access', 'new-fresh-access', 'new-fresh-access'])
+      expect(api.post).toHaveBeenCalledOnce()
+      expect(api.post).toHaveBeenCalledWith(
+        '/api/auth/refresh',
+        { refresh_token: 'refresh-me' },
+        expect.anything()
       )
     })
   })
@@ -169,29 +159,28 @@ describe('useAuthStore', () => {
 
     it('refreshes access token and updates storage on success', async () => {
       localStorage.setItem('refresh_token', 'old-refresh')
-      vi.mocked(axios.post).mockResolvedValue({
-        data: { access_token: 'new-access', expires_in: 3600 },
-      })
+        ; (api.post as Mock).mockResolvedValue({
+          data: { access_token: 'new-access', expires_in: 3600 },
+        })
 
       const store = useAuthStore()
       const result = await store.refreshAccessToken()
 
       expect(result).toBe('new-access')
       expect(localStorage.getItem('access_token')).toBe('new-access')
-
       const expiresAt = Number(localStorage.getItem('token_expires_at'))
       expect(expiresAt).toBeGreaterThan(Date.now() + 3500000)
     })
 
     it('updates refresh token if rotated token is returned', async () => {
       localStorage.setItem('refresh_token', 'old-refresh')
-      vi.mocked(axios.post).mockResolvedValue({
-        data: { 
-          access_token: 'new-access', 
-          expires_in: 3600,
-          refresh_token: 'new-rotated-refresh' 
-        },
-      })
+        ; (api.post as Mock).mockResolvedValue({
+          data: {
+            access_token: 'new-access',
+            expires_in: 3600,
+            refresh_token: 'new-rotated-refresh',
+          },
+        })
 
       const store = useAuthStore()
       await store.refreshAccessToken()
@@ -201,7 +190,7 @@ describe('useAuthStore', () => {
 
     it('returns null on API error', async () => {
       localStorage.setItem('refresh_token', 'bad-refresh')
-      vi.mocked(axios.post).mockRejectedValue(new Error('network error'))
+        ; (api.post as Mock).mockRejectedValue(new Error('network error'))
 
       const store = useAuthStore()
       const result = await store.refreshAccessToken()
@@ -211,7 +200,7 @@ describe('useAuthStore', () => {
 
     it('returns null if no access_token in response', async () => {
       localStorage.setItem('refresh_token', 'old-refresh')
-      vi.mocked(axios.post).mockResolvedValue({ data: { expires_in: 3600 } })
+        ; (api.post as Mock).mockResolvedValue({ data: { expires_in: 3600 } })
 
       const store = useAuthStore()
       const result = await store.refreshAccessToken()
@@ -223,12 +212,11 @@ describe('useAuthStore', () => {
       const user = { id: '1', name: 'Test User', email: 'test@test.com' }
       localStorage.setItem('user', JSON.stringify(user))
       localStorage.setItem('refresh_token', 'old-refresh')
-      vi.mocked(axios.post).mockResolvedValue({
-        data: { access_token: 'new-access', expires_in: 3600 },
-      })
+        ; (api.post as Mock).mockResolvedValue({
+          data: { access_token: 'new-access', expires_in: 3600 },
+        })
 
       const store = useAuthStore()
-      // At this point, store.user is null because getSavedUser fails without a valid expiry
       expect(store.user).toBeNull()
 
       await store.refreshAccessToken()
@@ -243,9 +231,9 @@ describe('useAuthStore', () => {
     localStorage.setItem('token_expires_at', String(Date.now() + 30000)) // 30s left
     localStorage.setItem('refresh_token', 'refresh-me')
 
-    vi.mocked(axios.post).mockResolvedValue({
-      data: { access_token: 'fresh-access', expires_in: 3600 },
-    })
+      ; (api.post as Mock).mockResolvedValue({
+        data: { access_token: 'fresh-access', expires_in: 3600 },
+      })
 
     const store = useAuthStore()
     const token = await store.getToken()

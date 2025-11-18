@@ -115,7 +115,7 @@ The authentication process is designed to be secure and robust, following modern
 
 
 
-The `useAuth()` composable provides a `getToken()` function that safely retrieves a valid access token. It automatically refreshes the token if it's about to expire.
+The `useAuthStore()` Pinia store provides a `getToken()` function that safely retrieves a valid access token. It automatically refreshes the token if it's about to expire.
 
 
 

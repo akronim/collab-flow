@@ -1,6 +1,6 @@
 import axios, { type AxiosError, type AxiosResponse, type InternalAxiosRequestConfig, type AxiosInstance } from 'axios'
 
-interface AxConfig extends InternalAxiosRequestConfig {
+export interface AxConfig extends InternalAxiosRequestConfig {
   _retry?: boolean;
 }
 
@@ -64,14 +64,13 @@ export const createApiClient = (): ApiClient => {
 
       if (isRefreshing) {
         return new Promise<string>((resolve, reject) => {
-          config._retry = true // Point #4: Mark queued requests as "to be retried"
+          config._retry = true
           failedQueue.push({ resolve, reject })
         })
           .then(token => {
-            // Point #3: Clone config for queued requests
             const retryConfig = {
-                ...config,
-                headers: { ...config.headers, Authorization: `Bearer ${token}` }
+              ...config,
+              headers: { ...config.headers, Authorization: `Bearer ${token}` }
             }
             return api.request(retryConfig)
           })
@@ -87,15 +86,14 @@ export const createApiClient = (): ApiClient => {
         if (!newToken) {
           const refreshError = new Error('Token refresh failed')
           processQueue(refreshError)
-          return Promise.reject(refreshError) // Point #6: Reject with a specific error
+          return Promise.reject(refreshError)
         }
 
         processQueue(null, newToken)
-        
-        // Point #3: Clone config for the original request
+
         const retryConfig = {
-            ...config,
-            headers: { ...config.headers, Authorization: `Bearer ${newToken}` }
+          ...config,
+          headers: { ...config.headers, Authorization: `Bearer ${newToken}` }
         }
         return api.request(retryConfig)
       } catch (refreshError) {

@@ -48,12 +48,12 @@ describe('App.vue', () => {
 
   it('shows HomeView when authenticated', async () => {
     const auth = useAuthStore();
-          auth.setSession({
-            user: { id: '1', email: 'john@example.com', name: 'John' },
-            accessToken: 'test-token',
-            refreshToken: 'test-refresh',
-            expiresIn: 3600,
-          });
+    auth.setSession({
+      user: { id: '1', email: 'john@example.com', name: 'John' },
+      accessToken: 'test-token',
+      refreshToken: 'test-refresh',
+      expiresIn: 3600,
+    });
     router.push('/');
     await router.isReady();
 

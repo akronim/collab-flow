@@ -1,9 +1,7 @@
 import axios from 'axios'
 import { defineStore } from 'pinia'
-import api from '@/utils/api'
+import api, { type AxConfig } from '@/utils/api'
 import type { User } from '@/types/auth'
-
-const BACKEND_URL = import.meta.env.VITE_BACKEND_URL || 'http://localhost:3001'
 
 interface AuthState {
   user: User | null
@@ -102,9 +100,13 @@ export const useAuthStore = defineStore('auth', {
         }
 
         try {
-          const { data } = await axios.post(`${BACKEND_URL}/api/auth/refresh`, {
-            refresh_token: refreshToken,
-          })
+          const { data } = await api.post(
+            '/api/auth/refresh',
+            {
+              refresh_token: refreshToken,
+            },
+            { _retry: true } as AxConfig // Prevent this request from triggering the refresh interceptor
+          )
 
           const { access_token, expires_in, refresh_token: new_refresh_token } = data
 
