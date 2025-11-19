@@ -1,40 +1,56 @@
-import { type Request, type Response, type NextFunction } from 'express';
-import { AppError } from '../utils/errors';
-import { ErrorMessages } from '../constants';
+import { type Request, type Response, type NextFunction } from 'express'
+import { AppError } from '../utils/errors'
+import { ErrorMessages } from '../constants'
 
-export const errorMiddleware = (error: any, req: Request, res: Response, next: NextFunction) => {
-    if (error instanceof AppError) {
-        return res.status(error.status).json({
-            error: error.message,
-            details: error.details,
-        });
-    }
+interface ErrorResponse {
+  status?: number;
+  data?: {
+    error?: string;
+    message?: string;
+  };
+}
 
-    const status = error.response?.status || 500;
-    const details = error.response?.data || { message: error.message };
+interface ErrorWithResponse extends Error {
+  response?: ErrorResponse;
+}
 
-    const errorMap: { [key: string]: string } = {
-        'invalid_grant_401': ErrorMessages.TOKEN_EXCHANGE_FAILED,
-        'invalid_grant_400': ErrorMessages.REFRESH_FAILED,
-        'invalid_token_401': ErrorMessages.TOKEN_VALIDATION_FAILED,
-        '400': ErrorMessages.BAD_REQUEST,
-        '401': ErrorMessages.UNAUTHORIZED,
-    };
+export const errorMiddleware = (
+  error: ErrorWithResponse,
+  req: Request,
+  res: Response,
+  _next: NextFunction
+): void => {
+  if (error instanceof AppError) {
+    res.status(error.status).json({
+      error: error.message,
+      details: error.details
+    })
+    return
+  }
 
-    let errorMessage = ErrorMessages.UNEXPECTED_ERROR;
+  const status = error.response?.status ?? 500
+  const details = error.response?.data ?? { message: error.message }
 
-    const specificErrorKey = `${details.error}_${status}`;
-    const generalStatusKey = status.toString();
+  const errorMap: Record<string, string> = {
+    invalid_grant_401: ErrorMessages.TOKEN_EXCHANGE_FAILED,
+    invalid_grant_400: ErrorMessages.REFRESH_FAILED,
+    invalid_token_401: ErrorMessages.TOKEN_VALIDATION_FAILED,
+    400: ErrorMessages.BAD_REQUEST,
+    401: ErrorMessages.UNAUTHORIZED
+  }
 
-    if (errorMap[specificErrorKey]) {
-        errorMessage = errorMap[specificErrorKey];
-    } else if (errorMap[generalStatusKey]) {
-        errorMessage = errorMap[generalStatusKey];
-    }
+  let errorMessage = ErrorMessages.UNEXPECTED_ERROR
+  const specificErrorKey = `${details.error ?? ``}_${status}`
+  const generalStatusKey = status.toString()
 
+  if (specificErrorKey in errorMap) {
+    errorMessage = errorMap[specificErrorKey]
+  } else if (generalStatusKey in errorMap) {
+    errorMessage = errorMap[generalStatusKey]
+  }
 
-    res.status(status).json({
-        error: errorMessage,
-        details: details,
-    });
-};
+  res.status(status).json({
+    error: errorMessage,
+    details: details
+  })
+}
