@@ -17,6 +17,7 @@ import api from '@/utils/api'
 import type { GoogleProfile } from '@/types/auth'
 import axios from 'axios'
 import Logger from '@/utils/logger'
+import { CODE_VERIFIER_KEY } from '@/constants/localStorageKeys'
 
 const route = useRoute()
 const router = useRouter()
@@ -24,7 +25,7 @@ const authStore = useAuthStore()
 
 onMounted(async () => {
   const code = route.query.code as string | undefined
-  const codeVerifier = localStorage.getItem(`code_verifier`)
+  const codeVerifier = localStorage.getItem(CODE_VERIFIER_KEY)
 
   if (!code || !codeVerifier) {
     await router.replace(`/login`)
@@ -64,7 +65,7 @@ onMounted(async () => {
     }
     await router.replace(`/login`)
   } finally {
-    localStorage.removeItem(`code_verifier`)
+    localStorage.removeItem(CODE_VERIFIER_KEY)
   }
 })
 </script>

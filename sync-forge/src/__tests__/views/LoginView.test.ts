@@ -1,7 +1,9 @@
+import { googleOAuthConfig, appRoutes } from '@/constants'
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest'
 import { mount } from '@vue/test-utils'
 import LoginView from '@/views/LoginView.vue'
 import * as pkce from '@/utils/pkce'
+import { CODE_VERIFIER_KEY } from '@/constants/localStorageKeys'
 
 vi.mock(import(`@/utils/pkce`), () => ({
   generateCodeVerifier: vi.fn(() => `mock-verifier-123`),
@@ -9,13 +11,15 @@ vi.mock(import(`@/utils/pkce`), () => ({
 }))
 
 describe(`LoginView`, () => {
+  const origin = `http://localhost:5173`
+
   beforeEach(() => {
     vi.stubEnv(`VITE_GOOGLE_CLIENT_ID`, `test-client-id`)
     localStorage.clear()
 
     Object.defineProperty(window, `location`, {
       value: {
-        origin: `http://localhost:5173`,
+        origin,
         assign: vi.fn()
       },
       writable: true
@@ -43,15 +47,16 @@ describe(`LoginView`, () => {
 
     const url = assignSpy.mock.calls[0]?.[0] as string
     const parsed = new URL(url)
+    const authUrl = new URL(googleOAuthConfig.AUTH_URL)
 
     expect(parsed).toMatchObject({
-      origin: `https://accounts.google.com`,
-      pathname: `/o/oauth2/v2/auth`
+      origin: authUrl.origin,
+      pathname: authUrl.pathname
     })
 
     expect(Object.fromEntries(parsed.searchParams)).toStrictEqual({
       client_id: `test-client-id`,
-      redirect_uri: `http://localhost:5173/auth/callback`,
+      redirect_uri: `${origin}${appRoutes.AUTH_CALLBACK}`,
       response_type: `code`,
       scope: `openid email profile`,
       code_challenge_method: `S256`,
@@ -65,8 +70,9 @@ describe(`LoginView`, () => {
     const wrapper = mount(LoginView)
     await wrapper.find(`button`).trigger(`click`)
 
-    expect(localStorage.getItem(`code_verifier`)).toBe(`mock-verifier-123`)
+    expect(localStorage.getItem(CODE_VERIFIER_KEY)).toBe(`mock-verifier-123`)
     expect(pkce.generateCodeVerifier).toHaveBeenCalledTimes(1)
     expect(pkce.generateCodeChallenge).toHaveBeenCalledWith(`mock-verifier-123`)
   })
 })
+

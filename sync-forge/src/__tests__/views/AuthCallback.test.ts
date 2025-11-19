@@ -6,6 +6,11 @@ import { useAuthStore } from '@/stores'
 import { setActivePinia, createPinia } from 'pinia'
 import api from '@/utils/api'
 import { routes } from '@/router'
+import {
+  ACCESS_TOKEN_KEY,
+  CODE_VERIFIER_KEY,
+  REFRESH_TOKEN_KEY
+} from '@/constants/localStorageKeys'
 
 vi.mock(`@/utils/api`, () => ({
   default: {
@@ -33,7 +38,7 @@ describe(`AuthCallback`, () => {
 
   it(`exchanges code, fetches profile, logs in and redirects to /`, async () => {
     router.currentRoute.value.query = { code: `auth-code-123` }
-    localStorage.setItem(`code_verifier`, `verifier-abc`)
+    localStorage.setItem(CODE_VERIFIER_KEY, `verifier-abc`)
 
     vi.mocked(api.post).mockResolvedValueOnce({
       data: {
@@ -49,7 +54,7 @@ describe(`AuthCallback`, () => {
 
     const authStore = useAuthStore()
     const setSessionSpy = vi.spyOn(authStore, `setSession`)
-
+    
     mount(AuthCallback, { global: { plugins: [router] } })
     await flushPromises()
 
@@ -70,11 +75,11 @@ describe(`AuthCallback`, () => {
       expiresIn: 3600,
       isGoogleLogin: true
     })
-
+    
     const storageData = {
-      access_token: localStorage.getItem(`access_token`),
-      refresh_token: localStorage.getItem(`refresh_token`),
-      code_verifier: localStorage.getItem(`code_verifier`)
+      access_token: localStorage.getItem(ACCESS_TOKEN_KEY),
+      refresh_token: localStorage.getItem(REFRESH_TOKEN_KEY),
+      code_verifier: localStorage.getItem(CODE_VERIFIER_KEY)
     }
 
     expect(storageData).toStrictEqual({
@@ -86,7 +91,6 @@ describe(`AuthCallback`, () => {
     expect(router.currentRoute.value.path).toBe(`/`)
   })
 
-
   it(`redirects to /login when code or verifier is missing`, async () => {
     mount(AuthCallback, { global: { plugins: [router] } })
     await flushPromises()
@@ -96,7 +100,7 @@ describe(`AuthCallback`, () => {
 
   it(`redirects to /login on token-exchange failure`, async () => {
     router.currentRoute.value.query = { code: `bad-code` }
-    localStorage.setItem(`code_verifier`, `verifier-abc`)
+    localStorage.setItem(CODE_VERIFIER_KEY, `verifier-abc`)
 
     vi.mocked(api.post).mockRejectedValueOnce(new Error(`invalid_grant`))
 
@@ -104,6 +108,6 @@ describe(`AuthCallback`, () => {
     await flushPromises()
 
     expect(router.currentRoute.value.path).toBe(`/login`)
-    expect(localStorage.getItem(`code_verifier`)).toBeNull()
+    expect(localStorage.getItem(CODE_VERIFIER_KEY)).toBeNull()
   })
 })

@@ -1,8 +1,16 @@
+import { googleOAuthConfig } from '@/constants'
+import {
+  ACCESS_TOKEN_KEY,
+  IS_GOOGLE_LOGIN_KEY,
+  REFRESH_TOKEN_KEY,
+  TOKEN_EXPIRES_AT_KEY,
+  USER_KEY
+} from '@/constants/localStorageKeys'
+import type { User } from '@/types/auth'
+import api, { type AxConfig } from '@/utils/api'
+import Logger from '@/utils/logger'
 import axios from 'axios'
 import { defineStore } from 'pinia'
-import api, { type AxConfig } from '@/utils/api'
-import type { User } from '@/types/auth'
-import Logger from '@/utils/logger'
 
 interface AuthState {
   user: User | null
@@ -10,8 +18,8 @@ interface AuthState {
 }
 
 const getSavedUser = (): User | null => {
-  const savedUser = localStorage.getItem(`user`)
-  const expiresAt = localStorage.getItem(`token_expires_at`)
+  const savedUser = localStorage.getItem(USER_KEY)
+  const expiresAt = localStorage.getItem(TOKEN_EXPIRES_AT_KEY)
 
   if (savedUser && expiresAt) {
     try {
@@ -27,7 +35,6 @@ const getSavedUser = (): User | null => {
 }
 
 export const useAuthStore = defineStore(`auth`, {
-
   state: (): AuthState => ({
     user: getSavedUser(),
     activeRefreshPromise: null
@@ -51,33 +58,33 @@ export const useAuthStore = defineStore(`auth`, {
     }) {
       const expiresAt = Date.now() + payload.expiresIn * 1000
       this.user = payload.user
-      localStorage.setItem(`user`, JSON.stringify(payload.user))
-      localStorage.setItem(`access_token`, payload.accessToken)
-      localStorage.setItem(`refresh_token`, payload.refreshToken)
-      localStorage.setItem(`token_expires_at`, String(expiresAt))
+      localStorage.setItem(USER_KEY, JSON.stringify(payload.user))
+      localStorage.setItem(ACCESS_TOKEN_KEY, payload.accessToken)
+      localStorage.setItem(REFRESH_TOKEN_KEY, payload.refreshToken)
+      localStorage.setItem(TOKEN_EXPIRES_AT_KEY, String(expiresAt))
       if (payload.isGoogleLogin) {
-        localStorage.setItem(`is_google_login`, `true`)
+        localStorage.setItem(IS_GOOGLE_LOGIN_KEY, `true`)
       }
     },
 
     clearAuthStorage() {
-      [`access_token`, `refresh_token`, `token_expires_at`, `user`, `is_google_login`].forEach(key =>
+      [ACCESS_TOKEN_KEY, REFRESH_TOKEN_KEY, TOKEN_EXPIRES_AT_KEY, USER_KEY, IS_GOOGLE_LOGIN_KEY].forEach((key) =>
         localStorage.removeItem(key)
       )
     },
 
     async revokeGoogleToken() {
-      if (localStorage.getItem(`is_google_login`) !== `true`) {
+      if (localStorage.getItem(IS_GOOGLE_LOGIN_KEY) !== `true`) {
         return
       }
 
-      const token = localStorage.getItem(`access_token`)
+      const token = localStorage.getItem(ACCESS_TOKEN_KEY)
       if (!token) {
         return
       }
 
       try {
-        await axios.post(`https://oauth2.googleapis.com/revoke`, null, {
+        await axios.post(googleOAuthConfig.REVOKE_URL, null, {
           params: { token },
           timeout: 5000
         })
@@ -99,7 +106,7 @@ export const useAuthStore = defineStore(`auth`, {
       }
 
       this.activeRefreshPromise = (async (): Promise<string | null> => {
-        const refreshToken = localStorage.getItem(`refresh_token`)
+        const refreshToken = localStorage.getItem(REFRESH_TOKEN_KEY)
         if (!refreshToken) {
           await this.logout()
           return null
@@ -122,14 +129,14 @@ export const useAuthStore = defineStore(`auth`, {
           }
 
           const expiresAt = Date.now() + Number(expires_in) * 1000
-          localStorage.setItem(`access_token`, access_token)
-          localStorage.setItem(`token_expires_at`, String(expiresAt))
+          localStorage.setItem(ACCESS_TOKEN_KEY, access_token)
+          localStorage.setItem(TOKEN_EXPIRES_AT_KEY, String(expiresAt))
           if (new_refresh_token) {
-            localStorage.setItem(`refresh_token`, new_refresh_token)
+            localStorage.setItem(REFRESH_TOKEN_KEY, new_refresh_token)
           }
 
           if (!this.user) {
-            const savedUser = localStorage.getItem(`user`)
+            const savedUser = localStorage.getItem(USER_KEY)
             if (savedUser) {
               try {
                 this.user = JSON.parse(savedUser)
@@ -155,8 +162,8 @@ export const useAuthStore = defineStore(`auth`, {
     },
 
     async getToken(): Promise<string | null> {
-      const token = localStorage.getItem(`access_token`)
-      const expiresAt = localStorage.getItem(`token_expires_at`)
+      const token = localStorage.getItem(ACCESS_TOKEN_KEY)
+      const expiresAt = localStorage.getItem(TOKEN_EXPIRES_AT_KEY)
 
       if (!token || !expiresAt) {
         return null
@@ -172,7 +179,7 @@ export const useAuthStore = defineStore(`auth`, {
     },
 
     isTokenValid(): boolean {
-      const expiresAt = localStorage.getItem(`token_expires_at`)
+      const expiresAt = localStorage.getItem(TOKEN_EXPIRES_AT_KEY)
       if (!expiresAt) {
         return false
       }

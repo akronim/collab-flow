@@ -1,3 +1,4 @@
+import { ACCESS_TOKEN_KEY } from '@/constants/localStorageKeys'
 import axios, { type AxiosError, type AxiosResponse, type InternalAxiosRequestConfig, type AxiosInstance } from 'axios'
 import Logger from './logger'
 
@@ -16,10 +17,14 @@ export interface ApiClient extends AxiosInstance {
   setRefreshTokenFn: (fn: TokenRefreshFn) => void
 }
 
-const BACKEND_URL = import.meta.env.VITE_BACKEND_URL ?? `http://localhost:3001`
-
 // eslint-disable-next-line max-lines-per-function
 export const createApiClient = (): ApiClient => {
+  const BACKEND_URL = import.meta.env.VITE_BACKEND_URL
+
+  if (!BACKEND_URL) {
+    throw new Error(`VITE_BACKEND_URL is not set`)
+  }
+
   let refreshTokenFn: TokenRefreshFn | undefined
   let isRefreshing = false
   let failedQueue: QueueItem[] = []
@@ -43,7 +48,7 @@ export const createApiClient = (): ApiClient => {
   }) as ApiClient
 
   api.interceptors.request.use((config: InternalAxiosRequestConfig) => {
-    const token = localStorage.getItem(`access_token`)
+    const token = localStorage.getItem(ACCESS_TOKEN_KEY)
     if (token) {
       config.headers = config.headers || {}
       config.headers.Authorization = `Bearer ${token}`

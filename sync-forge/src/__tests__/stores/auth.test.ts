@@ -1,3 +1,11 @@
+import { googleOAuthConfig } from '@/constants'
+import {
+  ACCESS_TOKEN_KEY,
+  IS_GOOGLE_LOGIN_KEY,
+  REFRESH_TOKEN_KEY,
+  TOKEN_EXPIRES_AT_KEY,
+  USER_KEY
+} from '@/constants/localStorageKeys'
 import { describe, it, expect, beforeEach, vi } from 'vitest'
 import { setActivePinia, createPinia } from 'pinia'
 import { useAuthStore } from '@/stores'
@@ -57,14 +65,14 @@ describe(`useAuthStore`, () => {
   })
 
   it(`revokes token with axios.post for Google logins`, async () => {
-    localStorage.setItem(`access_token`, `fake-token`)
-    localStorage.setItem(`is_google_login`, `true`)
+    localStorage.setItem(ACCESS_TOKEN_KEY, `fake-token`)
+    localStorage.setItem(IS_GOOGLE_LOGIN_KEY, `true`)
     const authStore = useAuthStore()
 
     await authStore.logout()
 
     expect(axios.post).toHaveBeenCalledWith(
-      `https://oauth2.googleapis.com/revoke`,
+      googleOAuthConfig.REVOKE_URL,
       null,
       expect.objectContaining({
         params: { token: `fake-token` },
@@ -74,7 +82,7 @@ describe(`useAuthStore`, () => {
   })
 
   it(`does not revoke token for non-Google login`, async () => {
-    localStorage.setItem(`access_token`, `fake-token`)
+    localStorage.setItem(ACCESS_TOKEN_KEY, `fake-token`)
     const authStore = useAuthStore()
     await authStore.logout()
 
@@ -89,8 +97,8 @@ describe(`useAuthStore`, () => {
   })
 
   it(`clears storage even if revoke fails`, async () => {
-    localStorage.setItem(`access_token`, `bad-token`)
-    localStorage.setItem(`is_google_login`, `true`)
+    localStorage.setItem(ACCESS_TOKEN_KEY, `bad-token`)
+    localStorage.setItem(IS_GOOGLE_LOGIN_KEY, `true`)
     ; (vi.mocked(axios.post)).mockRejectedValue(new Error(`Network error`))
 
     const authStore = useAuthStore()
@@ -109,16 +117,16 @@ describe(`useAuthStore`, () => {
     })
 
     it(`should return token when valid`, async () => {
-      localStorage.setItem(`access_token`, `abc123`)
-      localStorage.setItem(`token_expires_at`, String(Date.now() + 3600000))
+      localStorage.setItem(ACCESS_TOKEN_KEY, `abc123`)
+      localStorage.setItem(TOKEN_EXPIRES_AT_KEY, String(Date.now() + 3600000))
       const store = useAuthStore()
 
       await expect(store.getToken()).resolves.toBe(`abc123`)
     })
 
     it(`should return null and logout on expired token`, async () => {
-      localStorage.setItem(`access_token`, `abc123`)
-      localStorage.setItem(`token_expires_at`, String(Date.now() - 1000))
+      localStorage.setItem(ACCESS_TOKEN_KEY, `abc123`)
+      localStorage.setItem(TOKEN_EXPIRES_AT_KEY, String(Date.now() - 1000))
       const store = useAuthStore()
       const logoutSpy = vi.spyOn(store, `logout`)
 
@@ -127,9 +135,9 @@ describe(`useAuthStore`, () => {
     })
 
     it(`should only trigger one refresh for concurrent calls`, async () => {
-      localStorage.setItem(`access_token`, `old-access`)
-      localStorage.setItem(`token_expires_at`, String(Date.now() + 30000)) // Near expiry
-      localStorage.setItem(`refresh_token`, `refresh-me`)
+      localStorage.setItem(ACCESS_TOKEN_KEY, `old-access`)
+      localStorage.setItem(TOKEN_EXPIRES_AT_KEY, String(Date.now() + 30000)) // Near expiry
+      localStorage.setItem(REFRESH_TOKEN_KEY, `refresh-me`)
 
       ; (vi.mocked(api.post)).mockResolvedValue({
         data: { access_token: `new-fresh-access`, expires_in: 3600 }
@@ -151,7 +159,7 @@ describe(`useAuthStore`, () => {
 
       expect(store.isTokenValid()).toBe(false)
 
-      localStorage.setItem(`token_expires_at`, String(Date.now() + 3600000))
+      localStorage.setItem(TOKEN_EXPIRES_AT_KEY, String(Date.now() + 3600000))
 
       expect(store.isTokenValid()).toBe(true)
     })
@@ -165,7 +173,7 @@ describe(`useAuthStore`, () => {
     })
 
     it(`refreshes access token and updates storage on success`, async () => {
-      localStorage.setItem(`refresh_token`, `old-refresh`)
+      localStorage.setItem(REFRESH_TOKEN_KEY, `old-refresh`)
       ; (vi.mocked(api.post)).mockResolvedValue({
         data: { access_token: `new-access`, expires_in: 3600 }
       })
@@ -174,15 +182,15 @@ describe(`useAuthStore`, () => {
       const result = await store.refreshAccessToken()
 
       expect(result).toBe(`new-access`)
-      expect(localStorage.getItem(`access_token`)).toBe(`new-access`)
+      expect(localStorage.getItem(ACCESS_TOKEN_KEY)).toBe(`new-access`)
 
-      const expiresAt = Number(localStorage.getItem(`token_expires_at`))
+      const expiresAt = Number(localStorage.getItem(TOKEN_EXPIRES_AT_KEY))
 
       expect(expiresAt).toBeGreaterThan(Date.now() + 3500000)
     })
 
     it(`updates refresh token if rotated token is returned`, async () => {
-      localStorage.setItem(`refresh_token`, `old-refresh`)
+      localStorage.setItem(REFRESH_TOKEN_KEY, `old-refresh`)
       ; (vi.mocked(api.post)).mockResolvedValue({
         data: {
           access_token: `new-access`,
@@ -194,11 +202,11 @@ describe(`useAuthStore`, () => {
       const store = useAuthStore()
       await store.refreshAccessToken()
 
-      expect(localStorage.getItem(`refresh_token`)).toBe(`new-rotated-refresh`)
+      expect(localStorage.getItem(REFRESH_TOKEN_KEY)).toBe(`new-rotated-refresh`)
     })
 
     it(`returns null on API error`, async () => {
-      localStorage.setItem(`refresh_token`, `bad-refresh`)
+      localStorage.setItem(REFRESH_TOKEN_KEY, `bad-refresh`)
       ; (vi.mocked(api.post)).mockRejectedValue(new Error(`network error`))
 
       const store = useAuthStore()
@@ -208,7 +216,7 @@ describe(`useAuthStore`, () => {
     })
 
     it(`returns null if no access_token in response`, async () => {
-      localStorage.setItem(`refresh_token`, `old-refresh`)
+      localStorage.setItem(REFRESH_TOKEN_KEY, `old-refresh`)
       ; (vi.mocked(api.post)).mockResolvedValue({ data: { expires_in: 3600 } })
 
       const store = useAuthStore()
@@ -219,8 +227,8 @@ describe(`useAuthStore`, () => {
 
     it(`restores user from localStorage on successful refresh if state is null`, async () => {
       const user = { id: `1`, name: `Test User`, email: `test@test.com` }
-      localStorage.setItem(`user`, JSON.stringify(user))
-      localStorage.setItem(`refresh_token`, `old-refresh`)
+      localStorage.setItem(USER_KEY, JSON.stringify(user))
+      localStorage.setItem(REFRESH_TOKEN_KEY, `old-refresh`)
       ; (vi.mocked(api.post)).mockResolvedValue({
         data: { access_token: `new-access`, expires_in: 3600 }
       })
@@ -237,9 +245,9 @@ describe(`useAuthStore`, () => {
   })
 
   it(`auto-refreshes near-expiry token`, async () => {
-    localStorage.setItem(`access_token`, `old-access`)
-    localStorage.setItem(`token_expires_at`, String(Date.now() + 30000)) // 30s left
-    localStorage.setItem(`refresh_token`, `refresh-me`)
+    localStorage.setItem(ACCESS_TOKEN_KEY, `old-access`)
+    localStorage.setItem(TOKEN_EXPIRES_AT_KEY, String(Date.now() + 30000)) // 30s left
+    localStorage.setItem(REFRESH_TOKEN_KEY, `refresh-me`)
 
     ; (vi.mocked(api.post)).mockResolvedValue({
       data: { access_token: `fresh-access`, expires_in: 3600 }

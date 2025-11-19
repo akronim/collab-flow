@@ -1,18 +1,20 @@
 <script setup lang="ts">
+import { appRoutes, googleOAuthConfig } from '@/constants'
+import { CODE_VERIFIER_KEY } from '@/constants/localStorageKeys'
 import Logger from '@/utils/logger'
-import { generateCodeVerifier, generateCodeChallenge } from '@/utils/pkce'
+import { generateCodeChallenge, generateCodeVerifier } from '@/utils/pkce'
 
 const clientId = import.meta.env.VITE_GOOGLE_CLIENT_ID
-const redirectUri = `${window.location.origin}/auth/callback`
+const redirectUri = `${window.location.origin}${appRoutes.AUTH_CALLBACK}`
 
 const login = async (): Promise<void> => {
   try {
     const codeVerifier = generateCodeVerifier()
-    localStorage.setItem(`code_verifier`, codeVerifier)
+    localStorage.setItem(CODE_VERIFIER_KEY, codeVerifier)
 
     const codeChallenge = await generateCodeChallenge(codeVerifier)
 
-    const authUrl = new URL(`https://accounts.google.com/o/oauth2/v2/auth`)
+    const authUrl = new URL(googleOAuthConfig.AUTH_URL)
     authUrl.searchParams.append(`client_id`, clientId)
     authUrl.searchParams.append(`redirect_uri`, redirectUri)
     authUrl.searchParams.append(`response_type`, `code`)
@@ -43,7 +45,7 @@ const login = async (): Promise<void> => {
         @click="login"
       >
         <img
-          src="https://www.google.com/favicon.ico"
+          :src="googleOAuthConfig.FAVICON_URL"
           alt=""
           class="h-5 w-5"
         >

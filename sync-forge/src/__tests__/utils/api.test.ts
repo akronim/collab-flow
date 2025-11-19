@@ -1,6 +1,7 @@
-import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest'
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import { createApiClient } from '@/utils/api'
 import axios from 'axios'
+import { ACCESS_TOKEN_KEY } from '@/constants/localStorageKeys'
 
 vi.mock(`axios`, () => ({
   default: {
@@ -41,7 +42,7 @@ describe(`createApiClient`, () => {
 
   describe(`request interceptor`, () => {
     it(`adds Authorization header when token exists`, () => {
-      localStorage.setItem(`access_token`, `fake-token`)
+      localStorage.setItem(ACCESS_TOKEN_KEY, `fake-token`)
       createApiClient()
 
       const useSpy = mockCreate.mock.results[0]?.value.interceptors.request.use
@@ -64,7 +65,7 @@ describe(`createApiClient`, () => {
     })
 
     it(`preserves existing headers`, () => {
-      localStorage.setItem(`access_token`, `fake-token`)
+      localStorage.setItem(ACCESS_TOKEN_KEY, `fake-token`)
       createApiClient()
 
       const useSpy = mockCreate.mock.results[0]?.value.interceptors.request.use
@@ -212,6 +213,14 @@ describe(`createApiClient`, () => {
 
       expect(results[0]).toStrictEqual({ data: `success-1` })
       expect(results[1]).toStrictEqual({ data: `success-2` })
+    })
+  })
+
+  describe(`environment variable check`, () => {
+    it(`throws error if VITE_BACKEND_URL is not set`, () => {
+      vi.stubEnv(`VITE_BACKEND_URL`, undefined)
+
+      expect(() => createApiClient()).toThrow(`VITE_BACKEND_URL is not set`)
     })
   })
 })
