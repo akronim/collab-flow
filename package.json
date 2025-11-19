@@ -1,0 +1,12 @@
+{
+  "name": "collab-flow",
+  "version": "1.0.0",
+  "scripts": {
+    "prepare": "husky || true"
+  },
+  "author": "",
+  "license": "ISC",
+  "devDependencies": {
+    "husky": "^9.1.7"
+  }
+}

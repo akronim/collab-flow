@@ -37,7 +37,9 @@ const login = async (): Promise<void> => {
         CollabFlow
       </h1>
       <button
-        class="flex w-full items-center justify-center gap-3 rounded-lg bg-white px-4 py-3 text-gray-700 shadow-sm ring-1 ring-gray-300 transition hover:shadow-md cursor-pointer"
+        class="flex w-full items-center justify-center gap-3 rounded-lg bg-white 
+               px-4 py-3 text-gray-700 shadow-sm ring-1 ring-gray-300 
+               transition hover:shadow-md cursor-pointer"
         @click="login"
       >
         <img
