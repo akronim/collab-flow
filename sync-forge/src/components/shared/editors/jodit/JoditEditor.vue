@@ -14,6 +14,7 @@ import type { Config } from 'jodit/esm/config'
 import { loadAce, loadJodit } from './joditLoader'
 import { html_beautify } from 'js-beautify'
 
+// eslint-disable-next-line @stylistic/quotes
 const editorModel = defineModel("editorModel", { required: true, type: String })
 
 const props = defineProps<{

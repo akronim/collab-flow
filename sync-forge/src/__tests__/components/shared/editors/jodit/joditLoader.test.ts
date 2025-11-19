@@ -17,7 +17,7 @@ vi.mock(import(`ace-builds/src-noconflict/theme-idle_fingers`), () => ({}))
 vi.mock(import(`ace-builds/src-noconflict/mode-html`), () => ({}))
 
 vi.mock(`jodit/esm/index`, () => ({
-   
+  // eslint-disable-next-line @typescript-eslint/no-extraneous-class
   Jodit: class MockJodit { }
 }))
 
@@ -146,7 +146,7 @@ describe(`loadJodit`, () => {
 
     vi.doMock(`jodit/esm/index`, () => {
       importSpy(`jodit/esm/index`)
-       
+      // eslint-disable-next-line @typescript-eslint/no-extraneous-class 
       return { Jodit: class MockJodit { } }
     })
     vi.doMock(`jodit/es2021/jodit.min.css`, () => {

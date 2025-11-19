@@ -1,17 +1,17 @@
 import axios from "axios"
 
 const Logger = {
-  log (...args: unknown[]): void {
-     
+  log(...args: unknown[]): void {
+    // eslint-disable-next-line no-console
     console.log(...args)
   },
 
-  error (...args: unknown[]): void {
-     
+  error(...args: unknown[]): void {
+    // eslint-disable-next-line no-console
     console.error(...args)
   },
 
-  apiError (error: unknown, extras: Record<string, unknown> = {}): void {
+  apiError(error: unknown, extras: Record<string, unknown> = {}): void {
     const info = Object.keys(extras).length > 0 ? extras : undefined
 
     if (axios.isAxiosError(error)) {

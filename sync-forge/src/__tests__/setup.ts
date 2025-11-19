@@ -1,3 +1,3 @@
 import { vi } from "vitest"
 
-global.alert = vi.fn()
+vi.spyOn(global, `alert`).mockImplementation(() => { /* empty */ })

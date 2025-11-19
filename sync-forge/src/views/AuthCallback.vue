@@ -1,10 +1,12 @@
 <template>
-    <div class="flex min-h-screen items-center justify-center bg-gray-50">
-        <div class="text-center">
-            <div class="animate-spin rounded-full h-8 w-8 border-b-2 border-indigo-600 mx-auto"></div>
-            <p class="mt-4 text-lg font-medium text-gray-700">Signing you in…</p>
-        </div>
+  <div class="flex min-h-screen items-center justify-center bg-gray-50">
+    <div class="text-center">
+      <div class="animate-spin rounded-full h-8 w-8 border-b-2 border-indigo-600 mx-auto" />
+      <p class="mt-4 text-lg font-medium text-gray-700">
+        Signing you in…
+      </p>
     </div>
+  </div>
 </template>
 
 <script setup lang="ts">
@@ -14,54 +16,55 @@ import { useAuthStore } from '@/stores'
 import api from '@/utils/api'
 import type { GoogleProfile } from '@/types/auth'
 import axios from 'axios'
+import Logger from '@/utils/logger'
 
 const route = useRoute()
 const router = useRouter()
 const authStore = useAuthStore()
 
 onMounted(async () => {
-    const code = route.query.code as string | undefined
-    const codeVerifier = localStorage.getItem('code_verifier')
+  const code = route.query.code as string | undefined
+  const codeVerifier = localStorage.getItem(`code_verifier`)
 
-    if (!code || !codeVerifier) {
-        router.replace('/login')
-        return
+  if (!code || !codeVerifier) {
+    await router.replace(`/login`)
+    return
+  }
+
+  try {
+    const tokenResp = await api.post(
+      `/api/auth/token`,
+      { code, codeVerifier }
+    )
+
+    const { access_token, refresh_token, expires_in } = tokenResp.data
+
+    if (!access_token || !refresh_token) {
+      throw new Error(`Missing tokens in auth response`)
     }
 
-    try {
-        const tokenResp = await api.post(
-            '/api/auth/token',
-            { code, codeVerifier }
-        )
+    const profileResp = await api.get<GoogleProfile>(
+      `/api/auth/validate`
+    )
 
-        const { access_token, refresh_token, expires_in } = tokenResp.data
+    authStore.setSession({
+      user: profileResp.data,
+      accessToken: access_token,
+      refreshToken: refresh_token,
+      expiresIn: expires_in,
+      isGoogleLogin: true
+    })
 
-        if (!access_token || !refresh_token) {
-            throw new Error('Missing tokens in auth response')
-        }
-
-        const profileResp = await api.get<GoogleProfile>(
-            '/api/auth/validate'
-        )
-
-        authStore.setSession({
-            user: profileResp.data,
-            accessToken: access_token,
-            refreshToken: refresh_token,
-            expiresIn: expires_in,
-            isGoogleLogin: true
-        })
-
-        router.replace('/')
-    } catch (err) {
-        if (axios.isAxiosError(err)) {
-            console.error('Auth failed:', err.response?.data || err.message)
-        } else {
-            console.error('Auth failed:', err)
-        }
-        router.replace('/login')
-    } finally {
-        localStorage.removeItem('code_verifier')
+    await router.replace(`/`)
+  } catch (err) {
+    if (axios.isAxiosError(err)) {
+      Logger.error(`Auth failed:`, err.response?.data ?? err.message)
+    } else {
+      Logger.error(`Auth failed:`, err)
     }
+    await router.replace(`/login`)
+  } finally {
+    localStorage.removeItem(`code_verifier`)
+  }
 })
 </script>

@@ -5,10 +5,10 @@ import AuthCallback from '@/views/AuthCallback.vue'
 import { useAuthStore } from '@/stores'
 
 export const routes = [
-  { path: '/', component: HomeView, meta: { requiresAuth: true } },
-  { path: '/login', component: LoginView },
-  { path: '/auth/callback', component: AuthCallback },
-  { path: '/:pathMatch(.*)*', redirect: '/' }
+  { path: `/`, component: HomeView, meta: { requiresAuth: true } },
+  { path: `/login`, component: LoginView },
+  { path: `/auth/callback`, component: AuthCallback },
+  { path: `/:pathMatch(.*)*`, redirect: `/` }
 ]
 
 const router = createRouter({
@@ -19,7 +19,7 @@ const router = createRouter({
 router.beforeEach((to, from, next) => {
   const auth = useAuthStore()
   if (to.meta.requiresAuth && !auth.isAuthenticated) {
-    next('/login')
+    next(`/login`)
   } else {
     next()
   }
