@@ -15,6 +15,7 @@ import { defineStore } from 'pinia'
 interface AuthState {
   user: User | null
   activeRefreshPromise: Promise<string | null> | null
+  proactiveRefreshTimer: ReturnType<typeof setTimeout> | null
 }
 
 const getSavedUser = (): User | null => {
@@ -37,7 +38,8 @@ const getSavedUser = (): User | null => {
 export const useAuthStore = defineStore(`auth`, {
   state: (): AuthState => ({
     user: getSavedUser(),
-    activeRefreshPromise: null
+    activeRefreshPromise: null,
+    proactiveRefreshTimer: null
   }),
 
   getters: {
@@ -47,6 +49,26 @@ export const useAuthStore = defineStore(`auth`, {
   actions: {
     init() {
       api.setRefreshTokenFn(this.refreshAccessToken.bind(this))
+    },
+
+    cancelProactiveRefresh() {
+      if (this.proactiveRefreshTimer) {
+        clearTimeout(this.proactiveRefreshTimer)
+        this.proactiveRefreshTimer = null
+      }
+    },
+
+    scheduleProactiveRefresh(expiresIn: number) {
+      this.cancelProactiveRefresh()
+
+      const fiveMinutes = 5 * 60 * 1000
+      const timeout = expiresIn * 1000 - fiveMinutes
+
+      if (timeout > 0) {
+        this.proactiveRefreshTimer = setTimeout(() => {
+          void this.refreshAccessToken()
+        }, timeout)
+      }
     },
 
     setAuthTokens(payload: {
@@ -62,6 +84,7 @@ export const useAuthStore = defineStore(`auth`, {
       if (payload.isGoogleLogin) {
         localStorage.setItem(IS_GOOGLE_LOGIN_KEY, `true`)
       }
+      this.scheduleProactiveRefresh(payload.expiresIn)
     },
 
     setUser(payload: { user: User }) {
@@ -95,6 +118,7 @@ export const useAuthStore = defineStore(`auth`, {
     },
 
     async logout() {
+      this.cancelProactiveRefresh()
       await this.revokeGoogleToken()
       this.user = null
       this.clearAuthStorage()

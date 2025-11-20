@@ -6,7 +6,7 @@ import {
   TOKEN_EXPIRES_AT_KEY,
   USER_KEY
 } from '@/constants/localStorageKeys'
-import { describe, it, expect, beforeEach, vi } from 'vitest'
+import { describe, it, expect, beforeEach, vi, afterEach } from 'vitest'
 import { setActivePinia, createPinia } from 'pinia'
 import { useAuthStore } from '@/stores'
 import api from '@/utils/api'
@@ -261,5 +261,57 @@ describe(`useAuthStore`, () => {
     const token = await store.getToken()
 
     expect(token).toBe(`fresh-access`)
+  })
+
+  describe(`proactive refresh`, () => {
+    beforeEach(() => {
+      vi.useFakeTimers()
+    })
+
+    afterEach(() => {
+      vi.useRealTimers()
+    })
+
+    it(`schedules a proactive refresh 5 minutes before the token expires`, () => {
+      const store = useAuthStore()
+      const refreshSpy = vi.spyOn(store, `refreshAccessToken`)
+
+      // Set a token that expires in 1 hour (3600 seconds)
+      store.setAuthTokens({
+        accessToken: `test-token`,
+        refreshToken: `test-refresh`,
+        expiresIn: 3600
+      })
+
+      expect(refreshSpy).not.toHaveBeenCalled()
+
+      // Advance time by 54 minutes - nothing should happen yet
+      vi.advanceTimersByTime(54 * 60 * 1000)
+
+      expect(refreshSpy).not.toHaveBeenCalled()
+
+      // Advance time by 1 more minute (55 total) - it should have been called
+      vi.advanceTimersByTime(1 * 60 * 1000)
+
+      expect(refreshSpy).toHaveBeenCalled()
+    })
+
+    it(`cancels the proactive refresh on logout`, async () => {
+      const store = useAuthStore()
+      const refreshSpy = vi.spyOn(store, `refreshAccessToken`)
+
+      store.setAuthTokens({
+        accessToken: `test-token`,
+        refreshToken: `test-refresh`,
+        expiresIn: 3600
+      })
+
+      await store.logout()
+
+      // Advance time past the 55-minute mark
+      vi.advanceTimersByTime(56 * 60 * 1000)
+
+      expect(refreshSpy).not.toHaveBeenCalled()
+    })
   })
 })
