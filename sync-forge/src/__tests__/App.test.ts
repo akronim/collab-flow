@@ -1,46 +1,39 @@
 import { describe, it, expect, beforeEach, vi } from 'vitest'
 import { mount, flushPromises } from '@vue/test-utils'
-import { createRouter } from 'vue-router'
 import { createPinia, setActivePinia } from 'pinia'
 import App from '@/App.vue'
 import HomeView from '@/views/HomeView.vue'
 import LoginView from '@/views/LoginView.vue'
 import { useAuthStore } from '@/stores'
-import { routes } from "@/router"
-import { setupTestRouter } from './setupTestRouter'
+import router from '@/router' 
+import { 
+  ACCESS_TOKEN_KEY, 
+  REFRESH_TOKEN_KEY, 
+  TOKEN_EXPIRES_AT_KEY, 
+  USER_KEY 
+} from '@/constants/localStorageKeys'
 
 describe(`App.vue`, () => {
-  let router: ReturnType<typeof createRouter>
-
-  beforeEach(() => {
-    router = setupTestRouter(routes)
-
-    router.beforeEach((to, from, next) => {
-      const auth = useAuthStore()
-      if (to.meta.requiresAuth && !auth.isAuthenticated) {
-        next(`/login`)
-      } else {
-        next()
-      }
-    })
-
+  beforeEach(async () => {
     setActivePinia(createPinia())
+    localStorage.clear()
+    vi.clearAllMocks()
+    await router.push(`/login`)
+    await router.replace(router.currentRoute.value.fullPath)
   })
 
-  it(`shows LoginView when not authenticated`, async () => {
-    const push = vi.spyOn(router, `push`)
+  it(`shows LoginView when not authenticated and navigating to a protected route`, async () => {
     await router.push(`/`)
-    await router.isReady()
+    await flushPromises()
 
     const wrapper = mount(App, {
       global: {
         plugins: [router]
       }
     })
-
+    
     await flushPromises()
 
-    expect(push).toHaveBeenCalledWith(`/`)
     expect(router.currentRoute.value.path).toBe(`/login`)
     expect(wrapper.findComponent(LoginView).exists()).toBe(true)
     expect(wrapper.findComponent(HomeView).exists()).toBe(false)
@@ -56,8 +49,9 @@ describe(`App.vue`, () => {
     auth.setUser({
       user: { id: `1`, email: `john@example.com`, name: `John` }
     })
+    
     await router.push(`/`)
-    await router.isReady()
+    await flushPromises()
 
     const wrapper = mount(App, {
       global: {
@@ -70,5 +64,43 @@ describe(`App.vue`, () => {
     expect(wrapper.findComponent(HomeView).exists()).toBe(true)
     expect(wrapper.findComponent(LoginView).exists()).toBe(false)
     expect(wrapper.text()).toContain(`Projects`)
+  })
+
+  it(`silently refreshes and allows navigation on expired session`, async () => {
+    localStorage.setItem(ACCESS_TOKEN_KEY, `expired-access-token`)
+    localStorage.setItem(REFRESH_TOKEN_KEY, `valid-refresh-token`)
+    localStorage.setItem(TOKEN_EXPIRES_AT_KEY, String(Date.now() - 10000)) // Expired 10s ago
+    localStorage.setItem(USER_KEY, JSON.stringify({ id: `1`, name: `Test User`, email: `test@example.com` }))
+
+    const auth = useAuthStore()
+
+    expect(auth.isAuthenticated).toBe(false)
+
+    const refreshSpy = vi.spyOn(auth, `refreshAccessToken`).mockImplementation(() => {
+      auth.setAuthTokens({
+        accessToken: `new-access-token`,
+        refreshToken: `new-refresh-token`,
+        expiresIn: 3600
+      })
+      auth.setUser({
+        user: { id: `1`, email: `john@example.com`, name: `John` }
+      })
+      return Promise.resolve(`new-access-token`)
+    })
+
+    await router.push(`/`)
+    await flushPromises()
+
+    const wrapper = mount(App, {
+      global: {
+        plugins: [router]
+      }
+    })
+
+    await flushPromises()
+
+    expect(refreshSpy).toHaveBeenCalled()
+    expect(router.currentRoute.value.path).toBe(`/`)
+    expect(wrapper.findComponent(HomeView).exists()).toBe(true)
   })
 })

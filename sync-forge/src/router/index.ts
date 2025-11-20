@@ -4,6 +4,7 @@ import LoginView from '@/views/LoginView.vue'
 import AuthCallback from '@/views/AuthCallback.vue'
 import { useAuthStore } from '@/stores'
 import ProjectBoardView from '@/views/ProjectBoardView.vue'
+import { REFRESH_TOKEN_KEY } from '@/constants/localStorageKeys'
 
 export const routes = [
   { path: `/`, component: HomeView, meta: { requiresAuth: true } },
@@ -22,8 +23,19 @@ const router = createRouter({
   routes
 })
 
-router.beforeEach((to, from, next) => {
+router.beforeEach(async (to, from, next) => {
   const auth = useAuthStore()
+  const hasRefreshToken = !!localStorage.getItem(REFRESH_TOKEN_KEY)
+
+  // a silent refresh
+  if (!auth.isAuthenticated && hasRefreshToken) {
+    try {
+      await auth.refreshAccessToken()
+    } catch {
+
+    }
+  }
+
   if (to.meta.requiresAuth && !auth.isAuthenticated) {
     next(`/login`)
   } else {
