@@ -26,7 +26,7 @@ describe(`HomeView`, () => {
     await flushPromises()
 
     expect(wrapper.text()).toContain(`Website Redesign`)
-    expect(wrapper.text()).toContain(`1 tasks`)
+    expect(wrapper.text()).toContain(`3 tasks`)
   })
 
   it(`has logout button`, async () => {

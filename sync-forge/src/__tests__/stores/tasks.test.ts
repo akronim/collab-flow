@@ -10,7 +10,7 @@ describe(`useTaskStore`, () => {
   it(`should have initial task`, () => {
     const store = useTaskStore()
 
-    expect(store.tasks).toHaveLength(1)
-    expect(store.tasks[0]?.title).toBe(`Design hero`)
+    expect(store.tasks).toHaveLength(3)
+    expect(store.tasks[0]?.title).toBe(`Design homepage`)
   })
 })
