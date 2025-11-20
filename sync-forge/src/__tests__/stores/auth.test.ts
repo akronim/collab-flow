@@ -39,11 +39,13 @@ describe(`useAuthStore`, () => {
 
   it(`should login and set user`, () => {
     const store = useAuthStore()
-    store.setSession({
-      user: { id: `1`, email: `john@example.com`, name: `John` },
+    store.setAuthTokens({
       accessToken: `test-token`,
       refreshToken: `test-refresh`,
       expiresIn: 3600
+    })
+    store.setUser({
+      user: { id: `1`, email: `john@example.com`, name: `John` }
     })
 
     expect(store.user).toStrictEqual({ id: `1`, email: `john@example.com`, name: `John` })
@@ -52,11 +54,13 @@ describe(`useAuthStore`, () => {
 
   it(`should logout and clear`, async () => {
     const store = useAuthStore()
-    store.setSession({
-      user: { id: `1`, email: `x`, name: `x` },
+    store.setAuthTokens({
       accessToken: `test-token`,
       refreshToken: `test-refresh`,
       expiresIn: 3600
+    })
+    store.setUser({
+      user: { id: `1`, email: `x`, name: `x` }
     })
     await store.logout()
 

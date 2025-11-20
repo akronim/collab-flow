@@ -36,6 +36,7 @@ describe(`AuthCallback`, () => {
     await router.isReady()
   })
 
+  /* eslint-disable vitest/max-expects */
   it(`exchanges code, fetches profile, logs in and redirects to /`, async () => {
     router.currentRoute.value.query = { code: `auth-code-123` }
     localStorage.setItem(CODE_VERIFIER_KEY, `verifier-abc`)
@@ -48,13 +49,15 @@ describe(`AuthCallback`, () => {
       }
     })
 
+    const userProfile = { id: `123`, email: `test@google.com`, name: `Test User` }
     vi.mocked(api.get).mockResolvedValueOnce({
-      data: { id: `123`, email: `test@google.com`, name: `Test User` }
+      data: userProfile
     })
 
     const authStore = useAuthStore()
-    const setSessionSpy = vi.spyOn(authStore, `setSession`)
-    
+    const setAuthTokensSpy = vi.spyOn(authStore, `setAuthTokens`)
+    const setUserSpy = vi.spyOn(authStore, `setUser`)
+
     mount(AuthCallback, { global: { plugins: [router] } })
     await flushPromises()
 
@@ -66,16 +69,19 @@ describe(`AuthCallback`, () => {
       })
     )
 
-    expect(api.get).toHaveBeenCalledWith(`/api/auth/validate`)
-
-    expect(setSessionSpy).toHaveBeenCalledWith({
-      user: { id: `123`, email: `test@google.com`, name: `Test User` },
+    expect(setAuthTokensSpy).toHaveBeenCalledWith({
       accessToken: `new-access`,
       refreshToken: `new-refresh`,
       expiresIn: 3600,
       isGoogleLogin: true
     })
-    
+
+    expect(api.get).toHaveBeenCalledWith(`/api/auth/validate`)
+
+    expect(setUserSpy).toHaveBeenCalledWith({
+      user: userProfile
+    })
+
     const storageData = {
       access_token: localStorage.getItem(ACCESS_TOKEN_KEY),
       refresh_token: localStorage.getItem(REFRESH_TOKEN_KEY),
@@ -90,6 +96,7 @@ describe(`AuthCallback`, () => {
 
     expect(router.currentRoute.value.path).toBe(`/`)
   })
+  /* eslint-enable vitest/max-expects */
 
   it(`redirects to /login when code or verifier is missing`, async () => {
     mount(AuthCallback, { global: { plugins: [router] } })

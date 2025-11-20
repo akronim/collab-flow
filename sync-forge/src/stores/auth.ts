@@ -49,16 +49,13 @@ export const useAuthStore = defineStore(`auth`, {
       api.setRefreshTokenFn(this.refreshAccessToken.bind(this))
     },
 
-    setSession(payload: {
-      user: User
+    setAuthTokens(payload: {
       accessToken: string
       refreshToken: string
       expiresIn: number
       isGoogleLogin?: boolean
     }) {
       const expiresAt = Date.now() + payload.expiresIn * 1000
-      this.user = payload.user
-      localStorage.setItem(USER_KEY, JSON.stringify(payload.user))
       localStorage.setItem(ACCESS_TOKEN_KEY, payload.accessToken)
       localStorage.setItem(REFRESH_TOKEN_KEY, payload.refreshToken)
       localStorage.setItem(TOKEN_EXPIRES_AT_KEY, String(expiresAt))
@@ -67,12 +64,16 @@ export const useAuthStore = defineStore(`auth`, {
       }
     },
 
+    setUser(payload: { user: User }) {
+      this.user = payload.user
+      localStorage.setItem(USER_KEY, JSON.stringify(payload.user))
+    },
+
     clearAuthStorage() {
       [ACCESS_TOKEN_KEY, REFRESH_TOKEN_KEY, TOKEN_EXPIRES_AT_KEY, USER_KEY, IS_GOOGLE_LOGIN_KEY].forEach((key) =>
         localStorage.removeItem(key)
       )
     },
-
     async revokeGoogleToken() {
       if (localStorage.getItem(IS_GOOGLE_LOGIN_KEY) !== `true`) {
         return

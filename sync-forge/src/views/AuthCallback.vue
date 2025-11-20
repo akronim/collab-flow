@@ -33,10 +33,7 @@ onMounted(async () => {
   }
 
   try {
-    const tokenResp = await api.post(
-      `/api/auth/token`,
-      { code, codeVerifier }
-    )
+    const tokenResp = await api.post(`/api/auth/token`, { code, codeVerifier })
 
     const { access_token, refresh_token, expires_in } = tokenResp.data
 
@@ -44,17 +41,16 @@ onMounted(async () => {
       throw new Error(`Missing tokens in auth response`)
     }
 
-    const profileResp = await api.get<GoogleProfile>(
-      `/api/auth/validate`
-    )
-
-    authStore.setSession({
-      user: profileResp.data,
+    authStore.setAuthTokens({
       accessToken: access_token,
       refreshToken: refresh_token,
       expiresIn: expires_in,
       isGoogleLogin: true
     })
+
+    const profileResp = await api.get<GoogleProfile>(`/api/auth/validate`)
+
+    authStore.setUser({ user: profileResp.data })
 
     await router.replace(`/`)
   } catch (err) {
