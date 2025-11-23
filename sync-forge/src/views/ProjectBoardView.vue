@@ -13,7 +13,7 @@
         <div class="flex items-center gap-4">
           <span class="text-sm text-gray-500">Europe/Zagreb</span>
           <button
-            class="px-5 py-2.5 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition shadow-sm"
+            class="px-5 py-2.5 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition shadow-sm cursor-pointer"
             @click="router.push('/')"
           >
             Back to Projects

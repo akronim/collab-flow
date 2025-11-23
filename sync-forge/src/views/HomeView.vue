@@ -4,13 +4,6 @@
       <h1 class="text-3xl font-bold text-gray-900">
         Projects
       </h1>
-      <button
-        class="rounded-md bg-red-600 px-4 py-2 text-sm font-medium text-white 
-                hover:bg-red-700 transition cursor-pointer"
-        @click="handleLogout"
-      >
-        Logout
-      </button>
     </div>
 
     <div class="grid gap-6 sm:grid-cols-2 lg:grid-cols-3">
@@ -66,19 +59,11 @@
 </template>
 
 <script setup lang="ts">
-import { useAuthStore, useProjectStore, useTaskStore } from '@/stores'
+import { useProjectStore, useTaskStore } from '@/stores'
 import { storeToRefs } from 'pinia'
-import { useRouter } from 'vue-router'
 
-const router = useRouter()
-const authStore = useAuthStore()
 const { projects } = storeToRefs(useProjectStore())
 const { tasks } = storeToRefs(useTaskStore())
-
-const handleLogout = async (): Promise<void> => {
-  await authStore.logout()
-  await router.push(`/login`)
-}
 </script>
 
 <style scoped>

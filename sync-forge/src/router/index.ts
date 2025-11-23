@@ -5,15 +5,23 @@ import AuthCallback from '@/views/AuthCallback.vue'
 import { useAuthStore } from '@/stores'
 import ProjectBoardView from '@/views/ProjectBoardView.vue'
 import { REFRESH_TOKEN_KEY } from '@/constants/localStorageKeys'
+import DefaultLayout from '@/components/layouts/DefaultLayout.vue' 
 
 export const routes = [
-  { path: `/`, component: HomeView, meta: { requiresAuth: true } },
   { path: `/login`, component: LoginView },
   { path: `/auth/callback`, component: AuthCallback },
   {
-    path: `/project/:id/board`,
-    name: `ProjectBoard`,
-    component: ProjectBoardView
+    path: `/`,
+    component: DefaultLayout, 
+    meta: { requiresAuth: true },
+    children: [
+      { path: ``, component: HomeView, name: `Home` }, 
+      {
+        path: `project/:id/board`,
+        name: `ProjectBoard`,
+        component: ProjectBoardView
+      }
+    ]
   },
   { path: `/:pathMatch(.*)*`, redirect: `/` }
 ]
