@@ -49,6 +49,15 @@ export const useAuthStore = defineStore(`auth`, {
   actions: {
     init() {
       api.setRefreshTokenFn(this.refreshAccessToken.bind(this))
+
+      const expiresAt = localStorage.getItem(TOKEN_EXPIRES_AT_KEY)
+      if (!expiresAt || !this.user) {
+        return
+      }
+
+      const expiresInSeconds = (Number(expiresAt) - Date.now()) / 1000
+
+      this.scheduleProactiveRefresh(expiresInSeconds)
     },
 
     cancelProactiveRefresh() {
@@ -58,17 +67,33 @@ export const useAuthStore = defineStore(`auth`, {
       }
     },
 
-    scheduleProactiveRefresh(expiresIn: number) {
+    scheduleProactiveRefresh(expiresInSeconds: number) {
       this.cancelProactiveRefresh()
 
-      const fiveMinutes = 5 * 60 * 1000
-      const timeout = expiresIn * 1000 - fiveMinutes
+      // refresh 5 minutes before expiry
+      const BUFFER_TIME_MS = 5 * 60 * 1000
 
-      if (timeout > 0) {
-        this.proactiveRefreshTimer = setTimeout(() => {
-          void this.refreshAccessToken()
-        }, timeout)
-      }
+      const timeoutMs = Math.max(0, (expiresInSeconds * 1000) - BUFFER_TIME_MS)
+
+      Logger.log(`Proactive refresh scheduled in ${(timeoutMs / 1000 / 60).toFixed(1)} min`)
+
+      this.proactiveRefreshTimer = setTimeout(async () => {
+        if (this.isTokenFreshEnough()) {
+          // just reschedule
+          const newExpiresAt = Number(localStorage.getItem(TOKEN_EXPIRES_AT_KEY))
+          const newRemaining = (newExpiresAt - Date.now()) / 1000
+          this.scheduleProactiveRefresh(newRemaining)
+          return
+        }
+
+        await this.refreshAccessToken()
+      }, timeoutMs)
+    },
+
+    isTokenFreshEnough(): boolean {
+      const expiresAt = Number(localStorage.getItem(TOKEN_EXPIRES_AT_KEY))
+      const BUFFER_TIME_MS = 5 * 60 * 1000
+      return Date.now() < (expiresAt - BUFFER_TIME_MS)
     },
 
     setAuthTokens(payload: {
@@ -159,6 +184,8 @@ export const useAuthStore = defineStore(`auth`, {
           if (new_refresh_token) {
             localStorage.setItem(REFRESH_TOKEN_KEY, new_refresh_token)
           }
+
+          this.scheduleProactiveRefresh(Number(expires_in))
 
           if (!this.user) {
             const savedUser = localStorage.getItem(USER_KEY)
