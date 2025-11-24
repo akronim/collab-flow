@@ -1,66 +1,58 @@
 <template>
-  <div
-    class="fixed inset-0 z-50 flex items-center justify-center"
+  <BaseModal
+    :title="task ? 'Edit Task' : 'New Task'"
+    position="top"
+    @close="onCancel"
   >
-    <!-- Backdrop -->
-    <div
-      class="absolute inset-0 bg-black/50"
-      @click="emit('close')"
-    />
+    <form @submit.prevent="handleSubmit">
+      <div class="mb-4">
+        <label class="block text-sm font-medium text-gray-700 mb-1">Title</label>
+        <input
+          v-model="form.title"
+          type="text"
+          required
+          class="w-full px-3 py-2 border border-gray-300 rounded-md 
+                focus:outline-none focus:ring-2 focus:ring-blue-500"
+          placeholder="Enter task title"
+        >
+      </div>
 
-    <!-- Modal -->
-    <div class="relative bg-white rounded-lg shadow-xl w-full max-w-lg mx-4 p-6">
-      <h2 class="text-xl font-semibold mb-4">
-        {{ task ? 'Edit Task' : 'New Task' }}
-      </h2>
-
-      <form @submit.prevent="handleSubmit">
-        <div class="mb-4">
-          <label class="block text-sm font-medium text-gray-700 mb-1">Title</label>
-          <input
-            v-model="form.title"
-            type="text"
-            required
-            class="w-full px-3 py-2 border border-gray-300 rounded-md 
-                  focus:outline-none focus:ring-2 focus:ring-blue-500"
-            placeholder="Enter task title"
-          >
-        </div>
-
-        <div class="mb-6">
-          <label class="block text-sm font-medium text-gray-700 mb-1">Description</label>
-          <textarea
-            v-model="form.description"
-            rows="4"
-            class="w-full px-3 py-2 border border-gray-300 rounded-md 
-                  focus:outline-none focus:ring-2 focus:ring-blue-500"
-            placeholder="Add description (optional)"
-          />
-        </div>
-
-        <div class="flex justify-end gap-3">
-          <BaseButton
-            variant="outline"
-            @click="onCancel"
-          >
-            Cancel
-          </BaseButton>
-          <BaseButton
-            type="submit"
-            variant="primary"
-          >
-            {{ task ? 'Update' : 'Create' }} Task
-          </BaseButton>
-        </div>
-      </form>
-    </div>
-  </div>
+      <div class="mb-6">
+        <label class="block text-sm font-medium text-gray-700 mb-1">Description</label>
+        <textarea
+          v-model="form.description"
+          rows="4"
+          class="w-full px-3 py-2 border border-gray-300 rounded-md 
+                focus:outline-none focus:ring-2 focus:ring-blue-500"
+          placeholder="Add description (optional)"
+        />
+      </div>
+    </form>
+    <template #footer>
+      <div class="flex justify-end gap-3">
+        <BaseButton
+          variant="outline"
+          @click="onCancel"
+        >
+          Cancel
+        </BaseButton>
+        <BaseButton
+          type="submit"
+          variant="primary"
+          @click="handleSubmit"
+        >
+          {{ task ? 'Update' : 'Create' }} Task
+        </BaseButton>
+      </div>
+    </template>
+  </BaseModal>
 </template>
 
 <script setup lang="ts">
 import { ref } from 'vue'
 import type { Task } from '@/types/task'
 import BaseButton from '@/components/ui/base/BaseButton.vue'
+import BaseModal from '@/components/ui/base/BaseModal.vue'
 
 interface Props {
   task?: Task | null
