@@ -1,7 +1,8 @@
 import { describe, it, expect, vi } from 'vitest'
 import { mount } from '@vue/test-utils'
 import KanbanColumn from '@/components/kanban/KanbanColumn.vue'
-import type { Task, TaskStatus } from '@/types/task'
+import type { TaskStatus } from '@/types/task'
+import { mockTasks } from '@/__tests__/mocks'
 
 vi.mock(`@/components/kanban/KanbanCard.vue`, () => ({
   default: {
@@ -10,41 +11,18 @@ vi.mock(`@/components/kanban/KanbanCard.vue`, () => ({
   }
 }))
 
-const MOCK_TASKS: Task[] = [
-  {
-    id: `task-1`,
-    title: `Task 1`,
-    status: `todo`,
-    projectId: `proj-1`,
-    order: 0,
-    description: ``,
-    createdAt: new Date().toISOString(),
-    updatedAt: new Date().toISOString()
-  },
-  {
-    id: `task-2`,
-    title: `Task 2`,
-    status: `todo`,
-    projectId: `proj-1`,
-    order: 1,
-    description: ``,
-    createdAt: new Date().toISOString(),
-    updatedAt: new Date().toISOString()
-  }
-]
-
 describe(`KanbanColumn.vue`, () => {
   it(`renders the title and task count`, () => {
     const wrapper = mount(KanbanColumn, {
       props: {
         title: `To Do`,
         status: `todo` as TaskStatus,
-        tasks: MOCK_TASKS
+        tasks: mockTasks
       }
     })
 
     expect(wrapper.text()).toContain(`To Do`)
-    expect(wrapper.find(`.rounded-full`).text()).toBe(String(MOCK_TASKS.length))
+    expect(wrapper.find(`.rounded-full`).text()).toBe(String(mockTasks.length))
   })
 
   it(`renders a KanbanCard for each task`, () => {
@@ -52,17 +30,17 @@ describe(`KanbanColumn.vue`, () => {
       props: {
         title: `To Do`,
         status: `todo` as TaskStatus,
-        tasks: MOCK_TASKS
+        tasks: mockTasks
       }
     })
 
     const cards = wrapper.findAll(`.kanban-card`)
 
-    expect(cards).toHaveLength(MOCK_TASKS.length)
+    expect(cards).toHaveLength(mockTasks.length)
     
     const cardTexts = cards.map(card => card.text())
 
-    expect(cardTexts).toStrictEqual([`Task 1`, `Task 2`])
+    expect(cardTexts).toStrictEqual([`Task 1`, `Task 2`, `Task 3`])
   })
 
   it(`emits an add-task event on button click`, async () => {

@@ -1,16 +1,19 @@
-import { describe, it, expect, beforeEach } from 'vitest'
-import { setActivePinia, createPinia } from 'pinia'
+import { describe, it, expect, vi } from 'vitest'
+import { createTestingPinia } from '@pinia/testing'
 import { useTaskStore } from '@/stores'
+import { mockTasks } from '../mocks'
 
 describe(`useTaskStore`, () => {
-  beforeEach(() => {
-    setActivePinia(createPinia())
-  })
+  it(`should have mock tasks as initial state`, () => {
+    const pinia = createTestingPinia({
+      createSpy: vi.fn,
+      initialState: {
+        tasks: { tasks: mockTasks }
+      }
+    })
+    const store = useTaskStore(pinia)
 
-  it(`should have initial task`, () => {
-    const store = useTaskStore()
-
-    expect(store.tasks).toHaveLength(3)
-    expect(store.tasks[0]?.title).toBe(`Design homepage`)
+    expect(store.tasks).toHaveLength(mockTasks.length)
+    expect(store.tasks[0]?.title).toBe(mockTasks[0]?.title)
   })
 })

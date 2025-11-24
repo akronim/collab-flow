@@ -9,7 +9,7 @@
     "build:prod": "npm run clean && npm run typecheck && esbuild src/server.ts --bundle --platform=node --target=node20 --outfile=dist/server.js --minify --sourcemap=external --packages=external",
     "start": "npm run build && node dist/server.js",
     "start:prod": "cross-env NODE_ENV=production npm run build:prod && node dist/server.js",
-    "test": "vitest",
+    "test:unit": "vitest",
     "lint": "eslint . --fix --cache",
     "lint:no-fix": "eslint . --max-warnings=0",
     "coverage": "vitest run --coverage",
