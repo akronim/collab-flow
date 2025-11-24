@@ -12,16 +12,15 @@
         </div>
         <div
           v-if="authStore.isAuthenticated"
-          class="flex items-center"
         >
-          <button
-            class="ml-4 inline-flex items-center px-4 py-2 border border-transparent text-sm font-medium
-                   rounded-md shadow-sm text-white bg-red-600 cursor-pointer
-                   hover:bg-red-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-red-500"
+          <span class="text-sm text-gray-500">Europe/Zagreb</span>
+          <BaseButton
+            class="ml-4"
+            variant="danger"
             @click="handleLogout"
           >
             Logout
-          </button>
+          </BaseButton>
         </div>
       </nav>
     </header>
@@ -36,6 +35,7 @@
 import { useRouter } from 'vue-router'
 import { useAuthStore } from '@/stores'
 import Logger from '@/utils/logger'
+import BaseButton from '@/components/ui/base/BaseButton.vue'
 
 const router = useRouter()
 const authStore = useAuthStore()

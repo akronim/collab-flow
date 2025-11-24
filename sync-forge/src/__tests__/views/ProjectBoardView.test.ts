@@ -45,7 +45,7 @@ describe(`ProjectBoardView.vue`, () => {
     await flushPromises()
 
     expect(wrapper.find(`[data-testid="kanban-board"]`).exists()).toBe(true)
-    expect(wrapper.text()).toContain(`Demo Project Kanban`)
+    expect(wrapper.text()).toContain(`Test Project`)
     expect(setCurrentProjectSpy).toHaveBeenCalledWith(`project-1`)
   })
 

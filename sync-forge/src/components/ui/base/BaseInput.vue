@@ -1,0 +1,3 @@
+<template>
+  Base Input
+</template>

@@ -4,20 +4,16 @@
       <div class="max-w-7xl mx-auto px-6 py-5 flex items-center justify-between">
         <div>
           <h1 class="text-2xl font-bold text-gray-900">
-            Demo Project Kanban
+            {{ currentProject?.name }}
           </h1>
           <p class="text-sm text-gray-600 mt-1">
-            Drag & drop tasks • Real-time updates • Built with Vue 3 + Pinia + Tailwind
+            {{ currentProject?.description }}
           </p>
         </div>
         <div class="flex items-center gap-4">
-          <span class="text-sm text-gray-500">Europe/Zagreb</span>
-          <button
-            class="px-5 py-2.5 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition shadow-sm cursor-pointer"
-            @click="router.push('/')"
-          >
+          <BaseButton @click="router.push('/')">
             Back to Projects
-          </button>
+          </BaseButton>
         </div>
       </div>
     </header>
@@ -47,8 +43,9 @@
 import { computed, onMounted, onBeforeUnmount, watch } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import KanbanBoard from '@/components/kanban/KanbanBoard.vue'
-import { useTaskStore, useProjectStore } from '@/stores'
+import { useTaskStore, useProjectStore, type Project } from '@/stores'
 import { storeToRefs } from 'pinia'
+import BaseButton from '@/components/ui/base/BaseButton.vue'
 
 const route = useRoute()
 const router = useRouter()
@@ -57,11 +54,19 @@ const projectStore = useProjectStore()
 const { projects } = storeToRefs(projectStore)
 
 const currentProjectId = computed(() => route.params.id as string)
+
 const isValidProject = computed(() => {
   if (!currentProjectId.value) {
     return false
   }
   return projects.value.some(p => p.id === currentProjectId.value)
+})
+
+const currentProject = computed((): Project | undefined => {
+  if (!isValidProject.value) {
+    return undefined
+  }
+  return projects.value.find(p => p.id === currentProjectId.value)
 })
 
 const updateProject = (): void => {

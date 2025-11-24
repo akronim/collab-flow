@@ -12,7 +12,7 @@
   </div>
     
   <div
-    class="flex gap-6 overflow-x-auto pb-10 px-6"
+    class="flex gap-6 overflow-x-auto pb-10"
     style="height: calc(100vh - 140px)"
   >
     <KanbanColumn
@@ -29,26 +29,12 @@
 
     <!-- Floating Add Column (Future Feature Hint) -->
     <div class="flex-shrink-0 w-80">
-      <button
-        class="w-full h-12 bg-gray-200/70 rounded-lg flex items-center justify-center gap-2 
-                text-gray-600 hover:bg-gray-300 transition"
+      <BaseButton
         disabled
       >
-        <svg
-          class="w-5 h-5"
-          fill="none"
-          stroke="currentColor"
-          viewBox="0 0 24 24"
-        >
-          <path
-            stroke-linecap="round"
-            stroke-linejoin="round"
-            stroke-width="2"
-            d="M12 4v16m8-8H4"
-          />
-        </svg>
+        <LiPlus class="w-5 h-5" />
         Add another column
-      </button>
+      </BaseButton>
     </div>
 
     <!-- Modal -->
@@ -68,6 +54,8 @@ import TaskFormModal from './TaskFormModal.vue'
 import { useTaskStore } from '@/stores'
 import type { Task, TaskStatus } from '@/types/task'
 import Logger from '@/utils/logger'
+import { Plus as LiPlus } from 'lucide-vue-next'
+import BaseButton from '@/components/ui/base/BaseButton.vue'
 
 const taskStore = useTaskStore()
 const { tasksByStatus } = taskStore

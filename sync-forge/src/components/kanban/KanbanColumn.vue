@@ -14,26 +14,15 @@
       </span>
     </div>
 
-    <button
-      class="mb-4 text-gray-500 hover:text-gray-700 text-sm flex items-center gap-2 
-            hover:bg-gray-200 rounded px-2 py-1 transition"
+    <BaseButton
+      variant="secondary"
+      size="sm"
+      class="mb-4"
       @click="emit('add-task')"
     >
-      <svg
-        class="w-4 h-4"
-        fill="none"
-        stroke="currentColor"
-        viewBox="0 0 24 24"
-      >
-        <path
-          stroke-linecap="round"
-          stroke-linejoin="round"
-          stroke-width="2"
-          d="M12 4v16m8-8H4"
-        />
-      </svg>
+      <LiPlus class="w-4 h-4" />
       Add task
-    </button>
+    </BaseButton>
 
     <div
       ref="dropZone"
@@ -55,6 +44,8 @@
 import { ref } from 'vue'
 import KanbanCard from './KanbanCard.vue'
 import type { Task, TaskStatus } from '@/types/task'
+import { Plus as LiPlus } from 'lucide-vue-next'
+import BaseButton from '@/components/ui/base/BaseButton.vue'
 
 interface Props {
   title: string

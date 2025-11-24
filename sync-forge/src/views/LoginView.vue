@@ -1,4 +1,28 @@
+<template>
+  <div class="flex min-h-screen items-center justify-center bg-gradient-to-br from-indigo-50 to-blue-100">
+    <div class="w-full max-w-sm rounded-xl bg-white p-8 shadow-lg">
+      <h1 class="mb-6 text-center text-2xl font-bold text-gray-900">
+        CollabFlow
+      </h1>
+      <BaseButton
+        variant="outline"
+        size="lg"
+        full-width
+        @click="login"
+      >
+        <img
+          :src="googleOAuthConfig.FAVICON_URL"
+          alt=""
+          class="h-5 w-5"
+        >
+        Sign in with Google
+      </BaseButton>
+    </div>
+  </div>
+</template>
+
 <script setup lang="ts">
+import BaseButton from '@/components/ui/base/BaseButton.vue'
 import { appRoutes, googleOAuthConfig } from '@/constants'
 import { CODE_VERIFIER_KEY } from '@/constants/localStorageKeys'
 import Logger from '@/utils/logger'
@@ -31,26 +55,3 @@ const login = async (): Promise<void> => {
   }
 }
 </script>
-
-<template>
-  <div class="flex min-h-screen items-center justify-center bg-gradient-to-br from-indigo-50 to-blue-100">
-    <div class="w-full max-w-sm rounded-xl bg-white p-8 shadow-lg">
-      <h1 class="mb-6 text-center text-2xl font-bold text-gray-900">
-        CollabFlow
-      </h1>
-      <button
-        class="flex w-full items-center justify-center gap-3 rounded-lg bg-white 
-               px-4 py-3 text-gray-700 shadow-sm ring-1 ring-gray-300 
-               transition hover:shadow-md cursor-pointer"
-        @click="login"
-      >
-        <img
-          :src="googleOAuthConfig.FAVICON_URL"
-          alt=""
-          class="h-5 w-5"
-        >
-        Sign in with Google
-      </button>
-    </div>
-  </div>
-</template>

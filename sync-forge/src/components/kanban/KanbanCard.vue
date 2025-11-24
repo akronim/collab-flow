@@ -19,46 +19,25 @@
       </span>
 
       <div class="flex gap-2">
-        <button
-          class="text-gray-500 hover:text-blue-600 transition p-1"
+        <BaseButton
+          variant="ghost"
+          size="sm"
           title="Edit task"
           aria-label="Edit task"
           @click.stop="emit('edit')"
         >
-          <svg
-            class="w-4 h-4"
-            fill="none"
-            stroke="currentColor"
-            viewBox="0 0 24 24"
-          >
-            <path
-              stroke-linecap="round"
-              stroke-linejoin="round"
-              stroke-width="2"
-              d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z"
-            />
-          </svg>
-        </button>
-        <button
-          class="text-gray-500 hover:text-red-600 transition p-1"
+          <LiSquarePen class="w-4 h-4" />
+        </BaseButton>
+
+        <BaseButton
+          variant="ghost"
+          size="sm"
           title="Delete task"
           aria-label="Delete task"
           @click.stop="emit('delete')"
         >
-          <svg
-            class="w-4 h-4"
-            fill="none"
-            stroke="currentColor"
-            viewBox="0 0 24 24"
-          >
-            <path
-              stroke-linecap="round"
-              stroke-linejoin="round"
-              stroke-width="2"
-              d="M19 7l-.867 12.142A2.138 2.138 0 0116.138 21H7.862a2.138 2.138 0 011.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"
-            />
-          </svg>
-        </button>
+          <LiTrash2 class="w-4 h-4" />
+        </BaseButton>
       </div>
     </div>
   </div>
@@ -68,6 +47,8 @@
 import { computed } from 'vue'
 import { formatToLocalDayMonthYearTime } from '@/utils/date'
 import type { Task } from '@/types/task'
+import { SquarePen as LiSquarePen, Trash2 as LiTrash2 } from 'lucide-vue-next'
+import BaseButton from '@/components/ui/base/BaseButton.vue'
 
 interface Props {
   task: Task

@@ -39,19 +39,18 @@
         </div>
 
         <div class="flex justify-end gap-3">
-          <button
-            type="button"
-            class="px-4 py-2 text-gray-700 bg-gray-200 rounded hover:bg-gray-300 transition"
+          <BaseButton
+            variant="outline"
             @click="onCancel"
           >
             Cancel
-          </button>
-          <button
+          </BaseButton>
+          <BaseButton
             type="submit"
-            class="px-4 py-2 bg-blue-600 text-white rounded hover:bg-blue-700 transition"
+            variant="primary"
           >
             {{ task ? 'Update' : 'Create' }} Task
-          </button>
+          </BaseButton>
         </div>
       </form>
     </div>
@@ -61,6 +60,7 @@
 <script setup lang="ts">
 import { ref } from 'vue'
 import type { Task } from '@/types/task'
+import BaseButton from '@/components/ui/base/BaseButton.vue'
 
 interface Props {
   task?: Task | null
