@@ -1,7 +1,13 @@
+import DOMPurify from 'dompurify'
+
 export function sanitizeInput(input: string): string {
   const div = document.createElement(`div`)
   div.textContent = input
   return div.innerHTML
+}
+
+export function sanitizeHtml(dirty: string): string {
+  return DOMPurify.sanitize(dirty)
 }
 
 // usage
@@ -14,3 +20,4 @@ const sanitizedTitle = computed({
 })
 </script>
 */
+

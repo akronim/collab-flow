@@ -9,9 +9,12 @@
     <h4 class="font-medium text-gray-900 mb-2">
       {{ task.title }}
     </h4>
-    <p class="text-sm text-gray-600 line-clamp-2">
-      {{ task.description || 'No description' }}
-    </p>
+    <!-- eslint-disable vue/no-v-html -->
+    <p
+      class="text-sm text-gray-600 line-clamp-2"
+      v-html="sanitizedDescription"
+    />
+    <!-- eslint-enable vue/no-v-html -->
 
     <div class="mt-4 flex items-center justify-between text-xs">
       <span class="text-gray-500">
@@ -49,6 +52,7 @@ import { formatToLocalDayMonthYearTime } from '@/utils/date'
 import type { Task } from '@/types/task'
 import { SquarePen as LiSquarePen, Trash2 as LiTrash2 } from 'lucide-vue-next'
 import BaseButton from '@/components/ui/base/BaseButton.vue'
+import { sanitizeHtml } from '@/utils/sanitize'
 
 interface Props {
   task: Task
@@ -59,6 +63,13 @@ const emit = defineEmits<{
   edit: []
   delete: []
 }>()
+
+const sanitizedDescription = computed(() => {
+  if (props.task.description) {
+    return sanitizeHtml(props.task.description)
+  }
+  return `No description`
+})
 
 // change this later to come from auth/user store
 const USER_TIMEZONE = `Europe/Zagreb`
