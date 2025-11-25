@@ -7,7 +7,7 @@ import { v4 as uuidv4 } from 'uuid'
 export const useTaskStore = defineStore(`tasks`, () => {
   const tasks = ref<Task[]>([
     {
-      id: uuidv4(),
+      id: `1`,
       projectId: `1`,
       title: `Design homepage`,
       description: `Create mockups in Figma`,
@@ -17,7 +17,7 @@ export const useTaskStore = defineStore(`tasks`, () => {
       updatedAt: new Date().toISOString()
     },
     {
-      id: uuidv4(),
+      id: `2`,
       projectId: `1`,
       title: `Setup Vue project`,
       description: `With Vite + Tailwind + Pinia`,
@@ -27,7 +27,7 @@ export const useTaskStore = defineStore(`tasks`, () => {
       updatedAt: new Date().toISOString()
     },
     {
-      id: uuidv4(),
+      id: `3`,
       projectId: `1`,
       title: `User authentication`,
       description: `Implement login flow`,
@@ -38,38 +38,30 @@ export const useTaskStore = defineStore(`tasks`, () => {
     }
   ])
 
-  const currentProjectId = ref<string | null>(null)
-
-  const setCurrentProject = (projectId: string): void => {
-    currentProjectId.value = projectId
-  }
-
-  const clearCurrentProject = (): void => {
-    currentProjectId.value = null
-  }
-
-  const tasksForCurrentProject = computed((): Task[] => {
-    if (!currentProjectId.value) {
-      return []
-    }
-    return tasks.value
-      .filter(t => t.projectId === currentProjectId.value)
-      .sort((a, b) => a.order - b.order)
-  })
-
-  const tasksByStatus = computed(() => {
-    return (status: Task[`status`]): Task[] => {
-      if (!currentProjectId.value) {
+  const tasksForCurrentProject = computed(() => {
+    return (projectId: string): Task[] => {
+      if (!projectId) {
         return []
       }
-      return tasksForCurrentProject.value
-        .filter(t => t.status === status)
+      return tasks.value
+        .filter(t => t.projectId === projectId)
         .sort((a, b) => a.order - b.order)
     }
   })
 
-  const getTaskById = (taskId: string): Task | undefined => {
-    return tasksForCurrentProject.value.find(task => task.id === taskId)
+  const tasksByStatus = computed(() => {
+    return (projectId: string, status: Task[`status`]): Task[] => {
+      if (!projectId) {
+        return []
+      }
+      return tasks.value
+        .filter(t => t.projectId === projectId && t.status === status)
+        .sort((a, b) => a.order - b.order)
+    }
+  })
+
+  const getTaskById = (projectId: string, taskId: string): Task | undefined => {
+    return tasks.value.find(t => t.projectId === projectId && t.id === taskId)
   }
 
   const addTask = (task: Omit<Task, `id` | `createdAt` | `updatedAt`>): void => {
@@ -99,9 +91,6 @@ export const useTaskStore = defineStore(`tasks`, () => {
 
   return {
     tasks,
-    currentProjectId,
-    setCurrentProject,
-    clearCurrentProject,
     tasksForCurrentProject,
     tasksByStatus,
     addTask,

@@ -74,6 +74,7 @@ const router = useRouter()
 const route = useRoute()
 const taskStore = useTaskStore()
 
+const projectId = computed(() => route.params.id as string)
 const taskId = computed(() => route.params.taskId as string | undefined)
 const status = computed(() => route.query.status as TaskStatus | undefined)
 const isEditMode = computed(() => !!taskId.value)
@@ -83,26 +84,25 @@ const form = ref({
   description: ``
 })
 
-onMounted(() => {
+onMounted(async () => {
   if (isEditMode.value && taskId.value) {
-    const task = taskStore.getTaskById(taskId.value)
+    const task = taskStore.getTaskById(projectId.value, taskId.value)
     if (task) {
       form.value.title = task.title
       form.value.description = task.description ?? ``
     } else {
       Logger.error(`Task not found: ${taskId.value}`)
-      router.back()
+      await router.push({ name: `ProjectBoard`, params: { id: projectId.value } })
     }
   }
 })
 
-const handleSubmit = (): void => {
+const handleSubmit = async (): Promise<void> => {
   if (!form.value.title.trim()) {
     return
   }
 
-  const projectId = taskStore.currentProjectId
-  if (!projectId) {
+  if (!projectId.value) {
     Logger.error(`No current project set`)
     return
   }
@@ -115,18 +115,18 @@ const handleSubmit = (): void => {
   } else {
     const targetStatus = status.value ?? `todo`
     taskStore.addTask({
-      projectId,
+      projectId: projectId.value,
       title: form.value.title.trim(),
       description: form.value.description.trim(),
       status: targetStatus,
-      order: taskStore.tasksByStatus(targetStatus).length
+      order: taskStore.tasksByStatus(projectId.value, targetStatus).length
     })
   }
 
-  router.back()
+  await router.push({ name: `ProjectBoard`, params: { id: projectId.value } })
 }
 
-const handleCancel = (): void => {
-  router.back()
+const handleCancel = async (): Promise<void> => {
+  await router.push({ name: `ProjectBoard`, params: { id: projectId.value } })
 }
 </script>

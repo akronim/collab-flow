@@ -1,6 +1,6 @@
 <template>
   <div
-    v-if="taskStore.tasksForCurrentProject.length === 0"
+    v-if="taskStore.tasksForCurrentProject(currentProjectId).length === 0"
     class="w-full text-center py-20"
   >
     <p class="text-gray-500 text-lg">
@@ -20,7 +20,7 @@
       :key="column.status"
       :title="column.title"
       :status="column.status"
-      :tasks="tasksByStatus(column.status)"
+      :tasks="tasksByStatus(currentProjectId, column.status)"
       @add-task="navigateToCreateTask(column.status)"
       @move-task="handleMoveTask"
       @edit-task="navigateToEditTask"
@@ -39,18 +39,19 @@
 
 <script setup lang="ts">
 import { computed } from 'vue'
-import { useRouter } from 'vue-router'
+import { useRoute, useRouter } from 'vue-router'
 import KanbanColumn from './KanbanColumn.vue'
 import { useTaskStore } from '@/stores'
-import type { Task, TaskStatus } from '@/types/task'
+import type { TaskStatus } from '@/types/task'
 import Logger from '@/utils/logger'
 import { Plus as LiPlus } from 'lucide-vue-next'
 import BaseButton from '@/components/ui/base/BaseButton.vue'
 
+const route = useRoute()
 const router = useRouter()
 const taskStore = useTaskStore()
 const { tasksByStatus } = taskStore
-const currentProjectId = computed(() => taskStore.currentProjectId)
+const currentProjectId = computed(() => route.params.id as string)
 
 const columns = [
   { status: `backlog` as const, title: `Backlog` },
@@ -72,7 +73,7 @@ const navigateToCreateTask = async (status: TaskStatus): Promise<void> => {
   })
 }
 
-const navigateToEditTask = async (task: Task): Promise<void> => {
+const navigateToEditTask = async (taskId: string): Promise<void> => {
   if (!currentProjectId.value) {
     Logger.error(`No current project set`)
     return
@@ -82,7 +83,7 @@ const navigateToEditTask = async (task: Task): Promise<void> => {
     name: `EditTask`,
     params: { 
       id: currentProjectId.value,
-      taskId: task.id 
+      taskId: taskId 
     }
   })
 }
@@ -94,7 +95,7 @@ const deleteTask = (taskId: string): void => {
 }
 
 const handleMoveTask = (taskId: string, newStatus: TaskStatus): void => {
-  const newOrder = taskStore.tasksByStatus(newStatus).length
+  const newOrder = taskStore.tasksByStatus(currentProjectId.value, newStatus).length
   taskStore.moveTask(taskId, newStatus, newOrder)
 }
 </script>

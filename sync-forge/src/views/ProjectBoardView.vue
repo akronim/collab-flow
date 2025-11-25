@@ -40,16 +40,15 @@
 </template>
 
 <script setup lang="ts">
-import { computed, onMounted, watch } from 'vue'
-import { onBeforeRouteLeave, useRoute, useRouter } from 'vue-router'
+import { computed } from 'vue'
+import { useRoute, useRouter } from 'vue-router'
 import KanbanBoard from '@/components/kanban/KanbanBoard.vue'
-import { useTaskStore, useProjectStore, type Project } from '@/stores'
+import { useProjectStore, type Project } from '@/stores'
 import { storeToRefs } from 'pinia'
 import BaseButton from '@/components/ui/base/BaseButton.vue'
 
 const route = useRoute()
 const router = useRouter()
-const taskStore = useTaskStore()
 const projectStore = useProjectStore()
 const { projects } = storeToRefs(projectStore)
 
@@ -67,29 +66,5 @@ const currentProject = computed((): Project | undefined => {
     return undefined
   }
   return projects.value.find(p => p.id === currentProjectId.value)
-})
-
-const updateProject = (): void => {
-  if (isValidProject.value) {
-    taskStore.setCurrentProject(currentProjectId.value)
-  } else {
-    taskStore.clearCurrentProject()
-  }
-}
-
-onMounted(updateProject)
-
-watch(currentProjectId, updateProject)
-
-onBeforeRouteLeave((to, from, next) => {
-  const isStayingInProjectContext =
-    (to.name === `CreateTask` || to.name === `EditTask` || to.name === `ProjectBoard`) &&
-    to.params.id === currentProjectId.value
-
-  if (!isStayingInProjectContext) {
-    taskStore.clearCurrentProject()
-  }
-
-  next()
 })
 </script>

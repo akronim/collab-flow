@@ -33,7 +33,7 @@
         v-for="task in tasks"
         :key="task.id"
         :task="task"
-        @edit="emit('edit-task', task)"
+        @edit="emit('edit-task', task.id)"
         @delete="emit('delete-task', task.id)"
       />
     </div>
@@ -58,7 +58,7 @@ const props = defineProps<Props>()
 const emit = defineEmits<{
   'add-task': []
   'move-task': [taskId: string, newStatus: TaskStatus]
-  'edit-task': [task: Task]
+  'edit-task': [taskId: string]
   'delete-task': [taskId: string]
 }>()
 
