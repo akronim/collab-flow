@@ -21,49 +21,36 @@
       :title="column.title"
       :status="column.status"
       :tasks="tasksByStatus(column.status)"
-      @add-task="openTaskForm(column.status)"
+      @add-task="navigateToCreateTask(column.status)"
       @move-task="handleMoveTask"
-      @edit-task="openEditForm"
+      @edit-task="navigateToEditTask"
       @delete-task="deleteTask"
     />
 
     <!-- Floating Add Column (Future Feature Hint) -->
     <div class="flex-shrink-0 w-80">
-      <BaseButton
-        disabled
-      >
+      <BaseButton disabled>
         <LiPlus class="w-5 h-5" />
         Add another column
       </BaseButton>
     </div>
-
-    <!-- Modal -->
-    <TaskFormModal
-      v-if="isModalOpen"
-      :task="editingTask"
-      @close="closeModal"
-      @save="saveTask"
-    />
   </div>
 </template>
 
 <script setup lang="ts">
-import { computed, ref } from 'vue'
+import { computed } from 'vue'
+import { useRouter } from 'vue-router'
 import KanbanColumn from './KanbanColumn.vue'
-import TaskFormModal from './TaskFormModal.vue'
 import { useTaskStore } from '@/stores'
 import type { Task, TaskStatus } from '@/types/task'
 import Logger from '@/utils/logger'
 import { Plus as LiPlus } from 'lucide-vue-next'
 import BaseButton from '@/components/ui/base/BaseButton.vue'
 
+const router = useRouter()
 const taskStore = useTaskStore()
 const { tasksByStatus } = taskStore
 const currentProjectId = computed(() => taskStore.currentProjectId)
-
-const isModalOpen = ref(false)
-const editingTask = ref<Task | null>(null)
-const targetStatus = ref<TaskStatus>(`todo`)
 
 const columns = [
   { status: `backlog` as const, title: `Backlog` },
@@ -72,49 +59,32 @@ const columns = [
   { status: `done` as const, title: `Done` }
 ]
 
-const openTaskForm = (status: TaskStatus): void => {
+const navigateToCreateTask = async (status: TaskStatus): Promise<void> => {
   if (!currentProjectId.value) {
     Logger.error(`No current project set`)
     return
   }
 
-  editingTask.value = null
-  targetStatus.value = status
-  isModalOpen.value = true
+  await router.push({
+    name: `CreateTask`,
+    params: { id: currentProjectId.value },
+    query: { status }
+  })
 }
 
-const openEditForm = (task: Task): void => {
-  editingTask.value = task
-  targetStatus.value = task.status
-  isModalOpen.value = true
-}
-
-const closeModal = (): void => {
-  isModalOpen.value = false
-  editingTask.value = null
-}
-
-const saveTask = (data: { title: string; description: string }): void => {
+const navigateToEditTask = async (task: Task): Promise<void> => {
   if (!currentProjectId.value) {
     Logger.error(`No current project set`)
     return
   }
 
-  if (editingTask.value) {
-    taskStore.updateTask(editingTask.value.id, {
-      title: data.title,
-      description: data.description
-    })
-  } else {
-    taskStore.addTask({
-      projectId: currentProjectId.value,
-      title: data.title,
-      description: data.description,
-      status: targetStatus.value,
-      order: taskStore.tasksByStatus(targetStatus.value).length
-    })
-  }
-  closeModal()
+  await router.push({
+    name: `EditTask`,
+    params: { 
+      id: currentProjectId.value,
+      taskId: task.id 
+    }
+  })
 }
 
 const deleteTask = (taskId: string): void => {

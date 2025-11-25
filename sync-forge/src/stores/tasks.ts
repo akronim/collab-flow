@@ -68,6 +68,10 @@ export const useTaskStore = defineStore(`tasks`, () => {
     }
   })
 
+  const getTaskById = (taskId: string): Task | undefined => {
+    return tasksForCurrentProject.value.find(task => task.id === taskId)
+  }
+
   const addTask = (task: Omit<Task, `id` | `createdAt` | `updatedAt`>): void => {
     const newTask: Task = {
       ...task,
@@ -103,6 +107,7 @@ export const useTaskStore = defineStore(`tasks`, () => {
     addTask,
     updateTask,
     deleteTask,
-    moveTask
+    moveTask,
+    getTaskById
   }
 })

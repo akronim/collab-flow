@@ -1,12 +1,12 @@
 import { describe, it, expect, vi } from 'vitest'
 import { mount, flushPromises } from '@vue/test-utils'
-import HomeView from '@/views/HomeView.vue'
+import ProjectsView from '@/views/ProjectsView.vue'
 import { createTestingPinia } from '@pinia/testing'
 import { createRouter, createMemoryHistory } from 'vue-router'
 import { routes } from '@/router'
 import { mockProjects, mockTasks } from '../mocks'
 
-describe(`HomeView`, () => {
+describe(`ProjectsView`, () => {
   let router: ReturnType<typeof createRouter>
 
   it(`renders project and task count`, async () => {
@@ -14,10 +14,10 @@ describe(`HomeView`, () => {
       history: createMemoryHistory(),
       routes
     })
-    await router.push(`/`)
+    await router.push(`/projects`)
     await router.isReady()
 
-    const wrapper = mount(HomeView, {
+    const wrapper = mount(ProjectsView, {
       global: {
         plugins: [
           router,

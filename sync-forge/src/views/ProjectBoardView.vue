@@ -11,7 +11,7 @@
           </p>
         </div>
         <div class="flex items-center gap-4">
-          <BaseButton @click="router.push('/')">
+          <BaseButton @click="router.push('/projects')">
             Back to Projects
           </BaseButton>
         </div>
@@ -40,8 +40,8 @@
 </template>
 
 <script setup lang="ts">
-import { computed, onMounted, onBeforeUnmount, watch } from 'vue'
-import { useRoute, useRouter } from 'vue-router'
+import { computed, onMounted, watch } from 'vue'
+import { onBeforeRouteLeave, useRoute, useRouter } from 'vue-router'
 import KanbanBoard from '@/components/kanban/KanbanBoard.vue'
 import { useTaskStore, useProjectStore, type Project } from '@/stores'
 import { storeToRefs } from 'pinia'
@@ -78,6 +78,18 @@ const updateProject = (): void => {
 }
 
 onMounted(updateProject)
+
 watch(currentProjectId, updateProject)
-onBeforeUnmount(() => taskStore.clearCurrentProject())
+
+onBeforeRouteLeave((to, from, next) => {
+  const isStayingInProjectContext =
+    (to.name === `CreateTask` || to.name === `EditTask` || to.name === `ProjectBoard`) &&
+    to.params.id === currentProjectId.value
+
+  if (!isStayingInProjectContext) {
+    taskStore.clearCurrentProject()
+  }
+
+  next()
+})
 </script>

@@ -1,25 +1,42 @@
 import { createRouter, createWebHistory } from 'vue-router'
-import HomeView from '@/views/HomeView.vue'
+import ProjectsView from '@/views/ProjectsView.vue'
 import LoginView from '@/views/LoginView.vue'
 import AuthCallback from '@/views/AuthCallback.vue'
 import { useAuthStore } from '@/stores'
 import ProjectBoardView from '@/views/ProjectBoardView.vue'
 import { REFRESH_TOKEN_KEY } from '@/constants/localStorageKeys'
-import DefaultLayout from '@/components/layouts/DefaultLayout.vue' 
+import DefaultLayout from '@/components/layouts/DefaultLayout.vue'
+import HomeView from '@/views/HomeView.vue'
+import TaskFormView from '@/views/TaskFormView.vue'
 
 export const routes = [
   { path: `/login`, component: LoginView },
   { path: `/auth/callback`, component: AuthCallback },
   {
     path: `/`,
-    component: DefaultLayout, 
+    component: DefaultLayout,
     meta: { requiresAuth: true },
     children: [
-      { path: ``, component: HomeView, name: `Home` }, 
+      {
+        path: ``,
+        name: `Home`,
+        component: HomeView
+      },
+      { path: `projects`, component: ProjectsView, name: `Projects` },
       {
         path: `project/:id/board`,
         name: `ProjectBoard`,
         component: ProjectBoardView
+      },
+      {
+        path: `project/:id/task/new`,
+        name: `CreateTask`,
+        component: TaskFormView
+      },
+      {
+        path: `project/:id/task/:taskId/edit`,
+        name: `EditTask`,
+        component: TaskFormView
       }
     ]
   },

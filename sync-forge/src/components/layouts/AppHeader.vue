@@ -9,12 +9,28 @@
           CollabFlow
         </router-link>
       </div>
+
+      <div class="md:flex items-center space-x-8">
+        <router-link
+          to="/"
+          class="text-gray-700 hover:text-gray-900 font-medium"
+        >
+          Home
+        </router-link>
+        <router-link
+          to="/projects"
+          class="text-gray-700 hover:text-gray-900 font-medium"
+        >
+          Projects
+        </router-link>
+      </div>
+
       <div
         v-if="authStore.isAuthenticated"
+        class="flex items-center gap-2"
       >
         <span class="text-sm text-gray-500">Europe/Zagreb</span>
         <BaseButton
-          class="ml-4"
           variant="danger"
           :data-test-id="LayoutTestId.BtnLogout"
           @click="handleLogout"

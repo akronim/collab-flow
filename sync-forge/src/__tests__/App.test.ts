@@ -2,7 +2,7 @@ import { describe, it, expect, beforeEach, vi } from 'vitest'
 import { mount, flushPromises } from '@vue/test-utils'
 import { createTestingPinia } from '@pinia/testing'
 import App from '@/App.vue'
-import HomeView from '@/views/HomeView.vue'
+import ProjectsView from '@/views/ProjectsView.vue'
 import LoginView from '@/views/LoginView.vue'
 import { useAuthStore } from '@/stores'
 import router from '@/router'
@@ -36,16 +36,16 @@ describe(`App.vue`, () => {
 
     expect(router.currentRoute.value.path).toBe(`/login`)
     expect(wrapper.findComponent(LoginView).exists()).toBe(true)
-    expect(wrapper.findComponent(HomeView).exists()).toBe(false)
+    expect(wrapper.findComponent(ProjectsView).exists()).toBe(false)
   })
 
-  it(`shows HomeView when authenticated`, async () => {
+  it(`shows ProjectsView when authenticated`, async () => {
     const auth = useAuthStore()
     auth.$patch({
       user: { id: `1`, email: `john@example.com`, name: `John` }
     })
 
-    await router.push(`/`)
+    await router.push(`/projects`)
     await flushPromises()
 
     const wrapper = mount(App, {
@@ -56,7 +56,7 @@ describe(`App.vue`, () => {
 
     await flushPromises()
 
-    expect(wrapper.findComponent(HomeView).exists()).toBe(true)
+    expect(wrapper.findComponent(ProjectsView).exists()).toBe(true)
     expect(wrapper.findComponent(LoginView).exists()).toBe(false)
     expect(wrapper.text()).toContain(`Projects`)
   })
@@ -83,7 +83,7 @@ describe(`App.vue`, () => {
         return Promise.resolve(`new-access-token`)
       })
 
-    await router.push(`/`)
+    await router.push(`/projects`)
     await flushPromises()
 
     const wrapper = mount(App, {
@@ -95,7 +95,7 @@ describe(`App.vue`, () => {
     await flushPromises()
 
     expect(refreshSpy).toHaveBeenCalled()
-    expect(router.currentRoute.value.path).toBe(`/`)
-    expect(wrapper.findComponent(HomeView).exists()).toBe(true)
+    expect(router.currentRoute.value.path).toBe(`/projects`)
+    expect(wrapper.findComponent(ProjectsView).exists()).toBe(true)
   })
 })
