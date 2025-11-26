@@ -24,17 +24,17 @@ export const routes = [
       },
       { path: `projects`, name: RouteNames.PROJECTS, component: ProjectsView },
       {
-        path: `project/:id/board`,
+        path: `project/:projectId/board`,
         name: RouteNames.PROJECT_BOARD,
         component: ProjectBoardView
       },
       {
-        path: `project/:id/task/new`,
+        path: `project/:projectId/task/new`,
         name: RouteNames.CREATE_TASK,
         component: TaskFormView
       },
       {
-        path: `project/:id/task/:taskId/edit`,
+        path: `project/:projectId/task/:taskId/edit`,
         name: RouteNames.EDIT_TASK,
         component: TaskFormView
       }

@@ -9,6 +9,14 @@
       </p>
     </div>
 
+    <!-- Error Alert -->
+    <div
+      v-if="error"
+      class="mb-4 bg-red-50 border border-red-200 text-red-700 px-4 py-3 rounded"
+    >
+      {{ error }}
+    </div>
+
     <div
       v-if="isLoading"
       class="bg-white rounded-lg shadow p-6 text-center"
@@ -19,7 +27,7 @@
     <form
       v-else
       class="bg-white rounded-lg shadow p-6"
-      @submit.prevent="handleSubmit"
+      @submit.prevent="saveTask"
     >
       <div class="mb-4">
         <label class="block text-sm font-medium text-gray-700 mb-1">
@@ -51,14 +59,14 @@
         <BaseButton
           variant="outline"
           type="button"
-          @click="handleCancel"
+          @click="cancel"
         >
           Cancel
         </BaseButton>
         <BaseButton
           type="submit"
           variant="primary"
-          :disabled="isLoading"
+          :disabled="isLoading || !titleExists"
         >
           {{ isEditMode ? 'Update' : 'Create' }} Task
         </BaseButton>
@@ -68,78 +76,44 @@
 </template>
 
 <script setup lang="ts">
-import { defineAsyncComponent, ref, computed, onMounted } from 'vue'
-import { useRouter, useRoute } from 'vue-router'
-import { useTaskStore } from '@/stores'
+import { defineAsyncComponent, computed, onMounted } from 'vue'
+import { useRoute } from 'vue-router'
+import { useTaskForm } from '@/composables/useTaskForm'
 import type { TaskStatus } from '@/types/task'
 import BaseButton from '@/components/ui/base/BaseButton.vue'
-import Logger from '@/utils/logger'
-import { RouteNames } from '@/constants/routes'
 
 const JoditEditor = defineAsyncComponent(
   () => import(`@/components/shared/editors/jodit/JoditEditor.vue`)
 )
 
-const router = useRouter()
 const route = useRoute()
-const taskStore = useTaskStore()
 
-const projectId = computed(() => route.params.id as string)
+const projectId = computed(() => route.params.projectId as string)
 const taskId = computed(() => route.params.taskId as string | undefined)
 const status = computed(() => route.query.status as TaskStatus | undefined)
-const isEditMode = computed(() => !!taskId.value)
 
-const form = ref({
-  title: ``,
-  description: ``
+const {
+  form,
+  isLoading,
+  error,
+  isEditMode,
+  titleExists,
+  loadTask,
+  saveTask,
+  cancel
+} = useTaskForm({
+  projectId,
+  taskId,
+  status,
+  onSuccess: () => {
+    // TODO show a toast notification here
+  },
+  onError: (_err) => {
+    // TODO show an error toast here
+  }
 })
-const isLoading = ref(false)
 
 onMounted(async () => {
-  if (isEditMode.value && taskId.value) {
-    isLoading.value = true
-    const task = taskStore.getTaskById(projectId.value, taskId.value)
-    if (task) {
-      form.value.title = task.title
-      form.value.description = task.description ?? ``
-    } else {
-      Logger.error(`Task not found: ${taskId.value}`)
-      await router.push({ name: RouteNames.PROJECT_BOARD, params: { id: projectId.value } })
-    }
-    isLoading.value = false
-  }
+  await loadTask()
 })
-
-const handleSubmit = async (): Promise<void> => {
-  if (!form.value.title.trim()) {
-    return
-  }
-
-  if (!projectId.value) {
-    Logger.error(`No current project set`)
-    return
-  }
-
-  if (isEditMode.value && taskId.value) {
-    taskStore.updateTask(taskId.value, {
-      title: form.value.title.trim(),
-      description: form.value.description.trim()
-    })
-  } else {
-    const targetStatus = status.value ?? `todo`
-    taskStore.addTask({
-      projectId: projectId.value,
-      title: form.value.title.trim(),
-      description: form.value.description.trim(),
-      status: targetStatus,
-      order: taskStore.tasksByStatus(projectId.value, targetStatus).length
-    })
-  }
-
-  await router.push({ name: RouteNames.PROJECT_BOARD, params: { id: projectId.value } })
-}
-
-const handleCancel = async (): Promise<void> => {
-  await router.push({ name: RouteNames.PROJECT_BOARD, params: { id: projectId.value } })
-}
 </script>

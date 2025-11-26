@@ -20,7 +20,7 @@
 <script setup lang="ts">
 import { computed } from 'vue'
 
-type ButtonVariant = `primary` | `secondary` | `danger` | `ghost` | `outline`
+type ButtonVariant = `primary` | `secondary` | `danger` | `ghost` | `outline` | `outline-blue`
 type ButtonSize = `sm` | `md` | `lg`
 
 interface Props {
@@ -53,7 +53,8 @@ const variantClasses: Record<ButtonVariant, string> = {
   secondary: `bg-gray-100 text-gray-900 hover:bg-gray-200 active:bg-gray-300 border border-gray-300`,
   danger: `bg-red-600 text-white hover:bg-red-700 active:bg-red-800 border border-red-700`,
   ghost: `bg-transparent text-gray-900 hover:bg-gray-100 active:bg-gray-200 border border-transparent`,
-  outline: `bg-white text-gray-900 border border-gray-300 hover:bg-gray-50`
+  outline: `bg-white text-gray-900 border border-gray-300 hover:bg-gray-50`,
+  'outline-blue': `bg-white text-blue-600 border border-gray-300 hover:bg-gray-50 hover:border-gray-400`
 }
 
 const sizeClasses: Record<ButtonSize, string> = {

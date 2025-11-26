@@ -52,7 +52,7 @@ const route = useRoute()
 const router = useRouter()
 const taskStore = useTaskStore()
 const { tasksByStatus } = taskStore
-const currentProjectId = computed(() => route.params.id as string)
+const currentProjectId = computed(() => route.params.projectId as string)
 
 const columns = [
   { status: `backlog` as const, title: `Backlog` },
@@ -69,7 +69,7 @@ const navigateToCreateTask = async (status: TaskStatus): Promise<void> => {
 
   await router.push({
     name: RouteNames.CREATE_TASK,
-    params: { id: currentProjectId.value },
+    params: { projectId: currentProjectId.value },
     query: { status }
   })
 }
@@ -83,7 +83,7 @@ const navigateToEditTask = async (taskId: string): Promise<void> => {
   await router.push({
     name: RouteNames.EDIT_TASK,
     params: {
-      id: currentProjectId.value,
+      projectId: currentProjectId.value,
       taskId: taskId
     }
   })

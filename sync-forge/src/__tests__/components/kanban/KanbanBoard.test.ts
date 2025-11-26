@@ -9,7 +9,7 @@ import { RouteNames } from '@/constants/routes'
 
 const mockRoute = {
   params: {
-    id: `proj-1`
+    projectId: `proj-1`
   }
 } 
 
@@ -37,7 +37,7 @@ describe(`KanbanBoard.vue`, () => {
   beforeEach(() => {
     vi.clearAllMocks()
     vi.mocked(mockRouter.push).mockClear()
-    mockRoute.params.id = `proj-1`
+    mockRoute.params.projectId = `proj-1`
   })
 
   const mountWithPinia = (tasksState: {
@@ -97,7 +97,7 @@ describe(`KanbanBoard.vue`, () => {
   })
 
   it(`displays empty columns when projectId is null`, () => {
-    mockRoute.params.id = ``
+    mockRoute.params.projectId = ``
 
     const wrapper = mountWithPinia({
       tasks: [
@@ -170,7 +170,7 @@ describe(`KanbanBoard.vue`, () => {
 
     expect(mockRouter.push).toHaveBeenCalledWith({
       name: RouteNames.CREATE_TASK,
-      params: { id: `proj-1` },
+      params: { projectId: `proj-1` },
       query: { status: `todo` }
     })
   })
@@ -190,7 +190,7 @@ describe(`KanbanBoard.vue`, () => {
     expect(mockRouter.push).toHaveBeenCalledWith({
       name: RouteNames.EDIT_TASK,
       params: {
-        id: mockRoute.params.id,
+        projectId: mockRoute.params.projectId,
         taskId: testTaskId
       }
     })

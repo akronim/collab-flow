@@ -23,23 +23,17 @@
           {{ taskStore.taskCountByProjectId(project.id) }} tasks
         </p>
 
-        <div class="absolute inset-0 rounded-lg ring-2 ring-transparent group-hover:ring-blue-400 transition">
-          <router-link
-            :to="`/project/${project.id}/board`"
-            class="absolute inset-0"
-            :aria-label="`Open board for ${project.name}`"
-          />
-        </div>
-
-        <div class="mt-4 flex items-center justify-between">
-          <span class="text-xs text-gray-400">Click card to open</span>
-          <router-link
-            :to="`/project/${project.id}/board`"
-            class="inline-flex items-center gap-1.5 text-sm font-medium text-blue-600 hover:text-blue-700 transition"
+        <div class="mt-4 flex items-center justify-end">
+          <BaseButton
+            variant="outline-blue"
+            size="sm"
+            title="Open Board"
+            aria-label="Open Board"
+            @click="() => openBoard(project.id)"
           >
             Open Board
             <LiExternalLink class="w-4 h-4" />
-          </router-link>
+          </BaseButton>
         </div>
       </div>
     </div>
@@ -47,12 +41,25 @@
 </template>
 
 <script setup lang="ts">
+import BaseButton from '@/components/ui/base/BaseButton.vue'
+import { RouteNames } from '@/constants/routes'
 import { useProjectStore, useTaskStore } from '@/stores'
 import { ExternalLink as LiExternalLink } from 'lucide-vue-next'
 import { storeToRefs } from 'pinia'
+import { useRouter } from 'vue-router'
 
 const { projects } = storeToRefs(useProjectStore())
 const taskStore = useTaskStore()
+const router = useRouter()
+
+const openBoard = async (projectId: string): Promise<void> => {
+  await router.push({
+    name: RouteNames.PROJECT_BOARD,
+    params: {
+      projectId: projectId 
+    }
+  })
+}
 </script>
 
 <style scoped>

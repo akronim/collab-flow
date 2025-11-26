@@ -3,7 +3,7 @@ import { mount, flushPromises, type VueWrapper } from '@vue/test-utils'
 import ProjectBoardView from '@/views/ProjectBoardView.vue'
 import { createTestingPinia } from '@pinia/testing'
 import { createRouter, createMemoryHistory } from 'vue-router'
-import type { Project } from '@/stores/projects'
+import type { Project } from '@/types/project'
 import { RouteNames } from '@/constants/routes'
 
 vi.mock(`@/components/kanban/KanbanBoard.vue`, () => ({
@@ -14,7 +14,7 @@ vi.mock(`@/components/kanban/KanbanBoard.vue`, () => ({
 
 const routes = [
   { path: `/`, name: RouteNames.HOME, component: { template: `<div>Home</div>` } },
-  { path: `/projects/:id`, name: RouteNames.PROJECT_BOARD, component: ProjectBoardView }
+  { path: `/projects/:projectId`, name: RouteNames.PROJECT_BOARD, component: ProjectBoardView }
 ]
 
 describe(`ProjectBoardView.vue`, () => {
@@ -34,7 +34,8 @@ describe(`ProjectBoardView.vue`, () => {
           router,
           createTestingPinia({
             initialState,
-            createSpy: vi.fn
+            createSpy: vi.fn,
+            stubActions: false
           })
         ]
       }

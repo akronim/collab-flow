@@ -1,4 +1,4 @@
-import type { Project } from "@/stores"
+import type { Project } from "@/types/project"
 import type { Task } from "@/types/task"
 
 export const mockTimeZone = `Europe/Zagreb`

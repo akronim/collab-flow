@@ -11,12 +11,17 @@
           </p>
         </div>
         <div class="flex items-center gap-4">
-          <BaseButton @click="router.push('/projects')">
+          <BaseButton @click="router.push({ name: RouteNames.PROJECTS })">
             Back to Projects
           </BaseButton>
         </div>
       </div>
     </header>
+
+    <!-- TODO -->
+    <!-- <div v-if="loading" class="flex justify-center items-center py-20">
+      <p>Loading project...</p>
+    </div> -->
 
     <div
       v-if="!isValidProject"
@@ -43,28 +48,23 @@
 import { computed } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import KanbanBoard from '@/components/kanban/KanbanBoard.vue'
-import { useProjectStore, type Project } from '@/stores'
-import { storeToRefs } from 'pinia'
+import { useProjectStore } from '@/stores'
 import BaseButton from '@/components/ui/base/BaseButton.vue'
+import { RouteNames } from '@/constants/routes'
+import type { Project } from '@/types/project'
 
 const route = useRoute()
 const router = useRouter()
 const projectStore = useProjectStore()
-const { projects } = storeToRefs(projectStore)
 
-const currentProjectId = computed(() => route.params.id as string)
-
-const isValidProject = computed(() => {
-  if (!currentProjectId.value) {
-    return false
-  }
-  return projects.value.some(p => p.id === currentProjectId.value)
-})
+const currentProjectId = computed(() => route.params.projectId as string)
 
 const currentProject = computed((): Project | undefined => {
-  if (!isValidProject.value) {
+  if (!currentProjectId.value) {
     return undefined
   }
-  return projects.value.find(p => p.id === currentProjectId.value)
+  return projectStore.fetchProjectById(currentProjectId.value)
 })
+
+const isValidProject = computed(() => !!currentProject.value)
 </script>

@@ -48,6 +48,7 @@ import { useAuthStore } from '@/stores'
 import Logger from '@/utils/logger'
 import BaseButton from '@/components/ui/base/BaseButton.vue'
 import { LayoutTestId } from '@/constants/htmlCodes'
+import { RouteNames } from '@/constants/routes'
 
 const router = useRouter()
 const authStore = useAuthStore()
@@ -58,7 +59,7 @@ const handleLogout = async (): Promise<void> => {
   } catch (error) {
     Logger.error(`Logout failed:`, error)
   } finally {
-    await router.push(`/login`)
+    await router.push({ name: RouteNames.LOGIN })
   }
 }
 </script>

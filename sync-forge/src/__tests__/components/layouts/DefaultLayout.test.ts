@@ -4,6 +4,7 @@ import { createRouter, createMemoryHistory, RouterLink, type Router } from 'vue-
 import { createTestingPinia } from '@pinia/testing'
 import DefaultLayout from '@/components/layouts/DefaultLayout.vue'
 import { useAuthStore } from '@/stores'
+import { RouteNames } from '@/constants/routes'
 
 const MockChildComponent = { template: `<div data-testid="child-content">Child Content</div>` }
 
@@ -18,7 +19,7 @@ const createTestRouter = (): Router => {
           { path: ``, component: MockChildComponent }
         ]
       },
-      { path: `/login`, component: { template: `<div>Login</div>` } },
+      { path: `/login`, name: RouteNames.LOGIN, component: { template: `<div>Login</div>` } },
       { path: `/:pathMatch(.*)*`, component: { template: `<div>404</div>` } }
     ]
   })
@@ -113,7 +114,7 @@ describe(`DefaultLayout.vue`, () => {
       await wrapper.find(`button`).trigger(`click`)
       await flushPromises()
 
-      expect(pushSpy).toHaveBeenCalledWith(`/login`)
+      expect(pushSpy).toHaveBeenCalledWith({name: RouteNames.LOGIN})
     })
 
     it(`still navigates to /login even if logout fails`, async () => {
@@ -124,7 +125,7 @@ describe(`DefaultLayout.vue`, () => {
       await flushPromises()
 
       expect(authStore.logout).toHaveBeenCalled()
-      expect(pushSpy).toHaveBeenCalledWith(`/login`) 
+      expect(pushSpy).toHaveBeenCalledWith({name: RouteNames.LOGIN})
     })
   })
 })
