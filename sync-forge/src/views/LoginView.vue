@@ -24,17 +24,18 @@
 <script setup lang="ts">
 import BaseButton from '@/components/ui/base/BaseButton.vue'
 import { appRoutes, googleOAuthConfig } from '@/constants'
-import { CODE_VERIFIER_KEY } from '@/constants/localStorageKeys'
 import Logger from '@/utils/logger'
 import { generateCodeChallenge, generateCodeVerifier } from '@/utils/pkce'
+import { useAuthStore } from '@/stores'
 
 const clientId = import.meta.env.VITE_GOOGLE_CLIENT_ID
 const redirectUri = `${window.location.origin}${appRoutes.AUTH_CALLBACK}`
+const authStore = useAuthStore()
 
 const login = async (): Promise<void> => {
   try {
     const codeVerifier = generateCodeVerifier()
-    localStorage.setItem(CODE_VERIFIER_KEY, codeVerifier)
+    authStore.setPkceCodeVerifier(codeVerifier)
 
     const codeChallenge = await generateCodeChallenge(codeVerifier)
 

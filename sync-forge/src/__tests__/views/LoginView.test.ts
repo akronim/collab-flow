@@ -1,17 +1,26 @@
 import { googleOAuthConfig, appRoutes } from '@/constants'
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest'
-import { mount } from '@vue/test-utils'
+import { mount, type VueWrapper } from '@vue/test-utils'
 import LoginView from '@/views/LoginView.vue'
 import * as pkce from '@/utils/pkce'
 import { CODE_VERIFIER_KEY } from '@/constants/localStorageKeys'
+import { createTestingPinia } from '@pinia/testing'
 
-vi.mock(import(`@/utils/pkce`), () => ({
+vi.mock(`@/utils/pkce`, () => ({
   generateCodeVerifier: vi.fn(() => `mock-verifier-123`),
   generateCodeChallenge: vi.fn(() => Promise.resolve(`mock-challenge-456`))
 }))
 
 describe(`LoginView`, () => {
   const origin = `http://localhost:5173`
+
+  const mountComponent = (): VueWrapper<InstanceType<typeof LoginView>> => {
+    return mount(LoginView, {
+      global: {
+        plugins: [createTestingPinia({ createSpy: vi.fn, stubActions: false })]
+      }
+    })
+  }
 
   beforeEach(() => {
     vi.stubEnv(`VITE_GOOGLE_CLIENT_ID`, `test-client-id`)
@@ -32,13 +41,13 @@ describe(`LoginView`, () => {
   })
 
   it(`renders login button`, () => {
-    const wrapper = mount(LoginView)
+    const wrapper = mountComponent()
 
     expect(wrapper.text()).toContain(`Sign in with Google`)
   })
 
   it(`generates correct PKCE OAuth URL and calls assign`, async () => {
-    const wrapper = mount(LoginView)
+    const wrapper = mountComponent()
     await wrapper.find(`button`).trigger(`click`)
 
     const assignSpy = vi.mocked(window.location.assign)
@@ -67,7 +76,7 @@ describe(`LoginView`, () => {
   })
 
   it(`stores code verifier in localStorage and calls PKCE functions`, async () => {
-    const wrapper = mount(LoginView)
+    const wrapper = mountComponent()
     await wrapper.find(`button`).trigger(`click`)
 
     expect(localStorage.getItem(CODE_VERIFIER_KEY)).toBe(`mock-verifier-123`)

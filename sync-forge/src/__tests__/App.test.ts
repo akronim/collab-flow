@@ -15,7 +15,7 @@ import {
 
 describe(`App.vue`, () => {
   beforeEach(async () => {
-    createTestingPinia({ createSpy: vi.fn })
+    createTestingPinia({ createSpy: vi.fn, stubActions: false })
     localStorage.clear()
     vi.clearAllMocks()
     await router.push(`/login`)

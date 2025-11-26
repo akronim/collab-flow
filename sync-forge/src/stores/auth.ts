@@ -4,7 +4,8 @@ import {
   IS_GOOGLE_LOGIN_KEY,
   REFRESH_TOKEN_KEY,
   TOKEN_EXPIRES_AT_KEY,
-  USER_KEY
+  USER_KEY,
+  CODE_VERIFIER_KEY
 } from '@/constants/localStorageKeys'
 import type { User } from '@/types/auth'
 import api, { type AxConfig } from '@/utils/api'
@@ -47,6 +48,10 @@ export const useAuthStore = defineStore(`auth`, {
   },
 
   actions: {
+    hasRefreshToken(): boolean {
+      return !!localStorage.getItem(REFRESH_TOKEN_KEY)
+    },
+
     init() {
       api.setRefreshTokenFn(this.refreshAccessToken.bind(this))
 
@@ -237,6 +242,18 @@ export const useAuthStore = defineStore(`auth`, {
       }
 
       return Date.now() < Number(expiresAt) - 60_000
+    },
+
+    setPkceCodeVerifier(verifier: string): void {
+      localStorage.setItem(CODE_VERIFIER_KEY, verifier)
+    },
+
+    getPkceCodeVerifier(): string | null {
+      return localStorage.getItem(CODE_VERIFIER_KEY)
+    },
+
+    clearPkceCodeVerifier(): void {
+      localStorage.removeItem(CODE_VERIFIER_KEY)
     }
   }
 })
