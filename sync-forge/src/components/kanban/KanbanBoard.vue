@@ -46,6 +46,7 @@ import type { TaskStatus } from '@/types/task'
 import Logger from '@/utils/logger'
 import { Plus as LiPlus } from 'lucide-vue-next'
 import BaseButton from '@/components/ui/base/BaseButton.vue'
+import { RouteNames } from '@/constants/routes'
 
 const route = useRoute()
 const router = useRouter()
@@ -67,7 +68,7 @@ const navigateToCreateTask = async (status: TaskStatus): Promise<void> => {
   }
 
   await router.push({
-    name: `CreateTask`,
+    name: RouteNames.CREATE_TASK,
     params: { id: currentProjectId.value },
     query: { status }
   })
@@ -80,10 +81,10 @@ const navigateToEditTask = async (taskId: string): Promise<void> => {
   }
 
   await router.push({
-    name: `EditTask`,
-    params: { 
+    name: RouteNames.EDIT_TASK,
+    params: {
       id: currentProjectId.value,
-      taskId: taskId 
+      taskId: taskId
     }
   })
 }

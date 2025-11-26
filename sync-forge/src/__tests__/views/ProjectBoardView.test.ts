@@ -4,6 +4,7 @@ import ProjectBoardView from '@/views/ProjectBoardView.vue'
 import { createTestingPinia } from '@pinia/testing'
 import { createRouter, createMemoryHistory } from 'vue-router'
 import type { Project } from '@/stores/projects'
+import { RouteNames } from '@/constants/routes'
 
 vi.mock(`@/components/kanban/KanbanBoard.vue`, () => ({
   default: {
@@ -12,8 +13,8 @@ vi.mock(`@/components/kanban/KanbanBoard.vue`, () => ({
 }))
 
 const routes = [
-  { path: `/`, name: `home`, component: { template: `<div>Home</div>` } },
-  { path: `/projects/:id`, name: `project-board`, component: ProjectBoardView }
+  { path: `/`, name: RouteNames.HOME, component: { template: `<div>Home</div>` } },
+  { path: `/projects/:id`, name: RouteNames.PROJECT_BOARD, component: ProjectBoardView }
 ]
 
 describe(`ProjectBoardView.vue`, () => {

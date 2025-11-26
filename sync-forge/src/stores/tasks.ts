@@ -1,102 +1,113 @@
 import { defineStore } from 'pinia'
-import { ref, computed } from 'vue'
 import type { Task } from '@/types/task'
 import { v4 as uuidv4 } from 'uuid'
 
-// eslint-disable-next-line max-lines-per-function
-export const useTaskStore = defineStore(`tasks`, () => {
-  const tasks = ref<Task[]>([
-    {
-      id: `1`,
-      projectId: `1`,
-      title: `Design homepage`,
-      description: `Create mockups in Figma`,
-      status: `todo`,
-      order: 0,
-      createdAt: new Date().toISOString(),
-      updatedAt: new Date().toISOString()
-    },
-    {
-      id: `2`,
-      projectId: `1`,
-      title: `Setup Vue project`,
-      description: `With Vite + Tailwind + Pinia`,
-      status: `inprogress`,
-      order: 0,
-      createdAt: new Date().toISOString(),
-      updatedAt: new Date().toISOString()
-    },
-    {
-      id: `3`,
-      projectId: `1`,
-      title: `User authentication`,
-      description: `Implement login flow`,
-      status: `done`,
-      order: 0,
-      createdAt: new Date().toISOString(),
-      updatedAt: new Date().toISOString()
-    }
-  ])
+interface TaskState {
+  tasks: Task[]
+}
 
-  const tasksForCurrentProject = computed(() => {
-    return (projectId: string): Task[] => {
-      if (!projectId) {
-        return []
+const mockTasks: Task[] = [
+  {
+    id: `1`,
+    projectId: `1`,
+    title: `Design homepage`,
+    description: `Create mockups in Figma`,
+    status: `todo`,
+    order: 0,
+    createdAt: new Date().toISOString(),
+    updatedAt: new Date().toISOString()
+  },
+  {
+    id: `2`,
+    projectId: `1`,
+    title: `Setup Vue project`,
+    description: `With Vite + Tailwind + Pinia`,
+    status: `inprogress`,
+    order: 0,
+    createdAt: new Date().toISOString(),
+    updatedAt: new Date().toISOString()
+  },
+  {
+    id: `3`,
+    projectId: `1`,
+    title: `User authentication`,
+    description: `Implement login flow`,
+    status: `done`,
+    order: 0,
+    createdAt: new Date().toISOString(),
+    updatedAt: new Date().toISOString()
+  }
+]
+
+export const useTaskStore = defineStore(`tasks`, {
+  state: (): TaskState => ({
+    tasks: mockTasks
+  }),
+
+  getters: {
+    tasksForCurrentProject: (state) => {
+      return (projectId: string): Task[] => {
+        if (!projectId) {
+          return []
+        }
+        return state.tasks
+          .filter((t) => t.projectId === projectId)
+          .sort((a, b) => a.order - b.order)
       }
-      return tasks.value
-        .filter(t => t.projectId === projectId)
-        .sort((a, b) => a.order - b.order)
-    }
-  })
-
-  const tasksByStatus = computed(() => {
-    return (projectId: string, status: Task[`status`]): Task[] => {
-      if (!projectId) {
-        return []
+    },
+    tasksByStatus: (state) => {
+      return (projectId: string, status: Task[`status`]): Task[] => {
+        if (!projectId) {
+          return []
+        }
+        return state.tasks
+          .filter((t) => t.projectId === projectId && t.status === status)
+          .sort((a, b) => a.order - b.order)
       }
-      return tasks.value
-        .filter(t => t.projectId === projectId && t.status === status)
-        .sort((a, b) => a.order - b.order)
+    },
+    tasksByProjectId: (state) => {
+      return (projectId: string): Task[] => {
+        if (!projectId) {
+          return []
+        }
+        return state.tasks.filter((t) => t.projectId === projectId)
+      }
+    },
+    taskCountByProjectId(): (projectId: string) => number {
+      return (projectId: string) => {
+        return this.tasksByProjectId(projectId).length
+      }
     }
-  })
+  },
 
-  const getTaskById = (projectId: string, taskId: string): Task | undefined => {
-    return tasks.value.find(t => t.projectId === projectId && t.id === taskId)
-  }
+  actions: {
+    getTaskById(projectId: string, taskId: string): Task | undefined {
+      return this.tasks.find((t) => t.projectId === projectId && t.id === taskId)
+    },
 
-  const addTask = (task: Omit<Task, `id` | `createdAt` | `updatedAt`>): void => {
-    const newTask: Task = {
-      ...task,
-      id: uuidv4(),
-      createdAt: new Date().toISOString(),
-      updatedAt: new Date().toISOString()
+    addTask(task: Omit<Task, `id` | `createdAt` | `updatedAt`>): void {
+      const newTask: Task = {
+        ...task,
+        id: uuidv4(),
+        createdAt: new Date().toISOString(),
+        updatedAt: new Date().toISOString()
+      }
+      this.tasks.push(newTask)
+    },
+
+    updateTask(id: string, updates: Partial<Task>): void {
+      const task = this.tasks.find((t) => t.id === id)
+      if (task) {
+        Object.assign(task, { ...updates, updatedAt: new Date().toISOString() })
+      }
+    },
+
+    deleteTask(id: string): void {
+      this.tasks = this.tasks.filter((t) => t.id !== id)
+    },
+
+    moveTask(taskId: string, newStatus: Task[`status`], newOrder: number): void {
+      this.updateTask(taskId, { status: newStatus, order: newOrder })
     }
-    tasks.value.push(newTask)
-  }
-
-  const updateTask = (id: string, updates: Partial<Task>): void => {
-    const task = tasks.value.find(t => t.id === id)
-    if (task) {
-      Object.assign(task, { ...updates, updatedAt: new Date().toISOString() })
-    }
-  }
-
-  const deleteTask = (id: string): void => {
-    tasks.value = tasks.value.filter(t => t.id !== id)
-  }
-
-  const moveTask = (taskId: string, newStatus: Task[`status`], newOrder: number): void => {
-    updateTask(taskId, { status: newStatus, order: newOrder })
-  }
-
-  return {
-    tasks,
-    tasksForCurrentProject,
-    tasksByStatus,
-    addTask,
-    updateTask,
-    deleteTask,
-    moveTask,
-    getTaskById
   }
 })

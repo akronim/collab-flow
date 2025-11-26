@@ -5,6 +5,7 @@ import { createTestingPinia } from '@pinia/testing'
 import type { Task } from '@/types/task'
 import KanbanColumn from '@/components/kanban/KanbanColumn.vue'
 import { useTaskStore } from '@/stores'
+import { RouteNames } from '@/constants/routes'
 
 const mockRoute = {
   params: {
@@ -168,7 +169,7 @@ describe(`KanbanBoard.vue`, () => {
     todoColumn?.vm.$emit(`add-task`, `todo`)
 
     expect(mockRouter.push).toHaveBeenCalledWith({
-      name: `CreateTask`,
+      name: RouteNames.CREATE_TASK,
       params: { id: `proj-1` },
       query: { status: `todo` }
     })
@@ -187,7 +188,7 @@ describe(`KanbanBoard.vue`, () => {
     todoColumn?.vm.$emit(`edit-task`, testTaskId)
 
     expect(mockRouter.push).toHaveBeenCalledWith({
-      name: `EditTask`,
+      name: RouteNames.EDIT_TASK,
       params: {
         id: mockRoute.params.id,
         taskId: testTaskId

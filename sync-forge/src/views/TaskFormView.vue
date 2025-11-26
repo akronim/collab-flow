@@ -9,7 +9,15 @@
       </p>
     </div>
 
+    <div
+      v-if="isLoading"
+      class="bg-white rounded-lg shadow p-6 text-center"
+    >
+      <p>Loading task...</p>
+    </div>
+
     <form
+      v-else
       class="bg-white rounded-lg shadow p-6"
       @submit.prevent="handleSubmit"
     >
@@ -50,6 +58,7 @@
         <BaseButton
           type="submit"
           variant="primary"
+          :disabled="isLoading"
         >
           {{ isEditMode ? 'Update' : 'Create' }} Task
         </BaseButton>
@@ -65,6 +74,7 @@ import { useTaskStore } from '@/stores'
 import type { TaskStatus } from '@/types/task'
 import BaseButton from '@/components/ui/base/BaseButton.vue'
 import Logger from '@/utils/logger'
+import { RouteNames } from '@/constants/routes'
 
 const JoditEditor = defineAsyncComponent(
   () => import(`@/components/shared/editors/jodit/JoditEditor.vue`)
@@ -83,17 +93,20 @@ const form = ref({
   title: ``,
   description: ``
 })
+const isLoading = ref(false)
 
 onMounted(async () => {
   if (isEditMode.value && taskId.value) {
+    isLoading.value = true
     const task = taskStore.getTaskById(projectId.value, taskId.value)
     if (task) {
       form.value.title = task.title
       form.value.description = task.description ?? ``
     } else {
       Logger.error(`Task not found: ${taskId.value}`)
-      await router.push({ name: `ProjectBoard`, params: { id: projectId.value } })
+      await router.push({ name: RouteNames.PROJECT_BOARD, params: { id: projectId.value } })
     }
+    isLoading.value = false
   }
 })
 
@@ -123,10 +136,10 @@ const handleSubmit = async (): Promise<void> => {
     })
   }
 
-  await router.push({ name: `ProjectBoard`, params: { id: projectId.value } })
+  await router.push({ name: RouteNames.PROJECT_BOARD, params: { id: projectId.value } })
 }
 
 const handleCancel = async (): Promise<void> => {
-  await router.push({ name: `ProjectBoard`, params: { id: projectId.value } })
+  await router.push({ name: RouteNames.PROJECT_BOARD, params: { id: projectId.value } })
 }
 </script>

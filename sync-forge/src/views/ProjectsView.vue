@@ -20,7 +20,7 @@
           {{ project.description || 'No description' }}
         </p>
         <p class="mt-3 text-xs text-gray-500">
-          {{ tasks.filter((t) => t.projectId === project.id).length }} tasks
+          {{ taskStore.taskCountByProjectId(project.id) }} tasks
         </p>
 
         <div class="absolute inset-0 rounded-lg ring-2 ring-transparent group-hover:ring-blue-400 transition">
@@ -52,7 +52,7 @@ import { ExternalLink as LiExternalLink } from 'lucide-vue-next'
 import { storeToRefs } from 'pinia'
 
 const { projects } = storeToRefs(useProjectStore())
-const { tasks } = storeToRefs(useTaskStore())
+const taskStore = useTaskStore()
 </script>
 
 <style scoped>

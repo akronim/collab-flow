@@ -8,10 +8,11 @@ import { REFRESH_TOKEN_KEY } from '@/constants/localStorageKeys'
 import DefaultLayout from '@/components/layouts/DefaultLayout.vue'
 import HomeView from '@/views/HomeView.vue'
 import TaskFormView from '@/views/TaskFormView.vue'
+import { RouteNames } from '@/constants/routes'
 
 export const routes = [
-  { path: `/login`, component: LoginView },
-  { path: `/auth/callback`, component: AuthCallback },
+  { path: `/login`, name: RouteNames.LOGIN, component: LoginView },
+  { path: `/auth/callback`, name: RouteNames.AUTH_CALLBACK, component: AuthCallback },
   {
     path: `/`,
     component: DefaultLayout,
@@ -19,23 +20,23 @@ export const routes = [
     children: [
       {
         path: ``,
-        name: `Home`,
+        name: RouteNames.HOME,
         component: HomeView
       },
-      { path: `projects`, component: ProjectsView, name: `Projects` },
+      { path: `projects`, name: RouteNames.PROJECTS, component: ProjectsView },
       {
         path: `project/:id/board`,
-        name: `ProjectBoard`,
+        name: RouteNames.PROJECT_BOARD,
         component: ProjectBoardView
       },
       {
         path: `project/:id/task/new`,
-        name: `CreateTask`,
+        name: RouteNames.CREATE_TASK,
         component: TaskFormView
       },
       {
         path: `project/:id/task/:taskId/edit`,
-        name: `EditTask`,
+        name: RouteNames.EDIT_TASK,
         component: TaskFormView
       }
     ]
