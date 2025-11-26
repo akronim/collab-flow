@@ -11,6 +11,8 @@ import {
   CODE_VERIFIER_KEY,
   REFRESH_TOKEN_KEY
 } from '@/constants/localStorageKeys'
+import { ApiEndpoints } from '@/constants/apiEndpoints'
+import { AppRoutes } from '@/constants/routes'
 
 vi.mock(`@/utils/api`, () => ({
   default: {
@@ -32,7 +34,7 @@ describe(`AuthCallback`, () => {
       routes
     })
 
-    await router.push(`/auth/callback`)
+    await router.push(AppRoutes.AUTH_CALLBACK)
     await router.isReady()
   })
 
@@ -62,7 +64,7 @@ describe(`AuthCallback`, () => {
     await flushPromises()
 
     expect(api.post).toHaveBeenCalledWith(
-      `/api/auth/token`,
+      ApiEndpoints.AUTH_TOKEN,
       expect.objectContaining({
         code: `auth-code-123`,
         codeVerifier: `verifier-abc`
@@ -76,7 +78,7 @@ describe(`AuthCallback`, () => {
       isGoogleLogin: true
     })
 
-    expect(api.get).toHaveBeenCalledWith(`/api/auth/validate`)
+    expect(api.get).toHaveBeenCalledWith(ApiEndpoints.AUTH_VALIDATE)
 
     expect(setUserSpy).toHaveBeenCalledWith({
       user: userProfile

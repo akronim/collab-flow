@@ -7,3 +7,7 @@ export const RouteNames = {
   LOGIN: `Login`,
   AUTH_CALLBACK: `AuthCallback`
 }
+
+export const AppRoutes = {
+  AUTH_CALLBACK: `/auth/callback`
+}

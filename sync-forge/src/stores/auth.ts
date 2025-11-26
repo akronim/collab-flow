@@ -1,4 +1,4 @@
-import { googleOAuthConfig } from '@/constants'
+import { ApiEndpoints, googleOAuthEndpoints } from '@/constants/apiEndpoints'
 import {
   ACCESS_TOKEN_KEY,
   IS_GOOGLE_LOGIN_KEY,
@@ -138,7 +138,7 @@ export const useAuthStore = defineStore(`auth`, {
       }
 
       try {
-        await axios.post(googleOAuthConfig.REVOKE_URL, null, {
+        await axios.post(googleOAuthEndpoints.REVOKE_URL, null, {
           params: { token },
           timeout: 5000
         })
@@ -169,7 +169,7 @@ export const useAuthStore = defineStore(`auth`, {
 
         try {
           const { data } = await api.post(
-            `/api/auth/refresh`,
+            ApiEndpoints.AUTH_REFRESH,
             {
               refresh_token: refreshToken
             },

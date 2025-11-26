@@ -18,6 +18,7 @@ import type { GoogleProfile } from '@/types/auth'
 import axios from 'axios'
 import Logger from '@/utils/logger'
 import { RouteNames } from '@/constants/routes'
+import { ApiEndpoints } from '@/constants/apiEndpoints'
 
 const route = useRoute()
 const router = useRouter()
@@ -33,7 +34,7 @@ onMounted(async () => {
   }
 
   try {
-    const tokenResp = await api.post(`/api/auth/token`, { code, codeVerifier })
+    const tokenResp = await api.post(ApiEndpoints.AUTH_TOKEN, { code, codeVerifier })
 
     const { access_token, refresh_token, expires_in } = tokenResp.data
 
@@ -48,7 +49,7 @@ onMounted(async () => {
       isGoogleLogin: true
     })
 
-    const profileResp = await api.get<GoogleProfile>(`/api/auth/validate`)
+    const profileResp = await api.get<GoogleProfile>(ApiEndpoints.AUTH_VALIDATE)
 
     authStore.setUser({ user: profileResp.data })
 

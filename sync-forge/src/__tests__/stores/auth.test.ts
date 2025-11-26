@@ -1,4 +1,4 @@
-import { googleOAuthConfig } from '@/constants'
+import { ApiEndpoints, googleOAuthEndpoints } from '@/constants/apiEndpoints'
 import {
   ACCESS_TOKEN_KEY,
   IS_GOOGLE_LOGIN_KEY,
@@ -77,7 +77,7 @@ describe(`useAuthStore`, () => {
     await authStore.logout()
 
     expect(mockedAxiosPost).toHaveBeenCalledWith(
-      googleOAuthConfig.REVOKE_URL,
+      googleOAuthEndpoints.REVOKE_URL,
       null,
       expect.objectContaining({
         params: { token: `fake-token` },
@@ -192,7 +192,7 @@ describe(`useAuthStore`, () => {
       const results = await Promise.all(promises)
 
       expect(results).toStrictEqual([`new-fresh-access`, `new-fresh-access`, `new-fresh-access`])
-      expect(api.post).toHaveBeenCalledExactlyOnceWith(`/api/auth/refresh`,
+      expect(api.post).toHaveBeenCalledExactlyOnceWith(ApiEndpoints.AUTH_REFRESH,
         { refresh_token: `refresh-me` }, expect.anything())
     })
   })

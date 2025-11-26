@@ -1,4 +1,5 @@
-import { googleOAuthConfig, appRoutes } from '@/constants'
+import { AppRoutes } from '@/constants/routes'
+import { googleOAuthEndpoints } from '@/constants/apiEndpoints'
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest'
 import { mount, type VueWrapper } from '@vue/test-utils'
 import LoginView from '@/views/LoginView.vue'
@@ -56,7 +57,7 @@ describe(`LoginView`, () => {
 
     const url = assignSpy.mock.calls[0]?.[0] as string
     const parsed = new URL(url)
-    const authUrl = new URL(googleOAuthConfig.AUTH_URL)
+    const authUrl = new URL(googleOAuthEndpoints.AUTH_URL)
 
     expect(parsed).toMatchObject({
       origin: authUrl.origin,
@@ -65,7 +66,7 @@ describe(`LoginView`, () => {
 
     expect(Object.fromEntries(parsed.searchParams)).toStrictEqual({
       client_id: `test-client-id`,
-      redirect_uri: `${origin}${appRoutes.AUTH_CALLBACK}`,
+      redirect_uri: `${origin}${AppRoutes.AUTH_CALLBACK}`,
       response_type: `code`,
       scope: `openid email profile`,
       code_challenge_method: `S256`,

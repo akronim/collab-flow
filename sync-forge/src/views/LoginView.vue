@@ -11,7 +11,7 @@
         @click="login"
       >
         <img
-          :src="googleOAuthConfig.FAVICON_URL"
+          :src="googleOAuthEndpoints.FAVICON_URL"
           alt=""
           class="h-5 w-5"
         >
@@ -23,13 +23,14 @@
 
 <script setup lang="ts">
 import BaseButton from '@/components/ui/base/BaseButton.vue'
-import { appRoutes, googleOAuthConfig } from '@/constants'
+import { AppRoutes } from '@/constants/routes'
 import Logger from '@/utils/logger'
 import { generateCodeChallenge, generateCodeVerifier } from '@/utils/pkce'
 import { useAuthStore } from '@/stores'
+import { googleOAuthEndpoints } from '@/constants/apiEndpoints'
 
 const clientId = import.meta.env.VITE_GOOGLE_CLIENT_ID
-const redirectUri = `${window.location.origin}${appRoutes.AUTH_CALLBACK}`
+const redirectUri = `${window.location.origin}${AppRoutes.AUTH_CALLBACK}`
 const authStore = useAuthStore()
 
 const login = async (): Promise<void> => {
@@ -39,7 +40,7 @@ const login = async (): Promise<void> => {
 
     const codeChallenge = await generateCodeChallenge(codeVerifier)
 
-    const authUrl = new URL(googleOAuthConfig.AUTH_URL)
+    const authUrl = new URL(googleOAuthEndpoints.AUTH_URL)
     authUrl.searchParams.append(`client_id`, clientId)
     authUrl.searchParams.append(`redirect_uri`, redirectUri)
     authUrl.searchParams.append(`response_type`, `code`)
