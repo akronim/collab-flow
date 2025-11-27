@@ -1,45 +1,16 @@
-import { type User, type UserRole, type UserStatus } from '@/types/user'
-
-const users: User[] = [
-  {
-    id: `1`,
-    name: `John Doe`,
-    email: `john.doe@example.com`,
-    role: `admin` as UserRole,
-    title: `Project Manager`,
-    status: `active` as UserStatus,
-    createdAt: new Date().toISOString(),
-    updatedAt: new Date().toISOString()
-  },
-  {
-    id: `2`,
-    name: `Jane Smith`,
-    email: `jane.smith@example.com`,
-    role: `member` as UserRole,
-    title: `Software Engineer`,
-    status: `active` as UserStatus,
-    createdAt: new Date().toISOString(),
-    updatedAt: new Date().toISOString()
-  }
-]
+import { type User } from '@/types/user'
+import { userRepository } from '@/repositories/user.repository'
 
 export const userService = {
   getAllUsers: async (): Promise<User[]> => {
-    return users
+    return await userRepository.find()
   },
 
   getUserById: async (id: string): Promise<User | undefined> => {
-    return users.find(user => user.id === id)
+    return await userRepository.findById(id)
   },
 
   createUser: async (userData: Omit<User, `id` | `createdAt` | `updatedAt`>): Promise<User> => {
-    const newUser: User = {
-      id: String(users.length + 1),
-      ...userData,
-      createdAt: new Date().toISOString(),
-      updatedAt: new Date().toISOString()
-    }
-    users.push(newUser)
-    return newUser
+    return await userRepository.create(userData)
   }
 }

@@ -1,108 +1,58 @@
-import { describe, it, expect, beforeEach } from 'vitest'
+import { describe, it, expect, vi, beforeEach } from 'vitest'
 import { taskService } from '@/services/task.service'
+import { taskRepository } from '@/repositories/task.repository'
 import { type Task } from '@/types/task'
 
-// This is a hack to reset the in-memory data between tests.
-let tasks: Task[] = [
-  {
+// Mock the repository
+vi.mock(`@/repositories/task.repository`)
+
+describe(`Task Service`, () => {
+  const mockTask: Task = {
     id: `1`,
     projectId: `1`,
-    title: `Implement authentication`,
-    description: `Set up JWT authentication with refresh tokens.`,
-    status: `done`,
+    title: `Test Task`,
+    status: `todo`,
     order: 1,
     createdAt: new Date().toISOString(),
     updatedAt: new Date().toISOString()
-  },
-  {
-    id: `2`,
-    projectId: `1`,
-    title: `Design database schema`,
-    description: `Plan the schema for projects, tasks, and users.`,
-    status: `inprogress`,
-    order: 2,
-    createdAt: new Date().toISOString(),
-    updatedAt: new Date().toISOString()
   }
-]
 
-vi.mock(`@/services/task.service`, () => {
-  return {
-    taskService: {
-      getAllTasks: vi.fn(async () => tasks),
-      getTaskById: vi.fn(async (id: string) => tasks.find(task => task.id === id)),
-      createTask: vi.fn(async (taskData: Omit<Task, `id` | `createdAt` | `updatedAt`>) => {
-        const newTask: Task = {
-          id: String(tasks.length + 1),
-          ...taskData,
-          createdAt: new Date().toISOString(),
-          updatedAt: new Date().toISOString()
-        }
-        tasks.push(newTask)
-        return newTask
-      })
-    }
-  }
-})
-
-describe(`Task Service`, () => {
   beforeEach(() => {
-    // Reset tasks before each test
-    tasks = [
-      {
-        id: `1`,
-        projectId: `1`,
-        title: `Implement authentication`,
-        description: `Set up JWT authentication with refresh tokens.`,
-        status: `done`,
-        order: 1,
-        createdAt: new Date().toISOString(),
-        updatedAt: new Date().toISOString()
-      },
-      {
-        id: `2`,
-        projectId: `1`,
-        title: `Design database schema`,
-        description: `Plan the schema for projects, tasks, and users.`,
-        status: `inprogress`,
-        order: 2,
-        createdAt: new Date().toISOString(),
-        updatedAt: new Date().toISOString()
-      }
-    ]
     vi.clearAllMocks()
   })
 
-  it(`should return all tasks`, async () => {
-    const result = await taskService.getAllTasks()
-    expect(result).toBeInstanceOf(Array)
-    expect(result.length).toBe(2)
+  it(`should get all tasks from the repository`, async () => {
+    const mockTasks = [mockTask]
+    vi.mocked(taskRepository.find).mockResolvedValue(mockTasks)
+
+    const tasks = await taskService.getAllTasks()
+
+    expect(taskRepository.find).toHaveBeenCalledOnce()
+    expect(tasks).toEqual(mockTasks)
   })
 
-  it(`should return a task by id`, async () => {
+  it(`should get a task by id from the repository`, async () => {
+    vi.mocked(taskRepository.findById).mockResolvedValue(mockTask)
+
     const task = await taskService.getTaskById(`1`)
-    expect(task).toBeDefined()
-    expect(task?.id).toBe(`1`)
+
+    expect(taskRepository.findById).toHaveBeenCalledWith(`1`)
+    expect(task).toEqual(mockTask)
   })
 
-  it(`should return undefined for a non-existent task`, async () => {
-    const task = await taskService.getTaskById(`999`)
-    expect(task).toBeUndefined()
-  })
-
-  it(`should create a new task`, async () => {
+  it(`should create a task using the repository`, async () => {
     const newTaskData: Omit<Task, `id` | `createdAt` | `updatedAt`> = {
-      projectId: `2`,
-      title: `New test task`,
-      status: `todo`,
-      order: 3
+      projectId: `1`,
+      title: `New Task`,
+      status: `backlog`,
+      order: 2
     }
-    const createdTask = await taskService.createTask(newTaskData)
-    expect(createdTask).toBeDefined()
-    expect(createdTask.id).toBe(`3`)
-    expect(createdTask.title).toBe(newTaskData.title)
+    vi.mocked(taskRepository.create).mockResolvedValue({ id: `2`, ...newTaskData, createdAt: ``, updatedAt: `` })
 
-    const allTasks = await taskService.getAllTasks()
-    expect(allTasks.length).toBe(3)
+    const createdTask = await taskService.createTask(newTaskData)
+
+    expect(taskRepository.create).toHaveBeenCalledWith(newTaskData)
+    expect(createdTask.id).toBe(`2`)
+    expect(createdTask.title).toBe(`New Task`)
   })
 })

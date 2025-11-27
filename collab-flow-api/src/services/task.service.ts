@@ -1,45 +1,18 @@
 import { type Task } from '@/types/task'
-
-const tasks: Task[] = [
-  {
-    id: `1`,
-    projectId: `1`,
-    title: `Implement authentication`,
-    description: `Set up JWT authentication with refresh tokens.`,
-    status: `done`,
-    order: 1,
-    createdAt: new Date().toISOString(),
-    updatedAt: new Date().toISOString()
-  },
-  {
-    id: `2`,
-    projectId: `1`,
-    title: `Design database schema`,
-    description: `Plan the schema for projects, tasks, and users.`,
-    status: `inprogress`,
-    order: 2,
-    createdAt: new Date().toISOString(),
-    updatedAt: new Date().toISOString()
-  }
-]
+import { taskRepository } from '@/repositories/task.repository'
 
 export const taskService = {
   getAllTasks: async (): Promise<Task[]> => {
-    return tasks
+    return await taskRepository.find()
   },
 
   getTaskById: async (id: string): Promise<Task | undefined> => {
-    return tasks.find(task => task.id === id)
+    return await taskRepository.findById(id)
   },
 
   createTask: async (taskData: Omit<Task, `id` | `createdAt` | `updatedAt`>): Promise<Task> => {
-    const newTask: Task = {
-      id: String(tasks.length + 1),
-      ...taskData,
-      createdAt: new Date().toISOString(),
-      updatedAt: new Date().toISOString()
-    }
-    tasks.push(newTask)
-    return newTask
+    // In a real application, you might have business logic here.
+    // For example, validating the taskData, checking permissions, etc.
+    return await taskRepository.create(taskData)
   }
 }

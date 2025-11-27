@@ -1,78 +1,53 @@
-import { describe, it, expect, beforeEach, vi } from 'vitest'
+import { describe, it, expect, vi, beforeEach } from 'vitest'
 import { projectService } from '@/services/project.service'
+import { projectRepository } from '@/repositories/project.repository'
 import { type Project } from '@/types/project'
 
-let projects: Project[] = []
-
-const resetProjects = (): void => {
-  projects = [
-    {
-      id: `1`,
-      name: `SyncForge Frontend`,
-      description: `The main frontend application for SyncForge.`,
-      createdAt: new Date().toISOString()
-    },
-    {
-      id: `2`,
-      name: `CollabFlow API`,
-      description: `The new backend API for tasks, projects, and users.`,
-      createdAt: new Date().toISOString()
-    }
-  ]
-}
-
-vi.mock(`@/services/project.service`, () => {
-  return {
-    projectService: {
-      getAllProjects: vi.fn(async () => projects),
-      getProjectById: vi.fn(async (id: string) => projects.find(p => p.id === id)),
-      createProject: vi.fn(async (projectData: Omit<Project, `id` | `createdAt`>) => {
-        const newProject: Project = {
-          id: String(projects.length + 1),
-          ...projectData,
-          createdAt: new Date().toISOString()
-        }
-        projects.push(newProject)
-        return newProject
-      })
-    }
-  }
-})
+// Mock the repository
+vi.mock(`@/repositories/project.repository`)
 
 describe(`Project Service`, () => {
+  const mockProject: Project = {
+    id: `1`,
+    name: `Test Project`,
+    description: `A test project`,
+    createdAt: new Date().toISOString()
+  }
+
   beforeEach(() => {
-    resetProjects()
     vi.clearAllMocks()
   })
 
-  it(`should return all projects`, async () => {
-    const result = await projectService.getAllProjects()
-    expect(result).toBeInstanceOf(Array)
-    expect(result.length).toBe(2)
+  it(`should get all projects from the repository`, async () => {
+    const mockProjects = [mockProject]
+    vi.mocked(projectRepository.find).mockResolvedValue(mockProjects)
+
+    const projects = await projectService.getAllProjects()
+
+    expect(projectRepository.find).toHaveBeenCalledOnce()
+    expect(projects).toEqual(mockProjects)
   })
 
-  it(`should return a project by id`, async () => {
+  it(`should get a project by id from the repository`, async () => {
+    vi.mocked(projectRepository.findById).mockResolvedValue(mockProject)
+
     const project = await projectService.getProjectById(`1`)
-    expect(project).toBeDefined()
-    expect(project?.id).toBe(`1`)
+
+    expect(projectRepository.findById).toHaveBeenCalledWith(`1`)
+    expect(project).toEqual(mockProject)
   })
 
-  it(`should return undefined for a non-existent project`, async () => {
-    const project = await projectService.getProjectById(`999`)
-    expect(project).toBeUndefined()
-  })
-
-  it(`should create a new project`, async () => {
+  it(`should create a project using the repository`, async () => {
     const newProjectData: Omit<Project, `id` | `createdAt`> = {
-      name: `New Test Project`,
-      description: `A project for testing.`
+      name: `New Project`,
+      description: `A new project`
     }
-    const createdProject = await projectService.createProject(newProjectData)
-    expect(createdProject).toBeDefined()
-    expect(createdProject.id).toBe(`3`)
-    expect(createdProject.name).toBe(newProjectData.name)
+    vi.mocked(projectRepository.create).mockResolvedValue({ id: `2`, ...newProjectData, createdAt: `` })
 
-    const allProjects = await projectService.getAllProjects()
-    expect(allProjects.length).toBe(3)
+    const createdProject = await projectService.createProject(newProjectData)
+
+    expect(projectRepository.create).toHaveBeenCalledWith(newProjectData)
+    expect(createdProject.id).toBe(`2`)
+    expect(createdProject.name).toBe(`New Project`)
   })
 })
