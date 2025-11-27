@@ -1,49 +1,52 @@
 <template>
-  <div
-    class="bg-white rounded-lg shadow-sm border border-gray-200 p-4 
-            cursor-move hover:shadow-md transition-shadow select-none"
+  <BaseCard 
+    hoverable
+    class="cursor-move"
     draggable="true"
     @dragstart="handleDragStart"
     @dragend="handleDragEnd"
   >
-    <h4 class="font-medium text-gray-900 mb-2">
-      {{ task.title }}
-    </h4>
+    <template #header>
+      <span class="font-medium text-gray-900">
+        {{ task.title }}
+      </span>
+    </template>
+
     <!-- eslint-disable vue/no-v-html -->
     <p
       class="text-sm text-gray-600 line-clamp-2"
       v-html="sanitizedDescription"
     />
     <!-- eslint-enable vue/no-v-html -->
-
-    <div class="mt-4 flex items-center justify-between text-xs">
-      <span class="text-gray-500">
-        {{ formattedDate }}
-      </span>
-
-      <div class="flex gap-2">
-        <BaseButton
-          variant="ghost"
-          size="sm"
-          title="Edit task"
-          aria-label="Edit task"
-          @click.stop="emit('edit')"
-        >
-          <LiSquarePen class="w-4 h-4" />
-        </BaseButton>
-
-        <BaseButton
-          variant="ghost"
-          size="sm"
-          title="Delete task"
-          aria-label="Delete task"
-          @click.stop="emit('delete')"
-        >
-          <LiTrash2 class="w-4 h-4" />
-        </BaseButton>
+  
+    <template #footer>
+      <div class="flex items-center justify-between text-xs">
+        <span class="text-gray-500">
+          {{ formattedDate }}
+        </span>
+        <div class="flex gap-2">
+          <BaseButton
+            variant="ghost"
+            size="sm"
+            title="Edit task"
+            aria-label="Edit task"
+            @click.stop="emit('edit')"
+          >
+            <LiSquarePen class="w-4 h-4" />
+          </BaseButton>
+          <BaseButton
+            variant="ghost"
+            size="sm"
+            title="Delete task"
+            aria-label="Delete task"
+            @click.stop="emit('delete')"
+          >
+            <LiTrash2 class="w-4 h-4" />
+          </BaseButton>
+        </div>
       </div>
-    </div>
-  </div>
+    </template>
+  </BaseCard>
 </template>
 
 <script setup lang="ts">
@@ -53,6 +56,7 @@ import type { Task } from '@/types/task'
 import { SquarePen as LiSquarePen, Trash2 as LiTrash2 } from 'lucide-vue-next'
 import BaseButton from '@/components/ui/base/BaseButton.vue'
 import { sanitizeHtml } from '@/utils/sanitize'
+import BaseCard from '../ui/base/BaseCard.vue'
 
 interface Props {
   task: Task

@@ -7,41 +7,46 @@
     </div>
 
     <div class="grid gap-6 sm:grid-cols-2 lg:grid-cols-3">
-      <div
+      <BaseCard
         v-for="project in projects"
         :key="project.id"
-        class="group relative rounded-lg border bg-white p-5 
-                shadow-sm transition-all hover:shadow-lg hover:border-blue-300"
+        hoverable
+        clickable
+        @click="openBoard(project.id)"
       >
-        <h3 class="text-lg font-semibold text-gray-800">
-          {{ project.name }}
-        </h3>
-        <p class="mt-1 text-sm text-gray-600 line-clamp-2">
+        <template #header>
+          <span class="text-lg font-semibold text-gray-800">
+            {{ project.name }}
+          </span>
+        </template>
+
+        <p class="mt-2 text-sm text-gray-600">
           {{ project.description || 'No description' }}
         </p>
-        <p class="mt-3 text-xs text-gray-500">
-          {{ taskStore.taskCountByProjectId(project.id) }} tasks
-        </p>
 
-        <div class="mt-4 flex items-center justify-end">
-          <BaseButton
-            variant="outline-blue"
-            size="sm"
-            title="Open Board"
-            aria-label="Open Board"
-            @click="() => openBoard(project.id)"
-          >
-            Open Board
-            <LiExternalLink class="w-4 h-4" />
-          </BaseButton>
-        </div>
-      </div>
+        <template #footer>
+          <div class="flex items-center justify-between">
+            <span class="text-xs text-gray-500">
+              {{ taskStore.taskCountByProjectId(project.id) }} tasks
+            </span>
+            <BaseButton
+              variant="outline-blue"
+              size="sm"
+              @click.stop="openBoard(project.id)"
+            >
+              Open Board
+              <LiExternalLink class="w-4 h-4" />
+            </BaseButton>
+          </div>
+        </template>
+      </BaseCard>
     </div>
   </div>
 </template>
 
 <script setup lang="ts">
 import BaseButton from '@/components/ui/base/BaseButton.vue'
+import BaseCard from '@/components/ui/base/BaseCard.vue'
 import { RouteNames } from '@/constants/routes'
 import { useProjectStore, useTaskStore } from '@/stores'
 import { ExternalLink as LiExternalLink } from 'lucide-vue-next'

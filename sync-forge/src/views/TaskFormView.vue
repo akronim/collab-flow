@@ -1,5 +1,5 @@
 <template>
-  <div class="max-w-3xl mx-auto py-8 px-4">
+  <div>
     <div class="mb-6">
       <h1 class="text-2xl font-bold text-gray-900">
         {{ isEditMode ? 'Edit Task' : 'New Task' }}
