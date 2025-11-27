@@ -1,5 +1,5 @@
-import { type Task } from '@/types/task'
-import { taskRepository } from '@/repositories/task.repository'
+import { type Task } from '../types/task'
+import { taskRepository } from '../repositories/task.repository'
 
 export const taskService = {
   getAllTasks: async (): Promise<Task[]> => {

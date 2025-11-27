@@ -1,4 +1,4 @@
-import { type User, type UserRole, type UserStatus } from '@/types/user'
+import { type User, type UserRole, type UserStatus } from '../types/user'
 
 const users: User[] = [
   {

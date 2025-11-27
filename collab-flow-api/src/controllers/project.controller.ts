@@ -1,5 +1,5 @@
 import { type Request, type Response } from 'express'
-import { projectService } from '@/services/project.service'
+import { projectService } from '../services/project.service'
 
 export const projectController = {
   getProjects: async (req: Request, res: Response): Promise<void> => {

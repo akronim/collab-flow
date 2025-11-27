@@ -1,5 +1,5 @@
-import { type User } from '@/types/user'
-import { userRepository } from '@/repositories/user.repository'
+import { type User } from '../types/user'
+import { userRepository } from '../repositories/user.repository'
 
 export const userService = {
   getAllUsers: async (): Promise<User[]> => {

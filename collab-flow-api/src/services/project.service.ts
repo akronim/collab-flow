@@ -1,5 +1,5 @@
-import { type Project } from '@/types/project'
-import { projectRepository } from '@/repositories/project.repository'
+import { type Project } from '../types/project'
+import { projectRepository } from '../repositories/project.repository'
 
 export const projectService = {
   getAllProjects: async (): Promise<Project[]> => {
