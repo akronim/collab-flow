@@ -17,33 +17,31 @@ export interface ApiClient extends AxiosInstance {
   setRefreshTokenFn: (fn: TokenRefreshFn) => void
 }
 
+let refreshTokenFn: TokenRefreshFn | undefined
+let isRefreshing = false
+let failedQueue: QueueItem[] = []
+
+const processQueue = (error: unknown = null, token: string | null = null): void => {
+  failedQueue.forEach(({ resolve, reject }) => {
+    if (error) {
+      reject(error)
+    } else if (token) {
+      resolve(token)
+    } else {
+      reject(new Error(`Token refresh failed`))
+    }
+  })
+  failedQueue = []
+}
+
 // eslint-disable-next-line max-lines-per-function
-export const createApiClient = (): ApiClient => {
-  const BACKEND_URL = import.meta.env.VITE_BACKEND_URL
-
-  if (!BACKEND_URL) {
-    throw new Error(`VITE_BACKEND_URL is not set`)
-  }
-
-  let refreshTokenFn: TokenRefreshFn | undefined
-  let isRefreshing = false
-  let failedQueue: QueueItem[] = []
-
-  const processQueue = (error: unknown = null, token: string | null = null): void => {
-    failedQueue.forEach(({ resolve, reject }) => {
-      if (error) {
-        reject(error)
-      } else if (token) {
-        resolve(token)
-      } else {
-        reject(new Error(`Token refresh failed`))
-      }
-    })
-    failedQueue = []
+export const createApiClient = (baseURL: string): ApiClient => {
+  if (!baseURL) {
+    throw new Error(`Cannot create API client without a baseURL`)
   }
 
   const api = axios.create({
-    baseURL: BACKEND_URL,
+    baseURL,
     timeout: 10000
   }) as ApiClient
 
@@ -124,5 +122,10 @@ export const createApiClient = (): ApiClient => {
   return api
 }
 
-const api = createApiClient()
-export default api
+const authApiUrl = import.meta.env.VITE_AUTH_API_URL
+const collabFlowApiUrl = import.meta.env.VITE_COLLAB_FLOW_API_URL
+
+export const authApi = createApiClient(authApiUrl)
+export const collabFlowApi = createApiClient(collabFlowApiUrl)
+
+export default authApi

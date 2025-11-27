@@ -1,5 +1,5 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
-import { createApiClient } from '@/utils/api'
+import { createApiClient, authApi } from '@/utils/api'
 import axios from 'axios'
 import { ACCESS_TOKEN_KEY } from '@/constants/localStorageKeys'
 
@@ -19,12 +19,16 @@ vi.mock(`axios`, () => ({
   }
 }))
 
+const MOCK_URL = `http://mock.url`
+
 describe(`createApiClient`, () => {
   const mockCreate = vi.mocked(axios.create)
 
   beforeEach(() => {
     vi.clearAllMocks()
     localStorage.clear()
+    // @ts-expect-error: Reset the shared module-level state for test isolation.
+    authApi.setRefreshTokenFn(undefined)
   })
 
   afterEach(() => {
@@ -32,10 +36,10 @@ describe(`createApiClient`, () => {
   })
 
   it(`creates instance with correct config`, () => {
-    createApiClient()
+    createApiClient(MOCK_URL)
 
     expect(mockCreate).toHaveBeenCalledWith({
-      baseURL: `http://localhost:3001`,
+      baseURL: MOCK_URL,
       timeout: 10000
     })
   })
@@ -43,7 +47,7 @@ describe(`createApiClient`, () => {
   describe(`request interceptor`, () => {
     it(`adds Authorization header when token exists`, () => {
       localStorage.setItem(ACCESS_TOKEN_KEY, `fake-token`)
-      createApiClient()
+      createApiClient(MOCK_URL)
 
       const useSpy = mockCreate.mock.results[0]?.value.interceptors.request.use
       const handler = useSpy.mock.calls[0]?.[0]
@@ -54,7 +58,7 @@ describe(`createApiClient`, () => {
     })
 
     it(`does not add Authorization header when no token exists`, () => {
-      createApiClient()
+      createApiClient(MOCK_URL)
 
       const useSpy = mockCreate.mock.results[0]?.value.interceptors.request.use
       const handler = useSpy.mock.calls[0]?.[0]
@@ -66,7 +70,7 @@ describe(`createApiClient`, () => {
 
     it(`preserves existing headers`, () => {
       localStorage.setItem(ACCESS_TOKEN_KEY, `fake-token`)
-      createApiClient()
+      createApiClient(MOCK_URL)
 
       const useSpy = mockCreate.mock.results[0]?.value.interceptors.request.use
       const handler = useSpy.mock.calls[0]?.[0]
@@ -79,7 +83,7 @@ describe(`createApiClient`, () => {
   })
 
   it(`registers request interceptor`, () => {
-    createApiClient()
+    createApiClient(MOCK_URL)
 
     const instance = mockCreate.mock.results[0]?.value
 
@@ -92,7 +96,7 @@ describe(`createApiClient`, () => {
   describe(`response interceptor (401 retry)`, () => {
     it(`retries request with fresh token on 401`, async () => {
       const mockRefreshToken = vi.fn().mockResolvedValue(`new-token`)
-      const instance = createApiClient()
+      const instance = createApiClient(MOCK_URL)
       instance.setRefreshTokenFn(mockRefreshToken)
 
       const responseUseSpy = mockCreate.mock.results[0]?.value.interceptors.response.use
@@ -115,7 +119,7 @@ describe(`createApiClient`, () => {
 
     it(`rejects with a specific error if refresh returns null`, async () => {
       const mockRefreshToken = vi.fn().mockResolvedValue(null)
-      const instance = createApiClient()
+      const instance = createApiClient(MOCK_URL)
       instance.setRefreshTokenFn(mockRefreshToken)
 
       const responseUseSpy = mockCreate.mock.results[0]?.value.interceptors.response.use
@@ -132,7 +136,7 @@ describe(`createApiClient`, () => {
     })
 
     it(`rejects if no refreshToken function provided`, async () => {
-      createApiClient()
+      createApiClient(MOCK_URL)
 
       const instance = mockCreate.mock.results[0]?.value
       const responseUseSpy = instance.interceptors.response.use
@@ -148,7 +152,7 @@ describe(`createApiClient`, () => {
 
     it(`passes through non-401 errors`, async () => {
       const mockRefreshToken = vi.fn()
-      const instance = createApiClient()
+      const instance = createApiClient(MOCK_URL)
       instance.setRefreshTokenFn(mockRefreshToken)
 
       const responseUseSpy = mockCreate.mock.results[0]?.value.interceptors.response.use
@@ -164,7 +168,7 @@ describe(`createApiClient`, () => {
     })
 
     it(`registers response interceptor`, () => {
-      createApiClient()
+      createApiClient(MOCK_URL)
 
       const instance = mockCreate.mock.results[0]?.value
 
@@ -179,7 +183,7 @@ describe(`createApiClient`, () => {
       /* eslint-disable vitest/max-expects */
       
       const mockRefreshToken = vi.fn().mockResolvedValue(`new-token`)
-      const instance = createApiClient()
+      const instance = createApiClient(MOCK_URL)
       instance.setRefreshTokenFn(mockRefreshToken)
 
       const responseUseSpy = mockCreate.mock.results[0]?.value.interceptors.response.use
@@ -216,11 +220,10 @@ describe(`createApiClient`, () => {
     })
   })
 
-  describe(`environment variable check`, () => {
-    it(`throws error if VITE_BACKEND_URL is not set`, () => {
-      vi.stubEnv(`VITE_BACKEND_URL`, undefined)
-
-      expect(() => createApiClient()).toThrow(`VITE_BACKEND_URL is not set`)
+  describe(`creation check`, () => {
+    it(`throws error if baseURL is not provided`, () => {
+      // @ts-expect-error: Testing runtime check by intentionally passing undefined.
+      expect(() => createApiClient(undefined)).toThrow(`Cannot create API client without a baseURL`)
     })
   })
 })
