@@ -1,47 +1,19 @@
 import { defineStore } from 'pinia'
 import type { Task } from '@/types/task'
-import { v4 as uuidv4 } from 'uuid'
+import { taskApiService } from '@/services/task.service'
+import ApiCallResult from '@/utils/apiCallResult'
 
 interface TaskState {
   tasks: Task[]
+  loading: boolean
+  error: unknown | null
 }
-
-const mockTasks: Task[] = [
-  {
-    id: `1`,
-    projectId: `1`,
-    title: `Design homepage`,
-    description: `Create mockups in Figma`,
-    status: `todo`,
-    order: 0,
-    createdAt: new Date().toISOString(),
-    updatedAt: new Date().toISOString()
-  },
-  {
-    id: `2`,
-    projectId: `1`,
-    title: `Setup Vue project`,
-    description: `With Vite + Tailwind + Pinia`,
-    status: `inprogress`,
-    order: 0,
-    createdAt: new Date().toISOString(),
-    updatedAt: new Date().toISOString()
-  },
-  {
-    id: `3`,
-    projectId: `1`,
-    title: `User authentication`,
-    description: `Implement login flow`,
-    status: `done`,
-    order: 0,
-    createdAt: new Date().toISOString(),
-    updatedAt: new Date().toISOString()
-  }
-]
 
 export const useTaskStore = defineStore(`tasks`, {
   state: (): TaskState => ({
-    tasks: mockTasks
+    tasks: [],
+    loading: false,
+    error: null
   }),
 
   getters: {
@@ -73,41 +45,76 @@ export const useTaskStore = defineStore(`tasks`, {
         return state.tasks.filter((t) => t.projectId === projectId)
       }
     },
-    taskCountByProjectId(): (projectId: string) => number {
+    taskCountByProjectId: (state) => {
       return (projectId: string) => {
-        return this.tasksByProjectId(projectId).length
+        return state.tasks.filter((t) => t.projectId === projectId).length
       }
     }
   },
 
   actions: {
-    getTaskById(projectId: string, taskId: string): Task | undefined {
-      return this.tasks.find((t) => t.projectId === projectId && t.id === taskId)
-    },
-
-    addTask(task: Omit<Task, `id` | `createdAt` | `updatedAt`>): void {
-      const newTask: Task = {
-        ...task,
-        id: uuidv4(),
-        createdAt: new Date().toISOString(),
-        updatedAt: new Date().toISOString()
+    async fetchAllTasks(): Promise<void> {
+      this.loading = true
+      this.error = null
+      const result = await taskApiService.getAllTasks()
+      if (result.isSuccess()) {
+        this.tasks = result.data || []
+      } else {
+        this.error = result.error
       }
-      this.tasks.push(newTask)
+      this.loading = false
     },
 
-    updateTask(id: string, updates: Partial<Task>): void {
+    async getTaskById(id: string): Promise<Task | undefined> {
+      this.loading = true
+      this.error = null
+      const result = await taskApiService.getTaskById(id)
+      if (result.isSuccess()) {
+        this.loading = false
+        return result.data
+      } else {
+        this.error = result.error
+        this.loading = false
+        return undefined
+      }
+    },
+
+    async addTask(task: Omit<Task, `id` | `createdAt` | `updatedAt`>): Promise<Task | undefined> {
+      this.loading = true
+      this.error = null
+      const result = await taskApiService.createTask(task)
+      if (result.isSuccess()) {
+        if (result.data) {
+          this.tasks.push(result.data)
+        }
+        this.loading = false
+        return result.data
+      } else {
+        this.error = result.error
+        this.loading = false
+        return undefined
+      }
+    },
+
+    async updateTask(id: string, updates: Partial<Task>): Promise<void> {
+      // Placeholder: Implement actual API call when backend endpoint is available
+      console.warn(`updateTask not yet implemented for API`)
       const task = this.tasks.find((t) => t.id === id)
       if (task) {
         Object.assign(task, { ...updates, updatedAt: new Date().toISOString() })
       }
     },
 
-    deleteTask(id: string): void {
+    async deleteTask(id: string): Promise<void> {
+      // Placeholder: Implement actual API call when backend endpoint is available
+      console.warn(`deleteTask not yet implemented for API`)
       this.tasks = this.tasks.filter((t) => t.id !== id)
     },
 
-    moveTask(taskId: string, newStatus: Task[`status`], newOrder: number): void {
-      this.updateTask(taskId, { status: newStatus, order: newOrder })
+    async moveTask(taskId: string, newStatus: Task[`status`], newOrder: number): Promise<void> {
+      // Placeholder: Implement actual API call when backend endpoint is available
+      console.warn(`moveTask not yet implemented for API`)
+      await this.updateTask(taskId, { status: newStatus, order: newOrder })
     }
   }
 })

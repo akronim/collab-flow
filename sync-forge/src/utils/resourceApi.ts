@@ -18,11 +18,11 @@ export interface ApiClient extends AxiosInstance {
 }
 
 // eslint-disable-next-line max-lines-per-function
-export const createApiClient = (): ApiClient => {
-  const BACKEND_URL = import.meta.env.VITE_BACKEND_URL
+export const createResourceApiClient = (): ApiClient => {
+  const BACKEND_URL = import.meta.env.VITE_RESOURCE_API_URL
 
   if (!BACKEND_URL) {
-    throw new Error(`VITE_BACKEND_URL is not set`)
+    throw new Error(`VITE_RESOURCE_API_URL is not set`)
   }
 
   let refreshTokenFn: TokenRefreshFn | undefined
@@ -124,5 +124,5 @@ export const createApiClient = (): ApiClient => {
   return api
 }
 
-const api = createApiClient()
-export default api
+const resourceApi = createResourceApiClient()
+export default resourceApi

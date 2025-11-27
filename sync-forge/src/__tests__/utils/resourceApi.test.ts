@@ -1,5 +1,5 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
-import { createApiClient } from '@/utils/api'
+import { createResourceApiClient } from '@/utils/resourceApi'
 import axios from 'axios'
 import { ACCESS_TOKEN_KEY } from '@/constants/localStorageKeys'
 
@@ -19,7 +19,7 @@ vi.mock(`axios`, () => ({
   }
 }))
 
-describe(`createApiClient`, () => {
+describe(`createResourceApiClient`, () => {
   const mockCreate = vi.mocked(axios.create)
 
   beforeEach(() => {
@@ -32,18 +32,20 @@ describe(`createApiClient`, () => {
   })
 
   it(`creates instance with correct config`, () => {
-    createApiClient()
+    vi.stubEnv(`VITE_RESOURCE_API_URL`, `http://localhost:3002`)
+    createResourceApiClient()
 
     expect(mockCreate).toHaveBeenCalledWith({
-      baseURL: `http://localhost:3001`,
+      baseURL: `http://localhost:3002`,
       timeout: 10000
     })
   })
 
   describe(`request interceptor`, () => {
     it(`adds Authorization header when token exists`, () => {
+      vi.stubEnv(`VITE_RESOURCE_API_URL`, `http://localhost:3002`)
       localStorage.setItem(ACCESS_TOKEN_KEY, `fake-token`)
-      createApiClient()
+      createResourceApiClient()
 
       const useSpy = mockCreate.mock.results[0]?.value.interceptors.request.use
       const handler = useSpy.mock.calls[0]?.[0]
@@ -54,7 +56,8 @@ describe(`createApiClient`, () => {
     })
 
     it(`does not add Authorization header when no token exists`, () => {
-      createApiClient()
+      vi.stubEnv(`VITE_RESOURCE_API_URL`, `http://localhost:3002`)
+      createResourceApiClient()
 
       const useSpy = mockCreate.mock.results[0]?.value.interceptors.request.use
       const handler = useSpy.mock.calls[0]?.[0]
@@ -65,8 +68,9 @@ describe(`createApiClient`, () => {
     })
 
     it(`preserves existing headers`, () => {
+      vi.stubEnv(`VITE_RESOURCE_API_URL`, `http://localhost:3002`)
       localStorage.setItem(ACCESS_TOKEN_KEY, `fake-token`)
-      createApiClient()
+      createResourceApiClient()
 
       const useSpy = mockCreate.mock.results[0]?.value.interceptors.request.use
       const handler = useSpy.mock.calls[0]?.[0]
@@ -79,7 +83,8 @@ describe(`createApiClient`, () => {
   })
 
   it(`registers request interceptor`, () => {
-    createApiClient()
+    vi.stubEnv(`VITE_RESOURCE_API_URL`, `http://localhost:3002`)
+    createResourceApiClient()
 
     const instance = mockCreate.mock.results[0]?.value
 
@@ -91,8 +96,9 @@ describe(`createApiClient`, () => {
 
   describe(`response interceptor (401 retry)`, () => {
     it(`retries request with fresh token on 401`, async () => {
+      vi.stubEnv(`VITE_RESOURCE_API_URL`, `http://localhost:3002`)
       const mockRefreshToken = vi.fn().mockResolvedValue(`new-token`)
-      const instance = createApiClient()
+      const instance = createResourceApiClient()
       instance.setRefreshTokenFn(mockRefreshToken)
 
       const responseUseSpy = mockCreate.mock.results[0]?.value.interceptors.response.use
@@ -114,8 +120,9 @@ describe(`createApiClient`, () => {
     })
 
     it(`rejects with a specific error if refresh returns null`, async () => {
+      vi.stubEnv(`VITE_RESOURCE_API_URL`, `http://localhost:3002`)
       const mockRefreshToken = vi.fn().mockResolvedValue(null)
-      const instance = createApiClient()
+      const instance = createResourceApiClient()
       instance.setRefreshTokenFn(mockRefreshToken)
 
       const responseUseSpy = mockCreate.mock.results[0]?.value.interceptors.response.use
@@ -132,7 +139,8 @@ describe(`createApiClient`, () => {
     })
 
     it(`rejects if no refreshToken function provided`, async () => {
-      createApiClient()
+      vi.stubEnv(`VITE_RESOURCE_API_URL`, `http://localhost:3002`)
+      createResourceApiClient()
 
       const instance = mockCreate.mock.results[0]?.value
       const responseUseSpy = instance.interceptors.response.use
@@ -147,8 +155,9 @@ describe(`createApiClient`, () => {
     })
 
     it(`passes through non-401 errors`, async () => {
+      vi.stubEnv(`VITE_RESOURCE_API_URL`, `http://localhost:3002`)
       const mockRefreshToken = vi.fn()
-      const instance = createApiClient()
+      const instance = createResourceApiClient()
       instance.setRefreshTokenFn(mockRefreshToken)
 
       const responseUseSpy = mockCreate.mock.results[0]?.value.interceptors.response.use
@@ -164,7 +173,8 @@ describe(`createApiClient`, () => {
     })
 
     it(`registers response interceptor`, () => {
-      createApiClient()
+      vi.stubEnv(`VITE_RESOURCE_API_URL`, `http://localhost:3002`)
+      createResourceApiClient()
 
       const instance = mockCreate.mock.results[0]?.value
 
@@ -177,9 +187,9 @@ describe(`createApiClient`, () => {
 
     it(`handles concurrent 401s by debouncing refresh token call`, async () => {
       /* eslint-disable vitest/max-expects */
-      
+      vi.stubEnv(`VITE_RESOURCE_API_URL`, `http://localhost:3002`)
       const mockRefreshToken = vi.fn().mockResolvedValue(`new-token`)
-      const instance = createApiClient()
+      const instance = createResourceApiClient()
       instance.setRefreshTokenFn(mockRefreshToken)
 
       const responseUseSpy = mockCreate.mock.results[0]?.value.interceptors.response.use
@@ -217,10 +227,10 @@ describe(`createApiClient`, () => {
   })
 
   describe(`environment variable check`, () => {
-    it(`throws error if VITE_BACKEND_URL is not set`, () => {
-      vi.stubEnv(`VITE_BACKEND_URL`, undefined)
+    it(`throws error if VITE_RESOURCE_API_URL is not set`, () => {
+      vi.stubEnv(`VITE_RESOURCE_API_URL`, undefined)
 
-      expect(() => createApiClient()).toThrow(`VITE_BACKEND_URL is not set`)
+      expect(() => createResourceApiClient()).toThrow(`VITE_RESOURCE_API_URL is not set`)
     })
   })
 })

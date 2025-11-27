@@ -8,7 +8,8 @@ import {
   CODE_VERIFIER_KEY
 } from '@/constants/localStorageKeys'
 import type { User } from '@/types/auth'
-import api, { type AxConfig } from '@/utils/api'
+import resourceApi, { type AxConfig } from '@/utils/resourceApi'
+import authApi from '@/utils/authApi'
 import Logger from '@/utils/logger'
 import axios from 'axios'
 import { defineStore } from 'pinia'
@@ -53,7 +54,7 @@ export const useAuthStore = defineStore(`auth`, {
     },
 
     init() {
-      api.setRefreshTokenFn(this.refreshAccessToken.bind(this))
+      resourceApi.setRefreshTokenFn(this.refreshAccessToken.bind(this))
 
       const expiresAt = localStorage.getItem(TOKEN_EXPIRES_AT_KEY)
       if (!expiresAt || !this.user) {
@@ -168,12 +169,11 @@ export const useAuthStore = defineStore(`auth`, {
         }
 
         try {
-          const { data } = await api.post(
+          const { data } = await authApi.post(
             ApiEndpoints.AUTH_REFRESH,
             {
               refresh_token: refreshToken
-            },
-            { _retry: true } as AxConfig // Prevent this request from triggering the refresh interceptor
+            }
           )
 
           const { access_token, expires_in, refresh_token: new_refresh_token } = data

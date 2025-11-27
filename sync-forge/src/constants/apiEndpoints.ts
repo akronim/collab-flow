@@ -7,5 +7,17 @@ export const googleOAuthEndpoints = {
 export const ApiEndpoints = {
   AUTH_TOKEN: `/api/auth/token`,
   AUTH_VALIDATE: `/api/auth/validate`,
-  AUTH_REFRESH: `/api/auth/refresh`
+  AUTH_REFRESH: `/api/auth/refresh`,
+
+  // Project Endpoints
+  PROJECTS: `/api/projects`,
+  PROJECT_BY_ID: (id: string) => `/api/projects/${id}`,
+
+  // Task Endpoints
+  TASKS: `/api/tasks`,
+  TASK_BY_ID: (id: string) => `/api/tasks/${id}`,
+
+  // User Endpoints
+  USERS: `/api/users`,
+  USER_BY_ID: (id: string) => `/api/users/${id}`
 } as const

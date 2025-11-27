@@ -4,7 +4,7 @@ import { createRouter, createMemoryHistory } from 'vue-router'
 import AuthCallback from '@/views/AuthCallback.vue'
 import { useAuthStore } from '@/stores'
 import { setActivePinia, createPinia } from 'pinia'
-import api from '@/utils/api'
+import authApi from '@/utils/authApi' // Changed from api to authApi
 import { routes } from '@/router'
 import {
   ACCESS_TOKEN_KEY,
@@ -12,9 +12,9 @@ import {
   REFRESH_TOKEN_KEY
 } from '@/constants/localStorageKeys'
 import { ApiEndpoints } from '@/constants/apiEndpoints'
-import { AppRoutes } from '@/constants/routes'
+import { RouteNames } from '@/constants/routes' // Changed from AppRoutes to RouteNames
 
-vi.mock(`@/utils/api`, () => ({
+vi.mock(`@/utils/authApi`, () => ({ // Changed from api to authApi
   default: {
     post: vi.fn(),
     get: vi.fn()
@@ -34,7 +34,7 @@ describe(`AuthCallback`, () => {
       routes
     })
 
-    await router.push(AppRoutes.AUTH_CALLBACK)
+    await router.push({ name: RouteNames.AUTH_CALLBACK }) // Changed to use RouteNames
     await router.isReady()
   })
 
@@ -43,7 +43,7 @@ describe(`AuthCallback`, () => {
     router.currentRoute.value.query = { code: `auth-code-123` }
     localStorage.setItem(CODE_VERIFIER_KEY, `verifier-abc`)
 
-    vi.mocked(api.post).mockResolvedValueOnce({
+    vi.mocked(authApi.post).mockResolvedValueOnce({ // Changed from api.post to authApi.post
       data: {
         access_token: `new-access`,
         refresh_token: `new-refresh`,
@@ -52,7 +52,7 @@ describe(`AuthCallback`, () => {
     })
 
     const userProfile = { id: `123`, email: `test@google.com`, name: `Test User` }
-    vi.mocked(api.get).mockResolvedValueOnce({
+    vi.mocked(authApi.get).mockResolvedValueOnce({ // Changed from api.get to authApi.get
       data: userProfile
     })
 
@@ -63,7 +63,7 @@ describe(`AuthCallback`, () => {
     mount(AuthCallback, { global: { plugins: [router] } })
     await flushPromises()
 
-    expect(api.post).toHaveBeenCalledWith(
+    expect(authApi.post).toHaveBeenCalledWith( // Changed from api.post to authApi.post
       ApiEndpoints.AUTH_TOKEN,
       expect.objectContaining({
         code: `auth-code-123`,
@@ -78,7 +78,7 @@ describe(`AuthCallback`, () => {
       isGoogleLogin: true
     })
 
-    expect(api.get).toHaveBeenCalledWith(ApiEndpoints.AUTH_VALIDATE)
+    expect(authApi.get).toHaveBeenCalledWith(ApiEndpoints.AUTH_VALIDATE) // Changed from api.get to authApi.get
 
     expect(setUserSpy).toHaveBeenCalledWith({
       user: userProfile
@@ -111,7 +111,7 @@ describe(`AuthCallback`, () => {
     router.currentRoute.value.query = { code: `bad-code` }
     localStorage.setItem(CODE_VERIFIER_KEY, `verifier-abc`)
 
-    vi.mocked(api.post).mockRejectedValueOnce(new Error(`invalid_grant`))
+    vi.mocked(authApi.post).mockRejectedValueOnce(new Error(`invalid_grant`)) // Changed from api.post to authApi.post
 
     mount(AuthCallback, { global: { plugins: [router] } })
     await flushPromises()

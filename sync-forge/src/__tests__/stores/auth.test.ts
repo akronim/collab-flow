@@ -9,14 +9,22 @@ import {
 import { describe, it, expect, beforeEach, vi, afterEach } from 'vitest'
 import { setActivePinia, createPinia } from 'pinia'
 import { useAuthStore } from '@/stores'
-import api from '@/utils/api'
+import resourceApi from '@/utils/resourceApi'
+import authApi from '@/utils/authApi'
 import axios from 'axios'
 
-vi.mock(`@/utils/api`, () => ({
+vi.mock(`@/utils/resourceApi`, () => ({
   default: {
     post: vi.fn(),
     get: vi.fn(),
     setRefreshTokenFn: vi.fn()
+  }
+}))
+
+vi.mock(`@/utils/authApi`, () => ({
+  default: {
+    post: vi.fn(),
+    get: vi.fn()
   }
 }))
 
@@ -26,15 +34,16 @@ vi.mock(`axios`, () => ({
   }
 }))
 
-const mockedApiPost = vi.mocked(api.post)
+const mockedAuthApiPost = vi.mocked(authApi.post)
 const mockedAxiosPost = vi.mocked(axios.post)
+const mockedResourceApiSetRefreshTokenFn = vi.mocked(resourceApi.setRefreshTokenFn)
 
 describe(`useAuthStore`, () => {
   beforeEach(() => {
     setActivePinia(createPinia())
     vi.clearAllMocks()
     localStorage.clear()
-    mockedApiPost.mockClear()
+    mockedAuthApiPost.mockClear()
     mockedAxiosPost.mockClear()
   })
 
@@ -183,7 +192,7 @@ describe(`useAuthStore`, () => {
       localStorage.setItem(TOKEN_EXPIRES_AT_KEY, String(Date.now() + 30000)) // Near expiry
       localStorage.setItem(REFRESH_TOKEN_KEY, `refresh-me`)
 
-      mockedApiPost.mockResolvedValue({
+      mockedAuthApiPost.mockResolvedValue({
         data: { access_token: `new-fresh-access`, expires_in: 3600 }
       })
 
@@ -192,8 +201,8 @@ describe(`useAuthStore`, () => {
       const results = await Promise.all(promises)
 
       expect(results).toStrictEqual([`new-fresh-access`, `new-fresh-access`, `new-fresh-access`])
-      expect(api.post).toHaveBeenCalledExactlyOnceWith(ApiEndpoints.AUTH_REFRESH,
-        { refresh_token: `refresh-me` }, expect.anything())
+      expect(mockedAuthApiPost).toHaveBeenCalledExactlyOnceWith(ApiEndpoints.AUTH_REFRESH,
+        { refresh_token: `refresh-me` })
     })
   })
 
@@ -244,7 +253,7 @@ describe(`useAuthStore`, () => {
 
     it(`refreshes access token and updates storage on success`, async () => {
       localStorage.setItem(REFRESH_TOKEN_KEY, `old-refresh`)
-      mockedApiPost.mockResolvedValue({
+      mockedAuthApiPost.mockResolvedValue({
         data: { access_token: `new-access`, expires_in: 3600 }
       })
 
@@ -261,7 +270,7 @@ describe(`useAuthStore`, () => {
 
     it(`updates refresh token if rotated token is returned`, async () => {
       localStorage.setItem(REFRESH_TOKEN_KEY, `old-refresh`)
-      mockedApiPost.mockResolvedValue({
+      mockedAuthApiPost.mockResolvedValue({
         data: {
           access_token: `new-access`,
           expires_in: 3600,
@@ -277,7 +286,7 @@ describe(`useAuthStore`, () => {
 
     it(`returns null on API error`, async () => {
       localStorage.setItem(REFRESH_TOKEN_KEY, `bad-refresh`)
-      mockedApiPost.mockRejectedValue(new Error(`network error`))
+      mockedAuthApiPost.mockRejectedValue(new Error(`network error`))
 
       const store = useAuthStore()
       const result = await store.refreshAccessToken()
@@ -287,7 +296,7 @@ describe(`useAuthStore`, () => {
 
     it(`returns null if no access_token in response`, async () => {
       localStorage.setItem(REFRESH_TOKEN_KEY, `old-refresh`)
-      mockedApiPost.mockResolvedValue({ data: { expires_in: 3600 } })
+      mockedAuthApiPost.mockResolvedValue({ data: { expires_in: 3600 } })
 
       const store = useAuthStore()
       const result = await store.refreshAccessToken()
@@ -299,7 +308,7 @@ describe(`useAuthStore`, () => {
       const user = { id: `1`, name: `Test User`, email: `test@test.com` }
       localStorage.setItem(USER_KEY, JSON.stringify(user))
       localStorage.setItem(REFRESH_TOKEN_KEY, `old-refresh`)
-      mockedApiPost.mockResolvedValue({
+      mockedAuthApiPost.mockResolvedValue({
         data: { access_token: `new-access`, expires_in: 3600 }
       })
 
@@ -319,7 +328,7 @@ describe(`useAuthStore`, () => {
     localStorage.setItem(TOKEN_EXPIRES_AT_KEY, String(Date.now() + 30000)) // 30s left
     localStorage.setItem(REFRESH_TOKEN_KEY, `refresh-me`)
 
-    mockedApiPost.mockResolvedValue({
+    mockedAuthApiPost.mockResolvedValue({
       data: { access_token: `fresh-access`, expires_in: 3600 }
     })
 
@@ -340,7 +349,7 @@ describe(`useAuthStore`, () => {
 
       store.init()
 
-      expect(api.setRefreshTokenFn).toHaveBeenCalled()
+      expect(mockedResourceApiSetRefreshTokenFn).toHaveBeenCalled()
       expect(scheduleRefreshSpy).toHaveBeenCalled()
     })
 
@@ -350,7 +359,7 @@ describe(`useAuthStore`, () => {
 
       store.init()
 
-      expect(api.setRefreshTokenFn).toHaveBeenCalled()
+      expect(mockedResourceApiSetRefreshTokenFn).toHaveBeenCalled()
       expect(scheduleRefreshSpy).not.toHaveBeenCalled()
     })
   })

@@ -13,7 +13,7 @@
 import { onMounted } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import { useAuthStore } from '@/stores'
-import api from '@/utils/api'
+import authApi from '@/utils/authApi'
 import type { GoogleProfile } from '@/types/auth'
 import axios from 'axios'
 import Logger from '@/utils/logger'
@@ -34,7 +34,7 @@ onMounted(async () => {
   }
 
   try {
-    const tokenResp = await api.post(ApiEndpoints.AUTH_TOKEN, { code, codeVerifier })
+    const tokenResp = await authApi.post(ApiEndpoints.AUTH_TOKEN, { code, codeVerifier })
 
     const { access_token, refresh_token, expires_in } = tokenResp.data
 
@@ -49,7 +49,7 @@ onMounted(async () => {
       isGoogleLogin: true
     })
 
-    const profileResp = await api.get<GoogleProfile>(ApiEndpoints.AUTH_VALIDATE)
+    const profileResp = await authApi.get<GoogleProfile>(ApiEndpoints.AUTH_VALIDATE)
 
     authStore.setUser({ user: profileResp.data })
 

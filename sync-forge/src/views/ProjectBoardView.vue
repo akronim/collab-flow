@@ -18,13 +18,12 @@
       </div>
     </header>
 
-    <!-- TODO -->
-    <!-- <div v-if="loading" class="flex justify-center items-center py-20">
+    <div v-if="projectStore.loading" class="flex justify-center items-center py-20">
       <p>Loading project...</p>
-    </div> -->
+    </div>
 
     <div
-      v-if="!isValidProject"
+      v-else-if="!isValidProject"
       class="flex items-center justify-center bg-gray-50"
     >
       <div class="text-center">
@@ -45,7 +44,7 @@
 </template>
 
 <script setup lang="ts">
-import { computed } from 'vue'
+import { computed, onMounted, ref, watch } from 'vue' // Added ref and watch
 import { useRoute, useRouter } from 'vue-router'
 import KanbanBoard from '@/components/kanban/KanbanBoard.vue'
 import { useProjectStore } from '@/stores'
@@ -58,12 +57,23 @@ const router = useRouter()
 const projectStore = useProjectStore()
 
 const currentProjectId = computed(() => route.params.projectId as string)
+const localProject = ref<Project | undefined>(undefined) // Reactive variable to hold the fetched project
+
+onMounted(async () => {
+  if (currentProjectId.value) {
+    localProject.value = await projectStore.fetchProjectById(currentProjectId.value)
+  }
+})
+
+watch(currentProjectId, async (newProjectId) => {
+  if (newProjectId) {
+    localProject.value = await projectStore.fetchProjectById(newProjectId)
+  }
+}, { immediate: true }) // Fetch immediately on component mount or if currentProjectId changes initially
+
 
 const currentProject = computed((): Project | undefined => {
-  if (!currentProjectId.value) {
-    return undefined
-  }
-  return projectStore.fetchProjectById(currentProjectId.value)
+  return localProject.value
 })
 
 const isValidProject = computed(() => !!currentProject.value)
