@@ -51,17 +51,26 @@ import { RouteNames } from '@/constants/routes'
 import { useProjectStore, useTaskStore } from '@/stores'
 import { ExternalLink as LiExternalLink } from 'lucide-vue-next'
 import { storeToRefs } from 'pinia'
+import { onMounted } from 'vue'
 import { useRouter } from 'vue-router'
+import { projectApiService } from '@/services/project.service'
+import Logger from '@/utils/logger'
 
 const { projects } = storeToRefs(useProjectStore())
 const taskStore = useTaskStore()
 const router = useRouter()
 
+onMounted(async () => {
+  Logger.log(`ProjectsView mounted`)
+  const response = await projectApiService.getAllProjects()
+  Logger.log(`Projects response:`, response)
+})
+
 const openBoard = async (projectId: string): Promise<void> => {
   await router.push({
     name: RouteNames.PROJECT_BOARD,
     params: {
-      projectId: projectId 
+      projectId: projectId
     }
   })
 }

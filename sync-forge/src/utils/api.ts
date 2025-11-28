@@ -1,4 +1,4 @@
-import { ACCESS_TOKEN_KEY } from '@/constants/localStorageKeys'
+import { ACCESS_TOKEN_KEY, ID_TOKEN_KEY } from '@/constants/localStorageKeys'
 import axios, { type AxiosError, type AxiosResponse, type InternalAxiosRequestConfig, type AxiosInstance } from 'axios'
 import Logger from './logger'
 
@@ -35,7 +35,7 @@ const processQueue = (error: unknown = null, token: string | null = null): void 
 }
 
 // eslint-disable-next-line max-lines-per-function
-export const createApiClient = (baseURL: string): ApiClient => {
+export const createApiClient = (baseURL: string, tokenKey: string): ApiClient => {
   if (!baseURL) {
     throw new Error(`Cannot create API client without a baseURL`)
   }
@@ -46,7 +46,7 @@ export const createApiClient = (baseURL: string): ApiClient => {
   }) as ApiClient
 
   api.interceptors.request.use((config: InternalAxiosRequestConfig) => {
-    const token = localStorage.getItem(ACCESS_TOKEN_KEY)
+    const token = localStorage.getItem(tokenKey)
     if (token) {
       config.headers = config.headers || {}
       config.headers.Authorization = `Bearer ${token}`
@@ -125,7 +125,7 @@ export const createApiClient = (baseURL: string): ApiClient => {
 const authApiUrl = import.meta.env.VITE_AUTH_API_URL
 const collabFlowApiUrl = import.meta.env.VITE_COLLAB_FLOW_API_URL
 
-export const authApi = createApiClient(authApiUrl)
-export const collabFlowApi = createApiClient(collabFlowApiUrl)
+export const authApi = createApiClient(authApiUrl, ACCESS_TOKEN_KEY)
+export const collabFlowApi = createApiClient(collabFlowApiUrl, ID_TOKEN_KEY)
 
 export default authApi

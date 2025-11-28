@@ -42,6 +42,7 @@ describe(`useAuthStore`, () => {
     const store = useAuthStore()
     store.setAuthTokens({
       accessToken: `test-token`,
+      idToken: `test-id-token`,
       refreshToken: `test-refresh`,
       expiresIn: 3600
     })
@@ -57,6 +58,7 @@ describe(`useAuthStore`, () => {
     const store = useAuthStore()
     store.setAuthTokens({
       accessToken: `test-token`,
+      idToken: `test-id-token`,
       refreshToken: `test-refresh`,
       expiresIn: 3600
     })
@@ -371,6 +373,7 @@ describe(`useAuthStore`, () => {
       // Set a token that expires in 1 hour (3600 seconds)
       store.setAuthTokens({
         accessToken: `test-token`,
+        idToken: `test-id-token`,
         refreshToken: `test-refresh`,
         expiresIn: 3600
       })
@@ -394,6 +397,7 @@ describe(`useAuthStore`, () => {
 
       store.setAuthTokens({
         accessToken: `test-token`,
+        idToken: `test-id-token`,
         refreshToken: `test-refresh`,
         expiresIn: 3600
       })

@@ -36,14 +36,15 @@ onMounted(async () => {
   try {
     const tokenResp = await api.post(ApiEndpoints.AUTH_TOKEN, { code, codeVerifier })
 
-    const { access_token, refresh_token, expires_in } = tokenResp.data
+    const { access_token, id_token, refresh_token, expires_in } = tokenResp.data
 
-    if (!access_token || !refresh_token) {
+    if (!access_token || !id_token || !refresh_token) {
       throw new Error(`Missing tokens in auth response`)
     }
 
     authStore.setAuthTokens({
       accessToken: access_token,
+      idToken: id_token,
       refreshToken: refresh_token,
       expiresIn: expires_in,
       isGoogleLogin: true

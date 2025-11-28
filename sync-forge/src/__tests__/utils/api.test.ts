@@ -1,7 +1,7 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import { createApiClient, authApi } from '@/utils/api'
 import axios from 'axios'
-import { ACCESS_TOKEN_KEY } from '@/constants/localStorageKeys'
+import { ACCESS_TOKEN_KEY, ID_TOKEN_KEY } from '@/constants/localStorageKeys'
 
 vi.mock(`axios`, () => ({
   default: {
@@ -36,7 +36,7 @@ describe(`createApiClient`, () => {
   })
 
   it(`creates instance with correct config`, () => {
-    createApiClient(MOCK_URL)
+    createApiClient(MOCK_URL, ACCESS_TOKEN_KEY)
 
     expect(mockCreate).toHaveBeenCalledWith({
       baseURL: MOCK_URL,
@@ -47,7 +47,7 @@ describe(`createApiClient`, () => {
   describe(`request interceptor`, () => {
     it(`adds Authorization header when token exists`, () => {
       localStorage.setItem(ACCESS_TOKEN_KEY, `fake-token`)
-      createApiClient(MOCK_URL)
+      createApiClient(MOCK_URL, ACCESS_TOKEN_KEY)
 
       const useSpy = mockCreate.mock.results[0]?.value.interceptors.request.use
       const handler = useSpy.mock.calls[0]?.[0]
@@ -57,8 +57,20 @@ describe(`createApiClient`, () => {
       expect(result.headers.Authorization).toBe(`Bearer fake-token`)
     })
 
+    it(`adds Authorization header using id_token when ID_TOKEN_KEY is used`, () => {
+      localStorage.setItem(ID_TOKEN_KEY, `fake-id-token`)
+      createApiClient(MOCK_URL, ID_TOKEN_KEY)
+
+      const useSpy = mockCreate.mock.results[0]?.value.interceptors.request.use
+      const handler = useSpy.mock.calls[0]?.[0]
+      const config = { headers: {} }
+      const result = handler(config)
+
+      expect(result.headers.Authorization).toBe(`Bearer fake-id-token`)
+    })
+
     it(`does not add Authorization header when no token exists`, () => {
-      createApiClient(MOCK_URL)
+      createApiClient(MOCK_URL, ACCESS_TOKEN_KEY)
 
       const useSpy = mockCreate.mock.results[0]?.value.interceptors.request.use
       const handler = useSpy.mock.calls[0]?.[0]
@@ -70,7 +82,7 @@ describe(`createApiClient`, () => {
 
     it(`preserves existing headers`, () => {
       localStorage.setItem(ACCESS_TOKEN_KEY, `fake-token`)
-      createApiClient(MOCK_URL)
+      createApiClient(MOCK_URL, ACCESS_TOKEN_KEY)
 
       const useSpy = mockCreate.mock.results[0]?.value.interceptors.request.use
       const handler = useSpy.mock.calls[0]?.[0]
@@ -83,7 +95,7 @@ describe(`createApiClient`, () => {
   })
 
   it(`registers request interceptor`, () => {
-    createApiClient(MOCK_URL)
+    createApiClient(MOCK_URL, ACCESS_TOKEN_KEY)
 
     const instance = mockCreate.mock.results[0]?.value
 
@@ -96,7 +108,7 @@ describe(`createApiClient`, () => {
   describe(`response interceptor (401 retry)`, () => {
     it(`retries request with fresh token on 401`, async () => {
       const mockRefreshToken = vi.fn().mockResolvedValue(`new-token`)
-      const instance = createApiClient(MOCK_URL)
+      const instance = createApiClient(MOCK_URL, ACCESS_TOKEN_KEY)
       instance.setRefreshTokenFn(mockRefreshToken)
 
       const responseUseSpy = mockCreate.mock.results[0]?.value.interceptors.response.use
@@ -119,7 +131,7 @@ describe(`createApiClient`, () => {
 
     it(`rejects with a specific error if refresh returns null`, async () => {
       const mockRefreshToken = vi.fn().mockResolvedValue(null)
-      const instance = createApiClient(MOCK_URL)
+      const instance = createApiClient(MOCK_URL, ACCESS_TOKEN_KEY)
       instance.setRefreshTokenFn(mockRefreshToken)
 
       const responseUseSpy = mockCreate.mock.results[0]?.value.interceptors.response.use
@@ -136,7 +148,7 @@ describe(`createApiClient`, () => {
     })
 
     it(`rejects if no refreshToken function provided`, async () => {
-      createApiClient(MOCK_URL)
+      createApiClient(MOCK_URL, ACCESS_TOKEN_KEY)
 
       const instance = mockCreate.mock.results[0]?.value
       const responseUseSpy = instance.interceptors.response.use
@@ -152,7 +164,7 @@ describe(`createApiClient`, () => {
 
     it(`passes through non-401 errors`, async () => {
       const mockRefreshToken = vi.fn()
-      const instance = createApiClient(MOCK_URL)
+      const instance = createApiClient(MOCK_URL, ACCESS_TOKEN_KEY)
       instance.setRefreshTokenFn(mockRefreshToken)
 
       const responseUseSpy = mockCreate.mock.results[0]?.value.interceptors.response.use
@@ -168,7 +180,7 @@ describe(`createApiClient`, () => {
     })
 
     it(`registers response interceptor`, () => {
-      createApiClient(MOCK_URL)
+      createApiClient(MOCK_URL, ACCESS_TOKEN_KEY)
 
       const instance = mockCreate.mock.results[0]?.value
 
@@ -183,7 +195,7 @@ describe(`createApiClient`, () => {
       /* eslint-disable vitest/max-expects */
       
       const mockRefreshToken = vi.fn().mockResolvedValue(`new-token`)
-      const instance = createApiClient(MOCK_URL)
+      const instance = createApiClient(MOCK_URL, ACCESS_TOKEN_KEY)
       instance.setRefreshTokenFn(mockRefreshToken)
 
       const responseUseSpy = mockCreate.mock.results[0]?.value.interceptors.response.use

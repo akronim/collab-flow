@@ -9,6 +9,7 @@ import { routes } from '@/router'
 import {
   ACCESS_TOKEN_KEY,
   CODE_VERIFIER_KEY,
+  ID_TOKEN_KEY,
   REFRESH_TOKEN_KEY
 } from '@/constants/localStorageKeys'
 import { ApiEndpoints } from '@/constants/apiEndpoints'
@@ -46,6 +47,7 @@ describe(`AuthCallback`, () => {
     vi.mocked(api.post).mockResolvedValueOnce({
       data: {
         access_token: `new-access`,
+        id_token: `new-id-token`,
         refresh_token: `new-refresh`,
         expires_in: 3600
       }
@@ -73,6 +75,7 @@ describe(`AuthCallback`, () => {
 
     expect(setAuthTokensSpy).toHaveBeenCalledWith({
       accessToken: `new-access`,
+      idToken: `new-id-token`,
       refreshToken: `new-refresh`,
       expiresIn: 3600,
       isGoogleLogin: true
@@ -86,12 +89,14 @@ describe(`AuthCallback`, () => {
 
     const storageData = {
       access_token: localStorage.getItem(ACCESS_TOKEN_KEY),
+      id_token: localStorage.getItem(ID_TOKEN_KEY),
       refresh_token: localStorage.getItem(REFRESH_TOKEN_KEY),
       code_verifier: localStorage.getItem(CODE_VERIFIER_KEY)
     }
 
     expect(storageData).toStrictEqual({
       access_token: `new-access`,
+      id_token: `new-id-token`,
       refresh_token: `new-refresh`,
       code_verifier: null
     })
