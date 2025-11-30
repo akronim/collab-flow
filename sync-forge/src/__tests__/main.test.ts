@@ -2,7 +2,7 @@ import { describe, it, expect, vi, beforeEach } from 'vitest'
 
 const setRefreshTokenFnMock = vi.fn()
 
-vi.mock(`@/utils/api`, () => ({
+vi.mock(`@/utils/api.gateway`, () => ({
   default: {
     setRefreshTokenFn: setRefreshTokenFnMock
   }

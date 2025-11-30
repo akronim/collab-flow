@@ -4,7 +4,7 @@ import { createRouter, createMemoryHistory } from 'vue-router'
 import AuthCallback from '@/views/AuthCallback.vue'
 import { useAuthStore } from '@/stores'
 import { setActivePinia, createPinia } from 'pinia'
-import api from '@/utils/api'
+import api from '@/utils/api.gateway'
 import { routes } from '@/router'
 import {
   ACCESS_TOKEN_KEY,
@@ -15,7 +15,7 @@ import {
 import { ApiEndpoints } from '@/constants/apiEndpoints'
 import { AppRoutes } from '@/constants/routes'
 
-vi.mock(`@/utils/api`, () => ({
+vi.mock(`@/utils/api.gateway`, () => ({
   default: {
     post: vi.fn(),
     get: vi.fn()

@@ -23,6 +23,14 @@ app.get(`/`, (req: Request, res: Response) => {
   res.json({ status: `OK`, message: `OAuth Backend Running` })
 })
 
+app.get(`/health`, (req: Request, res: Response) => {
+  res.json({
+    status: `OK`,
+    service: `oauth-gateway`,
+    downstream: config.collabFlowApiUrl
+  })
+})
+
 app.use(`/api`, apiRouter)
 
 app.use(errorMiddleware)

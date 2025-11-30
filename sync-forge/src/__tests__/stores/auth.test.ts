@@ -9,10 +9,10 @@ import {
 import { describe, it, expect, beforeEach, vi, afterEach } from 'vitest'
 import { setActivePinia, createPinia } from 'pinia'
 import { useAuthStore } from '@/stores'
-import api from '@/utils/api'
+import api from '@/utils/api.gateway'
 import axios from 'axios'
 
-vi.mock(`@/utils/api`, () => ({
+vi.mock(`@/utils/api.gateway`, () => ({
   default: {
     post: vi.fn(),
     get: vi.fn(),

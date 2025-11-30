@@ -13,7 +13,7 @@
 import { onMounted } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import { useAuthStore } from '@/stores'
-import api from '@/utils/api'
+import api from '@/utils/api.gateway'
 import type { GoogleProfile } from '@/types/auth'
 import axios from 'axios'
 import Logger from '@/utils/logger'

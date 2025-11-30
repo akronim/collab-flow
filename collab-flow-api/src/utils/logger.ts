@@ -11,6 +11,11 @@ const Logger = {
     console.error(...args)
   },
 
+  warn(...args: unknown[]): void {
+    // eslint-disable-next-line no-console
+    console.warn(...args)
+  },
+
   apiError(error: unknown, extras: Record<string, unknown> = {}): void {
     const info = Object.keys(extras).length > 0 ? extras : undefined
 

@@ -7,10 +7,15 @@ import { apiEndpoints, ErrorMessages, GoogleOAuthEndpoints } from '../constants'
 vi.mock(`../config`, () => ({
   default: {
     port: `3001`,
+    collabFlowApiUrl: `http://localhost:3002`, // Added for gateway tests
     google: {
       clientId: `test_client_id`,
       clientSecret: `test_client_secret`,
       redirectUri: `http://localhost:5173/auth/callback`
+    },
+    jwt: {
+      secret: `test-jwt-secret`,
+      expiresIn: `15m`
     },
     cors: {
       origin: `http://localhost:5173`
@@ -39,6 +44,18 @@ describe(`Backend API Tests`, () => {
       const response = await request(app).get(`/`)
       expect(response.status).toBe(200)
       expect(response.body).toEqual({ status: `OK`, message: `OAuth Backend Running` })
+    })
+  })
+
+  describe(`GET /health`, () => {
+    it(`responds with status OK and service details`, async () => {
+      const response = await request(app).get(`/health`)
+      expect(response.status).toBe(200)
+      expect(response.body).toEqual({
+        status: `OK`,
+        service: `oauth-gateway`,
+        downstream: `http://localhost:3002` // From mocked config
+      })
     })
   })
 

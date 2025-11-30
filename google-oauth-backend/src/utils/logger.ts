@@ -1,5 +1,6 @@
 import axios from 'axios'
 
+// TODO replace with Winston or Pino
 const Logger = {
   log(...args: unknown[]): void {
     // eslint-disable-next-line no-console

@@ -1,5 +1,5 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
-import { createApiClient, authApi } from '@/utils/api'
+import { createApiClient, authApi } from '@/utils/api.gateway'
 import axios from 'axios'
 import { ACCESS_TOKEN_KEY, ID_TOKEN_KEY } from '@/constants/localStorageKeys'
 

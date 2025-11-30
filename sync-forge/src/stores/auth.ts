@@ -9,7 +9,7 @@ import {
   CODE_VERIFIER_KEY
 } from '@/constants/localStorageKeys'
 import type { User } from '@/types/auth'
-import api, { type AxConfig } from '@/utils/api'
+import api, { type AxConfig } from '@/utils/api.gateway'
 import Logger from '@/utils/logger'
 import axios from 'axios'
 import { defineStore } from 'pinia'

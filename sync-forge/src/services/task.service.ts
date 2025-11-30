@@ -1,4 +1,4 @@
-import { collabFlowApi } from '@/utils/api'
+import { collabFlowApi } from '@/utils/api.gateway'
 import ApiCallResult from '@/utils/apiCallResult'
 import { CollabFlowApiEndpoints } from '@/constants/apiEndpoints'
 import type { Task } from '@/types/task'
