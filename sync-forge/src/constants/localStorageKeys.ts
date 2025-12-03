@@ -1,3 +1,5 @@
+export const INTERNAL_ACCESS_TOKEN_KEY = `internal_access_token`
+export const INTERNAL_REFRESH_TOKEN_KEY = `internal_refresh_token`
 export const ACCESS_TOKEN_KEY = `access_token`
 export const ID_TOKEN_KEY = `id_token`
 export const REFRESH_TOKEN_KEY = `refresh_token`

@@ -7,8 +7,8 @@ import LoginView from '@/views/LoginView.vue'
 import { useAuthStore } from '@/stores'
 import router from '@/router'
 import {
-  ACCESS_TOKEN_KEY,
-  REFRESH_TOKEN_KEY,
+  INTERNAL_ACCESS_TOKEN_KEY,
+  INTERNAL_REFRESH_TOKEN_KEY,
   TOKEN_EXPIRES_AT_KEY,
   USER_KEY
 } from '@/constants/localStorageKeys'
@@ -62,8 +62,8 @@ describe(`App.vue`, () => {
   })
 
   it(`silently refreshes and allows navigation on expired session`, async () => {
-    localStorage.setItem(ACCESS_TOKEN_KEY, `expired-access-token`)
-    localStorage.setItem(REFRESH_TOKEN_KEY, `valid-refresh-token`)
+    localStorage.setItem(INTERNAL_ACCESS_TOKEN_KEY, `expired-access-token`)
+    localStorage.setItem(INTERNAL_REFRESH_TOKEN_KEY, `valid-refresh-token`)
     localStorage.setItem(TOKEN_EXPIRES_AT_KEY, String(Date.now() - 10000)) // Expired 10s ago
     localStorage.setItem(
       USER_KEY,

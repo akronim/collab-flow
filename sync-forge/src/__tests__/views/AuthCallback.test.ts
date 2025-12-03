@@ -7,10 +7,7 @@ import { setActivePinia, createPinia } from 'pinia'
 import api from '@/utils/api.gateway'
 import { routes } from '@/router'
 import {
-  ACCESS_TOKEN_KEY,
-  CODE_VERIFIER_KEY,
-  ID_TOKEN_KEY,
-  REFRESH_TOKEN_KEY
+  CODE_VERIFIER_KEY
 } from '@/constants/localStorageKeys'
 import { ApiEndpoints } from '@/constants/apiEndpoints'
 import { AppRoutes } from '@/constants/routes'
@@ -39,28 +36,21 @@ describe(`AuthCallback`, () => {
     await router.isReady()
   })
 
-  /* eslint-disable vitest/max-expects */
-  it(`exchanges code, fetches profile, logs in and redirects to /`, async () => {
+   
+  it(`exchanges code for an internal token, stores it and redirects to /`, async () => {
     router.currentRoute.value.query = { code: `auth-code-123` }
     localStorage.setItem(CODE_VERIFIER_KEY, `verifier-abc`)
 
+    const internalTokenResponse = {
+      internal_access_token: `internal.jwt`,
+      expires_in: 900
+    }
     vi.mocked(api.post).mockResolvedValueOnce({
-      data: {
-        access_token: `new-access`,
-        id_token: `new-id-token`,
-        refresh_token: `new-refresh`,
-        expires_in: 3600
-      }
-    })
-
-    const userProfile = { id: `123`, email: `test@google.com`, name: `Test User` }
-    vi.mocked(api.get).mockResolvedValueOnce({
-      data: userProfile
+      data: internalTokenResponse
     })
 
     const authStore = useAuthStore()
     const setAuthTokensSpy = vi.spyOn(authStore, `setAuthTokens`)
-    const setUserSpy = vi.spyOn(authStore, `setUser`)
 
     mount(AuthCallback, { global: { plugins: [router] } })
     await flushPromises()
@@ -74,36 +64,14 @@ describe(`AuthCallback`, () => {
     )
 
     expect(setAuthTokensSpy).toHaveBeenCalledWith({
-      accessToken: `new-access`,
-      idToken: `new-id-token`,
-      refreshToken: `new-refresh`,
-      expiresIn: 3600,
-      isGoogleLogin: true
+      internalAccessToken: `internal.jwt`,
+      expiresIn: 900
     })
 
-    expect(api.get).toHaveBeenCalledWith(ApiEndpoints.AUTH_VALIDATE)
-
-    expect(setUserSpy).toHaveBeenCalledWith({
-      user: userProfile
-    })
-
-    const storageData = {
-      access_token: localStorage.getItem(ACCESS_TOKEN_KEY),
-      id_token: localStorage.getItem(ID_TOKEN_KEY),
-      refresh_token: localStorage.getItem(REFRESH_TOKEN_KEY),
-      code_verifier: localStorage.getItem(CODE_VERIFIER_KEY)
-    }
-
-    expect(storageData).toStrictEqual({
-      access_token: `new-access`,
-      id_token: `new-id-token`,
-      refresh_token: `new-refresh`,
-      code_verifier: null
-    })
-
+    expect(localStorage.getItem(CODE_VERIFIER_KEY)).toBeNull()
     expect(router.currentRoute.value.path).toBe(`/`)
   })
-  /* eslint-enable vitest/max-expects */
+   
 
   it(`redirects to /login when code or verifier is missing`, async () => {
     mount(AuthCallback, { global: { plugins: [router] } })

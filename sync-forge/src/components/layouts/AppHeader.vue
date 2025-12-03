@@ -53,13 +53,13 @@ import { RouteNames } from '@/constants/routes'
 const router = useRouter()
 const authStore = useAuthStore()
 
-const handleLogout = async (): Promise<void> => {
+const handleLogout = (): void => {
   try {
-    await authStore.logout()
+    authStore.logout()
   } catch (error) {
     Logger.error(`Logout failed:`, error)
   } finally {
-    await router.push({ name: RouteNames.LOGIN })
+    void router.push({ name: RouteNames.LOGIN })
   }
 }
 </script>

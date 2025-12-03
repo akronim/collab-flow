@@ -38,7 +38,9 @@ describe(`Token Swap Middleware`, () => {
 
   it(`should return 401 if token is invalid`, async () => {
     mockRequest.headers = { authorization: `Bearer invalid-token` }
-    vi.spyOn(authService, `validateAccessToken`).mockRejectedValue(new Error(`Invalid token`))
+    vi.spyOn(jwtService, `verify`).mockImplementation(() => {
+      throw new Error(`Invalid token`)
+    })
 
     await tokenSwapMiddleware(mockRequest as Request, mockResponse as Response, nextFunction)
 
@@ -47,7 +49,7 @@ describe(`Token Swap Middleware`, () => {
     expect(nextFunction).not.toHaveBeenCalled()
   })
 
-  it(`should call next() and swap token if token is valid`, async () => {
+  it(`should call next() if internal JWT is valid`, async () => {
     const fakeUser: UserInfo = {
       id: `123`,
       email: `test@example.com`,
@@ -59,15 +61,20 @@ describe(`Token Swap Middleware`, () => {
       locale: `en`
     }
     const internalToken = `internal-jwt-token`
-    mockRequest.headers = { authorization: `Bearer valid-google-token` }
+    mockRequest.headers = { authorization: `Bearer ${internalToken}` }
 
-    vi.spyOn(authService, `validateAccessToken`).mockResolvedValue(fakeUser)
-    vi.spyOn(jwtService, `sign`).mockReturnValue(internalToken)
+    const validateSpy = vi.spyOn(authService, `validateAccessToken`)
+    const verifySpy = vi.spyOn(jwtService, `verify`).mockReturnValue(fakeUser)
 
     await tokenSwapMiddleware(mockRequest as Request, mockResponse as Response, nextFunction)
 
     expect(nextFunction).toHaveBeenCalled()
     expect(mockResponse.status).not.toHaveBeenCalled()
+    
+    // The middleware should only verify, not swap the token
     expect(mockRequest.headers.authorization).toBe(`Bearer ${internalToken}`)
+
+    expect(verifySpy).toHaveBeenCalledWith(internalToken)
+    expect(validateSpy).not.toHaveBeenCalled()
   })
 })

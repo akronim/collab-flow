@@ -1,4 +1,4 @@
-import { ACCESS_TOKEN_KEY } from '@/constants/localStorageKeys'
+import { INTERNAL_ACCESS_TOKEN_KEY, ACCESS_TOKEN_KEY } from '@/constants/localStorageKeys'
 import axios, { type AxiosError, type AxiosResponse, type InternalAxiosRequestConfig, type AxiosInstance } from 'axios'
 import Logger from './logger'
 
@@ -126,6 +126,6 @@ const authApiUrl = import.meta.env.VITE_AUTH_API_URL
 const gatewayApiUrl = import.meta.env.VITE_GATEWAY_API_URL 
 
 export const authApi = createApiClient(authApiUrl, ACCESS_TOKEN_KEY) 
-export const collabFlowApi = createApiClient(gatewayApiUrl, ACCESS_TOKEN_KEY) 
+export const collabFlowApi = createApiClient(gatewayApiUrl, INTERNAL_ACCESS_TOKEN_KEY) 
 
 export default authApi

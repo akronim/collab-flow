@@ -1,5 +1,7 @@
-import { ApiEndpoints, googleOAuthEndpoints } from '@/constants/apiEndpoints'
+import { ApiEndpoints } from '@/constants/apiEndpoints'
 import {
+  INTERNAL_ACCESS_TOKEN_KEY,
+  INTERNAL_REFRESH_TOKEN_KEY,
   ACCESS_TOKEN_KEY,
   ID_TOKEN_KEY,
   IS_GOOGLE_LOGIN_KEY,
@@ -11,7 +13,6 @@ import {
 import type { User } from '@/types/auth'
 import api, { type AxConfig } from '@/utils/api.gateway'
 import Logger from '@/utils/logger'
-import axios from 'axios'
 import { defineStore } from 'pinia'
 
 interface AuthState {
@@ -50,7 +51,7 @@ export const useAuthStore = defineStore(`auth`, {
 
   actions: {
     hasRefreshToken(): boolean {
-      return !!localStorage.getItem(REFRESH_TOKEN_KEY)
+      return !!localStorage.getItem(INTERNAL_REFRESH_TOKEN_KEY)
     },
 
     init() {
@@ -103,20 +104,23 @@ export const useAuthStore = defineStore(`auth`, {
     },
 
     setAuthTokens(payload: {
-      accessToken: string
-      idToken: string
-      refreshToken: string
+      internalAccessToken: string
+      internalRefreshToken?: string
       expiresIn: number
-      isGoogleLogin?: boolean
     }) {
       const expiresAt = Date.now() + payload.expiresIn * 1000
-      localStorage.setItem(ACCESS_TOKEN_KEY, payload.accessToken)
-      localStorage.setItem(ID_TOKEN_KEY, payload.idToken)
-      localStorage.setItem(REFRESH_TOKEN_KEY, payload.refreshToken)
-      localStorage.setItem(TOKEN_EXPIRES_AT_KEY, String(expiresAt))
-      if (payload.isGoogleLogin) {
-        localStorage.setItem(IS_GOOGLE_LOGIN_KEY, `true`)
+      localStorage.setItem(INTERNAL_ACCESS_TOKEN_KEY, payload.internalAccessToken)
+      if (payload.internalRefreshToken) {
+        localStorage.setItem(INTERNAL_REFRESH_TOKEN_KEY, payload.internalRefreshToken)
       }
+      localStorage.setItem(TOKEN_EXPIRES_AT_KEY, String(expiresAt))
+      
+      // Deprecated items
+      localStorage.removeItem(ACCESS_TOKEN_KEY)
+      localStorage.removeItem(ID_TOKEN_KEY)
+      localStorage.removeItem(REFRESH_TOKEN_KEY)
+      localStorage.removeItem(IS_GOOGLE_LOGIN_KEY)
+
       this.scheduleProactiveRefresh(payload.expiresIn)
     },
 
@@ -127,39 +131,19 @@ export const useAuthStore = defineStore(`auth`, {
 
     clearAuthStorage() {
       [
-        ACCESS_TOKEN_KEY,
-        ID_TOKEN_KEY,
-        REFRESH_TOKEN_KEY,
+        INTERNAL_ACCESS_TOKEN_KEY,
+        INTERNAL_REFRESH_TOKEN_KEY,
         TOKEN_EXPIRES_AT_KEY,
         USER_KEY,
-        IS_GOOGLE_LOGIN_KEY
+        CODE_VERIFIER_KEY
       ].forEach((key) => localStorage.removeItem(key))
     },
-    async revokeGoogleToken() {
-      if (localStorage.getItem(IS_GOOGLE_LOGIN_KEY) !== `true`) {
-        return
-      }
-
-      const token = localStorage.getItem(ACCESS_TOKEN_KEY)
-      if (!token) {
-        return
-      }
-
-      try {
-        await axios.post(googleOAuthEndpoints.REVOKE_URL, null, {
-          params: { token },
-          timeout: 5000
-        })
-      } catch (err) {
-        Logger.error(`Token revoke failed:`, (err as Error).message)
-      }
-    },
-
-    async logout() {
+    
+    logout() {
       this.cancelProactiveRefresh()
-      await this.revokeGoogleToken()
       this.user = null
       this.clearAuthStorage()
+      // No token to revoke on the client side anymore
     },
 
     // eslint-disable-next-line max-lines-per-function
@@ -169,36 +153,31 @@ export const useAuthStore = defineStore(`auth`, {
       }
 
       this.activeRefreshPromise = (async (): Promise<string | null> => {
-        const refreshToken = localStorage.getItem(REFRESH_TOKEN_KEY)
+        const refreshToken = localStorage.getItem(INTERNAL_REFRESH_TOKEN_KEY)
         if (!refreshToken) {
-          await this.logout()
+          this.logout()
           return null
         }
 
         try {
           const { data } = await api.post(
-            ApiEndpoints.AUTH_REFRESH,
-            {
-              refresh_token: refreshToken
-            },
-            { _retry: true } as AxConfig // Prevent this request from triggering the refresh interceptor
+            ApiEndpoints.AUTH_INTERNAL_REFRESH,
+            { internal_refresh_token: refreshToken },
+            { _retry: true } as AxConfig
           )
 
-          const { access_token, expires_in, refresh_token: new_refresh_token } = data
+          const { internal_access_token, internal_refresh_token, expires_in } = data
 
-          if (!access_token) {
-            await this.logout()
+          if (!internal_access_token) {
+            this.logout()
             return null
           }
 
-          const expiresAt = Date.now() + Number(expires_in) * 1000
-          localStorage.setItem(ACCESS_TOKEN_KEY, access_token)
-          localStorage.setItem(TOKEN_EXPIRES_AT_KEY, String(expiresAt))
-          if (new_refresh_token) {
-            localStorage.setItem(REFRESH_TOKEN_KEY, new_refresh_token)
-          }
-
-          this.scheduleProactiveRefresh(Number(expires_in))
+          this.setAuthTokens({
+            internalAccessToken: internal_access_token,
+            internalRefreshToken: internal_refresh_token,
+            expiresIn: expires_in
+          })
 
           if (!this.user) {
             const savedUser = localStorage.getItem(USER_KEY)
@@ -207,16 +186,16 @@ export const useAuthStore = defineStore(`auth`, {
                 this.user = JSON.parse(savedUser)
               } catch (e) {
                 Logger.error(`Failed to parse saved user after refresh`, e)
-                await this.logout()
+                this.logout()
                 return null
               }
             }
           }
 
-          return access_token
+          return internal_access_token
         } catch (err) {
           Logger.error(`Token refresh failed:`, err)
-          await this.logout()
+          this.logout()
           return null
         }
       })().finally(() => {
@@ -227,10 +206,11 @@ export const useAuthStore = defineStore(`auth`, {
     },
 
     async getToken(): Promise<string | null> {
-      const token = localStorage.getItem(ACCESS_TOKEN_KEY)
+      const token = localStorage.getItem(INTERNAL_ACCESS_TOKEN_KEY)
       const expiresAt = localStorage.getItem(TOKEN_EXPIRES_AT_KEY)
 
       if (!token || !expiresAt) {
+        this.logout()
         return null
       }
 

@@ -14,7 +14,6 @@ import { onMounted } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import { useAuthStore } from '@/stores'
 import api from '@/utils/api.gateway'
-import type { GoogleProfile } from '@/types/auth'
 import axios from 'axios'
 import Logger from '@/utils/logger'
 import { RouteNames } from '@/constants/routes'
@@ -36,23 +35,16 @@ onMounted(async () => {
   try {
     const tokenResp = await api.post(ApiEndpoints.AUTH_TOKEN, { code, codeVerifier })
 
-    const { access_token, id_token, refresh_token, expires_in } = tokenResp.data
+    const { internal_access_token, expires_in } = tokenResp.data
 
-    if (!access_token || !id_token || !refresh_token) {
-      throw new Error(`Missing tokens in auth response`)
+    if (!internal_access_token) {
+      throw new Error(`Missing internal_access_token in auth response`)
     }
 
     authStore.setAuthTokens({
-      accessToken: access_token,
-      idToken: id_token,
-      refreshToken: refresh_token,
-      expiresIn: expires_in,
-      isGoogleLogin: true
+      internalAccessToken: internal_access_token,
+      expiresIn: expires_in
     })
-
-    const profileResp = await api.get<GoogleProfile>(ApiEndpoints.AUTH_VALIDATE)
-
-    authStore.setUser({ user: profileResp.data })
 
     await router.replace(`/`)
   } catch (err) {

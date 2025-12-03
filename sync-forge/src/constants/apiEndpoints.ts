@@ -8,7 +8,8 @@ export const googleOAuthEndpoints = {
 export const ApiEndpoints = {
   AUTH_TOKEN: `/api/auth/token`,
   AUTH_VALIDATE: `/api/auth/validate`,
-  AUTH_REFRESH: `/api/auth/refresh`
+  AUTH_REFRESH: `/api/auth/refresh`,
+  AUTH_INTERNAL_REFRESH: `/api/auth/internal-refresh`
 } as const
 
 export const CollabFlowApiEndpoints = {
