@@ -3,6 +3,7 @@ import request from 'supertest'
 import app from '../server'
 import { googleApi } from '../utils/axios'
 import { apiEndpoints, ErrorMessages, GoogleOAuthEndpoints } from '../constants'
+import tokenStore from '../services/tokenStore.service'
 
 vi.mock(`../config`, () => ({
   default: {
@@ -30,7 +31,16 @@ vi.mock(`../utils/axios`, () => ({
   }
 }))
 
+vi.mock(`../services/tokenStore.service`, () => ({
+  default: {
+    generateAndStore: vi.fn(val => `new-internal-from-${val}`),
+    getGoogleRefreshToken: vi.fn(),
+    deleteToken: vi.fn()
+  }
+}))
+
 const mockedGoogleApi = googleApi as Mocked<typeof googleApi>
+const mockedTokenStore = tokenStore as Mocked<typeof tokenStore>
 
 describe(`Backend API Tests`, () => {
   const API_BASE_PATH = `/api` 
@@ -70,7 +80,7 @@ describe(`Backend API Tests`, () => {
       expect(response2.body.error).toBe(ErrorMessages.MISSING_CODE_OR_VERIFIER)
     })
 
-    it(`should exchange code for tokens successfully`, async () => {
+    it(`should exchange code for tokens and return an internal JWT`, async () => {
       mockedGoogleApi.post.mockResolvedValueOnce({
         data: {
           access_token: `mock_access_token`,
@@ -80,20 +90,38 @@ describe(`Backend API Tests`, () => {
         }
       })
 
+      // Mock the subsequent validation call
+      mockedGoogleApi.get.mockResolvedValueOnce({
+        data: {
+          id: `google_id_123`,
+          email: `test@example.com`,
+          name: `Test User`
+        }
+      })
+
       const response = await request(app)
         .post(`${API_BASE_PATH}${apiEndpoints.TOKEN}`)
         .send({ code: `auth_code`, codeVerifier: `code_verifier` })
 
       expect(response.status).toBe(200)
-      expect(response.body).toHaveProperty(`access_token`, `mock_access_token`)
-      expect(response.body).toHaveProperty(`refresh_token`, `mock_refresh_token`)
-      expect(response.body).toHaveProperty(`expires_in`, 3600)
-      expect(response.body).toHaveProperty(`id_token`, `mock_id_token`)
+      expect(response.body).toHaveProperty(`internal_access_token`)
+      expect(response.body).toHaveProperty(`expires_in`, 900) // 15m from mocked config
       expect(response.body).toHaveProperty(`expires_at`)
 
+      expect(response.body).not.toHaveProperty(`access_token`)
+      expect(response.body).not.toHaveProperty(`refresh_token`)
+      expect(response.body).not.toHaveProperty(`id_token`)
+
+      // Verify both Google API calls were made
       expect(mockedGoogleApi.post).toHaveBeenCalledWith(
         GoogleOAuthEndpoints.TOKEN_EXCHANGE,
         expect.stringContaining(`client_id=test_client_id`)
+      )
+      expect(mockedGoogleApi.get).toHaveBeenCalledWith(
+        GoogleOAuthEndpoints.USER_INFO,
+        expect.objectContaining({
+          headers: { Authorization: `Bearer mock_access_token` }
+        })
       )
     })
 
@@ -115,69 +143,32 @@ describe(`Backend API Tests`, () => {
     })
   })
 
-  describe(`POST ${API_BASE_PATH}${apiEndpoints.REFRESH}`, () => {
-    it(`should return 400 if refresh_token is missing`, async () => {
-      const response = await request(app).post(`${API_BASE_PATH}${apiEndpoints.REFRESH}`).send({})
+  describe(`POST ${API_BASE_PATH}${apiEndpoints.INTERNAL_REFRESH}`, () => {
+    it(`should return 400 if internal_refresh_token cookie is missing`, async () => {
+      const response = await request(app).post(`${API_BASE_PATH}${apiEndpoints.INTERNAL_REFRESH}`).send({})
       expect(response.status).toBe(400)
       expect(response.body.error).toBe(ErrorMessages.MISSING_REFRESH_TOKEN)
     })
 
-    it(`should refresh token successfully`, async () => {
+    it(`should return 401 if token is not in store`, async () => {
+      mockedTokenStore.getGoogleRefreshToken.mockReturnValueOnce(undefined)
+      
+      const response = await request(app)
+        .post(`${API_BASE_PATH}${apiEndpoints.INTERNAL_REFRESH}`)
+        .set(`Cookie`, `internal_refresh_token=not-in-store`)
+
+      expect(response.status).toBe(401)
+      expect(response.body.error).toBe(ErrorMessages.INVALID_REFRESH_TOKEN)
+    })
+
+    it(`should refresh internal token successfully`, async () => {
+      mockedTokenStore.getGoogleRefreshToken.mockReturnValueOnce(`valid-google-refresh-token`)
       mockedGoogleApi.post.mockResolvedValueOnce({
         data: {
-          access_token: `new_access_token`,
+          access_token: `new_google_access_token`,
           expires_in: 3600
         }
       })
-
-      const response = await request(app)
-        .post(`${API_BASE_PATH}${apiEndpoints.REFRESH}`)
-        .send({ refresh_token: `mock_refresh_token` })
-
-      expect(response.status).toBe(200)
-      expect(response.body).toHaveProperty(`access_token`, `new_access_token`)
-      expect(response.body).toHaveProperty(`expires_in`, 3600)
-
-      expect(mockedGoogleApi.post).toHaveBeenCalledWith(
-        GoogleOAuthEndpoints.TOKEN_EXCHANGE,
-        expect.stringContaining(`grant_type=refresh_token`)
-      )
-    })
-
-    it(`should handle refresh failure from Google`, async () => {
-      mockedGoogleApi.post.mockRejectedValueOnce({
-        response: {
-          status: 400,
-          data: { error: `invalid_grant`, error_description: `Invalid refresh token` }
-        }
-      })
-
-      const response = await request(app)
-        .post(`${API_BASE_PATH}${apiEndpoints.REFRESH}`)
-        .send({ refresh_token: `invalid_refresh_token` })
-
-      expect(response.status).toBe(400)
-      expect(response.body.error).toBe(ErrorMessages.REFRESH_FAILED)
-      expect(response.body.details.error).toBe(`invalid_grant`)
-    })
-  })
-
-  describe(`GET ${API_BASE_PATH}${apiEndpoints.VALIDATE}`, () => {
-    it(`should return 401 if Authorization header is missing`, async () => {
-      const response = await request(app).get(`${API_BASE_PATH}${apiEndpoints.VALIDATE}`)
-      expect(response.status).toBe(401)
-      expect(response.body.error).toBe(ErrorMessages.MISSING_AUTH_HEADER)
-    })
-
-    it(`should return 401 if Authorization header is invalid`, async () => {
-      const response = await request(app)
-        .get(`${API_BASE_PATH}${apiEndpoints.VALIDATE}`)
-        .set(`Authorization`, `InvalidToken`)
-      expect(response.status).toBe(401)
-      expect(response.body.error).toBe(ErrorMessages.MISSING_AUTH_HEADER)
-    })
-
-    it(`should validate token and return user info successfully`, async () => {
       mockedGoogleApi.get.mockResolvedValueOnce({
         data: {
           id: `google_id_123`,
@@ -187,37 +178,32 @@ describe(`Backend API Tests`, () => {
       })
 
       const response = await request(app)
-        .get(`${API_BASE_PATH}${apiEndpoints.VALIDATE}`)
-        .set(`Authorization`, `Bearer valid_access_token`)
+        .post(`${API_BASE_PATH}${apiEndpoints.INTERNAL_REFRESH}`)
+        .set(`Cookie`, `internal_refresh_token=valid-internal-refresh`)
 
       expect(response.status).toBe(200)
-      expect(response.body).toHaveProperty(`id`, `google_id_123`)
-      expect(response.body).toHaveProperty(`email`, `test@example.com`)
-      expect(response.body).toHaveProperty(`name`, `Test User`)
+      expect(response.body).toHaveProperty(`internal_access_token`)
+      expect(response.body).not.toHaveProperty(`internal_refresh_token`)
+      
+      const cookie = response.headers[`set-cookie`][0]
+      expect(cookie).toContain(`internal_refresh_token=new-internal-from-valid-google-refresh-token`)
+      expect(cookie).toContain(`HttpOnly`)
+      expect(cookie).toContain(`SameSite=Strict`)
 
-      expect(mockedGoogleApi.get).toHaveBeenCalledWith(
-        GoogleOAuthEndpoints.USER_INFO,
-        expect.objectContaining({
-          headers: { Authorization: `Bearer valid_access_token` }
-        })
-      )
+      expect(mockedTokenStore.deleteToken).toHaveBeenCalledWith(`valid-internal-refresh`)
     })
+  })
 
-    it(`should handle token validation failure from Google`, async () => {
-      mockedGoogleApi.get.mockRejectedValueOnce({
-        response: {
-          status: 401,
-          data: { error: `invalid_token`, error_description: `Token expired` }
-        }
-      })
-
+  describe(`POST ${API_BASE_PATH}${apiEndpoints.LOGOUT}`, () => {
+    it(`should clear the refresh token cookie`, async () => {
       const response = await request(app)
-        .get(`${API_BASE_PATH}${apiEndpoints.VALIDATE}`)
-        .set(`Authorization`, `Bearer expired_access_token`)
+        .post(`${API_BASE_PATH}${apiEndpoints.LOGOUT}`)
+        .set(`Cookie`, `internal_refresh_token=some-token-to-clear`)
 
-      expect(response.status).toBe(401)
-      expect(response.body.error).toBe(ErrorMessages.TOKEN_VALIDATION_FAILED)
-      expect(response.body.details.error).toBe(`invalid_token`)
+      expect(response.status).toBe(204)
+      const cookie = response.headers[`set-cookie`][0]
+      expect(cookie).toContain(`internal_refresh_token=;`)
+      expect(cookie).toContain(`Max-Age=0`)
     })
   })
 })

@@ -59,7 +59,7 @@ const handleLogout = async (): Promise<void> => {
   } catch (error) {
     Logger.error(`Logout failed:`, error)
   } finally {
-    await router.push({ name: RouteNames.LOGIN })
+    void router.push({ name: RouteNames.LOGIN })
   }
 }
 </script>

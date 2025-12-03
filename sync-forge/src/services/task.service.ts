@@ -1,4 +1,4 @@
-import { collabFlowApi } from '@/utils/api.gateway'
+import { authApiClient } from '@/services/authApiClient'
 import ApiCallResult from '@/utils/apiCallResult'
 import { CollabFlowApiEndpoints } from '@/constants/apiEndpoints'
 import type { Task } from '@/types/task'
@@ -7,7 +7,7 @@ import type { Task } from '@/types/task'
 export const taskApiService = {
   async getAllTasks(): Promise<ApiCallResult<Task[]>> {
     try {
-      const response = await collabFlowApi.get<Task[]>(CollabFlowApiEndpoints.TASKS)
+      const response = await authApiClient.get<Task[]>(CollabFlowApiEndpoints.TASKS)
       return ApiCallResult.Success(response.data, response.status)
     } catch (error) {
       return ApiCallResult.Fail(error)
@@ -16,7 +16,7 @@ export const taskApiService = {
 
   async getTaskById(id: string): Promise<ApiCallResult<Task>> {
     try {
-      const response = await collabFlowApi.get<Task>(CollabFlowApiEndpoints.TASK_BY_ID(id))
+      const response = await authApiClient.get<Task>(CollabFlowApiEndpoints.TASK_BY_ID(id))
       return ApiCallResult.Success(response.data, response.status)
     } catch (error) {
       return ApiCallResult.Fail(error)
@@ -25,7 +25,7 @@ export const taskApiService = {
 
   async createTask(task: Omit<Task, `id` | `createdAt` | `updatedAt`>): Promise<ApiCallResult<Task>> {
     try {
-      const response = await collabFlowApi.post<Task>(CollabFlowApiEndpoints.TASKS, task)
+      const response = await authApiClient.post<Task>(CollabFlowApiEndpoints.TASKS, task)
       return ApiCallResult.Success(response.data, response.status)
     } catch (error) {
       return ApiCallResult.Fail(error)

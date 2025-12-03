@@ -1,7 +1,7 @@
 export const apiEndpoints = {
   TOKEN: `/auth/token`,
-  REFRESH: `/auth/refresh`,
-  VALIDATE: `/auth/validate`
+  INTERNAL_REFRESH: `/auth/internal-refresh`,
+  LOGOUT: `/auth/logout`
 }
 
 export const GoogleOAuthEndpoints = {
@@ -17,6 +17,7 @@ export const ErrorMessages = {
   BAD_REQUEST: `Bad Request`,
   UNAUTHORIZED: `Unauthorized`,
   MISSING_REFRESH_TOKEN: `Missing refresh_token`,
+  INVALID_REFRESH_TOKEN: `Invalid refresh token`,
   MISSING_AUTH_HEADER: `Missing or invalid Authorization header`,
   MISSING_CODE_OR_VERIFIER: `Missing code or codeVerifier`
 }

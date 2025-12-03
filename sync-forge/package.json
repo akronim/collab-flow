@@ -30,6 +30,7 @@
     "i18next": "^25.6.0",
     "jodit": "^4.7.9",
     "js-beautify": "^1.15.4",
+    "jwt-decode": "^4.0.0",
     "lucide-vue-next": "^0.554.0",
     "luxon": "^3.7.2",
     "pinia": "^3.0.3",

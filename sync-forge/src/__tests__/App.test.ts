@@ -6,12 +6,23 @@ import ProjectsView from '@/views/ProjectsView.vue'
 import LoginView from '@/views/LoginView.vue'
 import { useAuthStore } from '@/stores'
 import router from '@/router'
-import {
-  ACCESS_TOKEN_KEY,
-  REFRESH_TOKEN_KEY,
-  TOKEN_EXPIRES_AT_KEY,
-  USER_KEY
-} from '@/constants/localStorageKeys'
+
+// Mock API clients to prevent real HTTP calls
+vi.mock(`@/services/simpleApiClient`, () => ({
+  simpleApiClient: {
+    post: vi.fn().mockRejectedValue(new Error(`no session`)),
+    get: vi.fn()
+  }
+}))
+
+vi.mock(`@/services/authApiClient`, () => ({
+  authApiClient: {
+    post: vi.fn(),
+    get: vi.fn(),
+    setRefreshTokenFn: vi.fn(),
+    setGetTokenFn: vi.fn()
+  }
+}))
 
 describe(`App.vue`, () => {
   beforeEach(async () => {
@@ -23,6 +34,9 @@ describe(`App.vue`, () => {
   })
 
   it(`shows LoginView when not authenticated and navigating to a protected route`, async () => {
+    const auth = useAuthStore()
+    vi.spyOn(auth, `refreshAccessToken`).mockResolvedValue(null)
+
     await router.push(`/`)
     await flushPromises()
 
@@ -62,14 +76,6 @@ describe(`App.vue`, () => {
   })
 
   it(`silently refreshes and allows navigation on expired session`, async () => {
-    localStorage.setItem(ACCESS_TOKEN_KEY, `expired-access-token`)
-    localStorage.setItem(REFRESH_TOKEN_KEY, `valid-refresh-token`)
-    localStorage.setItem(TOKEN_EXPIRES_AT_KEY, String(Date.now() - 10000)) // Expired 10s ago
-    localStorage.setItem(
-      USER_KEY,
-      JSON.stringify({ id: `1`, name: `Test User`, email: `test@example.com` })
-    )
-
     const auth = useAuthStore()
 
     expect(auth.isAuthenticated).toBe(false)
@@ -78,7 +84,9 @@ describe(`App.vue`, () => {
       .spyOn(auth, `refreshAccessToken`)
       .mockImplementation(() => {
         auth.$patch({
-          user: { id: `1`, email: `john@example.com`, name: `John` }
+          user: { id: `1`, email: `john@example.com`, name: `John` },
+          accessToken: `new-access-token`,
+          expiresAt: Date.now() + 3600000
         })
         return Promise.resolve(`new-access-token`)
       })

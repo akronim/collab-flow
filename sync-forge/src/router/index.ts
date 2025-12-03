@@ -48,16 +48,14 @@ const router = createRouter({
   routes
 })
 
-router.beforeEach(async (to, from, next) => {
+router.beforeEach(async (to, _from, next) => {
   const auth = useAuthStore()
-  const hasRefreshToken = auth.hasRefreshToken()
 
-  // a silent refresh
-  if (!auth.isAuthenticated && hasRefreshToken) {
+  if (to.meta.requiresAuth && !auth.isAuthenticated) {
     try {
       await auth.refreshAccessToken()
     } catch {
-
+      // no valid session
     }
   }
 

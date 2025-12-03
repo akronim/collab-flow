@@ -1,8 +1,8 @@
 import type { Request, Response, NextFunction } from 'express'
-import * as authService from '../services/auth.service'
 import jwtService from '../services/jwt.service'
 import { getErrorMessage } from '../utils/errorHandler'
 import Logger from '../utils/logger'
+import type { UserInfo } from '../types'
 
 /**
  * Extracts the token from the Authorization header.
@@ -21,24 +21,22 @@ const extractToken = (authorizationHeader?: string): string | null => {
  */
 export const tokenSwapMiddleware = async (req: Request, res: Response, next: NextFunction): Promise<void> => {
   try {
-    const googleAccessToken = extractToken(req.headers.authorization)
+    const internalToken = extractToken(req.headers.authorization)
 
-    if (!googleAccessToken) {
+    if (!internalToken) {
       Logger.log(`[TokenSwap] Missing or malformed token`)
       res.status(401).json({ message: `Missing or malformed token` })
       return
     }
 
-    // Validate the Google access token and get user profile
-    const userProfile = await authService.validateAccessToken(googleAccessToken)
+    // Validate the internal JWT
+    const decoded = jwtService.verify<UserInfo>(internalToken)
+    
+    // Optional: Attach user info to request for downstream use
+    // @ts-expect-error: Attaching custom property to request
+    req.user = decoded
 
-    // Generate an internal JWT
-    const internalToken = jwtService.sign(userProfile)
-
-    // Replace the original token with the new internal token
-    req.headers.authorization = `Bearer ${internalToken}`
-
-    Logger.log(`[TokenSwap] Swapped token for user: ${userProfile.email}`)
+    Logger.log(`[TokenSwap] Internal token verified for user: ${decoded.email}`)
     next()
   } catch (error) {
     const message = getErrorMessage(error)

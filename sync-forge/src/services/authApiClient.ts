@@ -1,23 +1,25 @@
-import { ACCESS_TOKEN_KEY } from '@/constants/localStorageKeys'
 import axios, { type AxiosError, type AxiosResponse, type InternalAxiosRequestConfig, type AxiosInstance } from 'axios'
-import Logger from './logger'
+import Logger from '@/utils/logger'
 
 export interface AxConfig extends InternalAxiosRequestConfig {
   _retry?: boolean;
 }
 
 interface QueueItem {
-  resolve: (token: string) => void
-  reject: (error: unknown) => void
+  resolve: (token: string) => void;
+  reject: (error: unknown) => void;
 }
 
 export type TokenRefreshFn = () => Promise<string | null>
+export type TokenGetFn = () => string | null
 
-export interface ApiClient extends AxiosInstance {
-  setRefreshTokenFn: (fn: TokenRefreshFn) => void
+export interface AuthApiClient extends AxiosInstance {
+  setRefreshTokenFn: (fn: TokenRefreshFn) => void;
+  setGetTokenFn: (fn: TokenGetFn) => void;
 }
 
 let refreshTokenFn: TokenRefreshFn | undefined
+let getTokenFn: TokenGetFn | undefined
 let isRefreshing = false
 let failedQueue: QueueItem[] = []
 
@@ -34,8 +36,14 @@ const processQueue = (error: unknown = null, token: string | null = null): void 
   failedQueue = []
 }
 
+/**
+ * Factory function to create an Axios client for the main application API.
+ * It includes interceptors to handle token attachment and refreshing.
+ * @param baseURL The base URL for the main application API.
+ * @returns A "smart" Axios instance with interceptors.
+ */
 // eslint-disable-next-line max-lines-per-function
-export const createApiClient = (baseURL: string, tokenKey: string): ApiClient => {
+export const createAuthApiClient = (baseURL: string): AuthApiClient => {
   if (!baseURL) {
     throw new Error(`Cannot create API client without a baseURL`)
   }
@@ -43,13 +51,15 @@ export const createApiClient = (baseURL: string, tokenKey: string): ApiClient =>
   const api = axios.create({
     baseURL,
     timeout: 10000
-  }) as ApiClient
+  }) as AuthApiClient
 
   api.interceptors.request.use((config: InternalAxiosRequestConfig) => {
-    const token = localStorage.getItem(tokenKey)
-    if (token) {
-      config.headers = config.headers || {}
-      config.headers.Authorization = `Bearer ${token}`
+    if (getTokenFn) {
+      const token = getTokenFn()
+      if (token) {
+        config.headers = config.headers || {}
+        config.headers.Authorization = `Bearer ${token}`
+      }
     }
     return config
   })
@@ -119,13 +129,20 @@ export const createApiClient = (baseURL: string, tokenKey: string): ApiClient =>
     refreshTokenFn = fn
   }
 
+  api.setGetTokenFn = (fn: TokenGetFn): void => {
+    getTokenFn = fn
+  }
+
   return api
 }
 
-const authApiUrl = import.meta.env.VITE_AUTH_API_URL
-const gatewayApiUrl = import.meta.env.VITE_GATEWAY_API_URL 
+const gatewayApiUrl = import.meta.env.VITE_GATEWAY_API_URL
 
-export const authApi = createApiClient(authApiUrl, ACCESS_TOKEN_KEY) 
-export const collabFlowApi = createApiClient(gatewayApiUrl, ACCESS_TOKEN_KEY) 
+if (!gatewayApiUrl) {
+  throw new Error(`VITE_GATEWAY_API_URL is not defined. Please check your .env file.`)
+}
 
-export default authApi
+/**
+ * Singleton instance of the "smart" API client for the application to use.
+ */
+export const authApiClient = createAuthApiClient(gatewayApiUrl)

@@ -4,19 +4,16 @@ import { createRouter, createMemoryHistory } from 'vue-router'
 import AuthCallback from '@/views/AuthCallback.vue'
 import { useAuthStore } from '@/stores'
 import { setActivePinia, createPinia } from 'pinia'
-import api from '@/utils/api.gateway'
+import { simpleApiClient } from '@/services/simpleApiClient'
 import { routes } from '@/router'
 import {
-  ACCESS_TOKEN_KEY,
-  CODE_VERIFIER_KEY,
-  ID_TOKEN_KEY,
-  REFRESH_TOKEN_KEY
+  CODE_VERIFIER_KEY
 } from '@/constants/localStorageKeys'
 import { ApiEndpoints } from '@/constants/apiEndpoints'
 import { AppRoutes } from '@/constants/routes'
 
-vi.mock(`@/utils/api.gateway`, () => ({
-  default: {
+vi.mock(`@/services/simpleApiClient`, () => ({
+  simpleApiClient: {
     post: vi.fn(),
     get: vi.fn()
   }
@@ -39,33 +36,30 @@ describe(`AuthCallback`, () => {
     await router.isReady()
   })
 
-  /* eslint-disable vitest/max-expects */
-  it(`exchanges code, fetches profile, logs in and redirects to /`, async () => {
+
+  it(`exchanges code for tokens, sets auth data, and redirects to /`, async () => {
     router.currentRoute.value.query = { code: `auth-code-123` }
     localStorage.setItem(CODE_VERIFIER_KEY, `verifier-abc`)
 
-    vi.mocked(api.post).mockResolvedValueOnce({
-      data: {
-        access_token: `new-access`,
-        id_token: `new-id-token`,
-        refresh_token: `new-refresh`,
-        expires_in: 3600
-      }
-    })
+    const mockUser = { id: `user-123`, email: `test@example.com`, name: `Test User` }
+    // A mock JWT has two dots. The payload is the base64 encoded JSON of the user.
+    const mockAccessToken = `header.${Buffer.from(JSON.stringify(mockUser)).toString(`base64`)}.signature`
 
-    const userProfile = { id: `123`, email: `test@google.com`, name: `Test User` }
-    vi.mocked(api.get).mockResolvedValueOnce({
-      data: userProfile
+    const internalTokenResponse = {
+      internal_access_token: mockAccessToken,
+      expires_in: 900
+    }
+    vi.mocked(simpleApiClient.post).mockResolvedValueOnce({
+      data: internalTokenResponse
     })
 
     const authStore = useAuthStore()
-    const setAuthTokensSpy = vi.spyOn(authStore, `setAuthTokens`)
-    const setUserSpy = vi.spyOn(authStore, `setUser`)
+    const setAuthDataSpy = vi.spyOn(authStore, `setAuthData`)
 
     mount(AuthCallback, { global: { plugins: [router] } })
     await flushPromises()
 
-    expect(api.post).toHaveBeenCalledWith(
+    expect(simpleApiClient.post).toHaveBeenCalledWith(
       ApiEndpoints.AUTH_TOKEN,
       expect.objectContaining({
         code: `auth-code-123`,
@@ -73,37 +67,13 @@ describe(`AuthCallback`, () => {
       })
     )
 
-    expect(setAuthTokensSpy).toHaveBeenCalledWith({
-      accessToken: `new-access`,
-      idToken: `new-id-token`,
-      refreshToken: `new-refresh`,
-      expiresIn: 3600,
-      isGoogleLogin: true
-    })
+    // Verify setAuthData was called with the access token and expiry
+    expect(setAuthDataSpy).toHaveBeenCalledWith(mockAccessToken, 900)
 
-    expect(api.get).toHaveBeenCalledWith(ApiEndpoints.AUTH_VALIDATE)
-
-    expect(setUserSpy).toHaveBeenCalledWith({
-      user: userProfile
-    })
-
-    const storageData = {
-      access_token: localStorage.getItem(ACCESS_TOKEN_KEY),
-      id_token: localStorage.getItem(ID_TOKEN_KEY),
-      refresh_token: localStorage.getItem(REFRESH_TOKEN_KEY),
-      code_verifier: localStorage.getItem(CODE_VERIFIER_KEY)
-    }
-
-    expect(storageData).toStrictEqual({
-      access_token: `new-access`,
-      id_token: `new-id-token`,
-      refresh_token: `new-refresh`,
-      code_verifier: null
-    })
-
+    expect(localStorage.getItem(CODE_VERIFIER_KEY)).toBeNull()
     expect(router.currentRoute.value.path).toBe(`/`)
   })
-  /* eslint-enable vitest/max-expects */
+
 
   it(`redirects to /login when code or verifier is missing`, async () => {
     mount(AuthCallback, { global: { plugins: [router] } })
@@ -116,7 +86,7 @@ describe(`AuthCallback`, () => {
     router.currentRoute.value.query = { code: `bad-code` }
     localStorage.setItem(CODE_VERIFIER_KEY, `verifier-abc`)
 
-    vi.mocked(api.post).mockRejectedValueOnce(new Error(`invalid_grant`))
+    vi.mocked(simpleApiClient.post).mockRejectedValueOnce(new Error(`invalid_grant`))
 
     mount(AuthCallback, { global: { plugins: [router] } })
     await flushPromises()

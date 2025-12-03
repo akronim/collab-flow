@@ -4,6 +4,7 @@ import type { StringValue } from 'ms'
 dotenv.config()
 
 const config = {
+  nodeEnv: process.env.NODE_ENV || `development`,
   port: process.env.PORT || `3001`,
   collabFlowApiUrl: process.env.COLLAB_FLOW_API_URL || `http://localhost:3002`,
   google: {
