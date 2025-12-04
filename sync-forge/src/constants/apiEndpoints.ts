@@ -9,7 +9,8 @@ export const ApiEndpoints = {
   AUTH_TOKEN: `/api/auth/token`,
   AUTH_VALIDATE: `/api/auth/validate`,
   AUTH_REFRESH: `/api/auth/refresh`,
-  AUTH_INTERNAL_REFRESH: `/api/auth/internal-refresh`
+  AUTH_INTERNAL_REFRESH: `/api/auth/internal-refresh`,
+  AUTH_LOGOUT: `/api/auth/logout`
 } as const
 
 export const CollabFlowApiEndpoints = {

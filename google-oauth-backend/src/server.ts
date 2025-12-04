@@ -1,5 +1,6 @@
 import express, { type Request, type Response } from 'express'
 import cors from 'cors'
+import cookieParser from 'cookie-parser'
 import apiRouter from './routes' 
 import helmet from 'helmet' 
 import { errorMiddleware } from './middleware/error.middleware'
@@ -18,6 +19,7 @@ app.use(
 )
 
 app.use(express.json())
+app.use(cookieParser())
 
 app.get(`/`, (req: Request, res: Response) => {
   res.json({ status: `OK`, message: `OAuth Backend Running` })

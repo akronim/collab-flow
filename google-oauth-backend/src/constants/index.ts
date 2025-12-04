@@ -2,7 +2,8 @@ export const apiEndpoints = {
   TOKEN: `/auth/token`,
   REFRESH: `/auth/refresh`,
   INTERNAL_REFRESH: `/auth/internal-refresh`,
-  VALIDATE: `/auth/validate`
+  VALIDATE: `/auth/validate`,
+  LOGOUT: `/auth/logout`
 }
 
 export const GoogleOAuthEndpoints = {
