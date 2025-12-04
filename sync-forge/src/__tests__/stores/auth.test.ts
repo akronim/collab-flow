@@ -2,21 +2,24 @@ import { ApiEndpoints } from '@/constants/apiEndpoints'
 import {
   INTERNAL_REFRESH_TOKEN_KEY,
   INTERNAL_ACCESS_TOKEN_KEY,
-  ACCESS_TOKEN_KEY,
-  ID_TOKEN_KEY,
-  IS_GOOGLE_LOGIN_KEY,
-  REFRESH_TOKEN_KEY,
   TOKEN_EXPIRES_AT_KEY,
   USER_KEY
 } from '@/constants/localStorageKeys'
 import { describe, it, expect, beforeEach, vi, afterEach } from 'vitest'
 import { setActivePinia, createPinia } from 'pinia'
 import { useAuthStore } from '@/stores'
-import api from '@/utils/api.gateway'
-import axios from 'axios'
+import { simpleApiClient } from '@/services/simpleApiClient'
+import { authApiClient } from '@/services/authApiClient'
 
-vi.mock(`@/utils/api.gateway`, () => ({
-  default: {
+vi.mock(`@/services/simpleApiClient`, () => ({
+  simpleApiClient: {
+    post: vi.fn(),
+    get: vi.fn()
+  }
+}))
+
+vi.mock(`@/services/authApiClient`, () => ({
+  authApiClient: {
     post: vi.fn(),
     get: vi.fn(),
     setRefreshTokenFn: vi.fn()
@@ -25,20 +28,21 @@ vi.mock(`@/utils/api.gateway`, () => ({
 
 vi.mock(`axios`, () => ({
   default: {
+    create: vi.fn().mockReturnValue({
+      post: vi.fn(),
+      get: vi.fn()
+    }),
     post: vi.fn()
   }
 }))
 
-const mockedApiPost = vi.mocked(api.post)
-const mockedAxiosPost = vi.mocked(axios.post)
+const mockedSimpleApiClientPost = vi.mocked(simpleApiClient.post)
 
 describe(`useAuthStore`, () => {
   beforeEach(() => {
     setActivePinia(createPinia())
     vi.clearAllMocks()
     localStorage.clear()
-    mockedApiPost.mockClear()
-    mockedAxiosPost.mockClear()
   })
 
   it(`setAuthTokens should store internal tokens and expiry`, () => {
@@ -56,20 +60,6 @@ describe(`useAuthStore`, () => {
     expect(localStorage.getItem(INTERNAL_ACCESS_TOKEN_KEY)).toBe(`internal.jwt`)
     expect(localStorage.getItem(INTERNAL_REFRESH_TOKEN_KEY)).toBe(`internal.refresh`)
     expect(localStorage.getItem(TOKEN_EXPIRES_AT_KEY)).toBe(String(expiresAt))
-    
-    const oldTokens = {
-      access: localStorage.getItem(ACCESS_TOKEN_KEY),
-      id: localStorage.getItem(ID_TOKEN_KEY),
-      refresh: localStorage.getItem(REFRESH_TOKEN_KEY),
-      isGoogle: localStorage.getItem(IS_GOOGLE_LOGIN_KEY)
-    }
-
-    expect(oldTokens).toStrictEqual({
-      access: null,
-      id: null,
-      refresh: null,
-      isGoogle: null
-    })
   })
 
   it(`should login and set user`, () => {
@@ -167,7 +157,7 @@ describe(`useAuthStore`, () => {
       localStorage.setItem(TOKEN_EXPIRES_AT_KEY, String(Date.now() + 30000))
       localStorage.setItem(INTERNAL_REFRESH_TOKEN_KEY, `refresh-me`)
 
-      mockedApiPost.mockResolvedValue({
+      mockedSimpleApiClientPost.mockResolvedValue({
         data: { internal_access_token: `new-fresh-access`, expires_in: 3600 }
       })
 
@@ -176,7 +166,7 @@ describe(`useAuthStore`, () => {
       const results = await Promise.all(promises)
 
       expect(results).toStrictEqual([`new-fresh-access`, `new-fresh-access`, `new-fresh-access`])
-      expect(api.post).toHaveBeenCalledExactlyOnceWith(ApiEndpoints.AUTH_INTERNAL_REFRESH,
+      expect(simpleApiClient.post).toHaveBeenCalledExactlyOnceWith(ApiEndpoints.AUTH_INTERNAL_REFRESH,
         { internal_refresh_token: `refresh-me` }, expect.anything())
     })
   })
@@ -228,7 +218,7 @@ describe(`useAuthStore`, () => {
 
     it(`refreshes access token and updates storage on success`, async () => {
       localStorage.setItem(INTERNAL_REFRESH_TOKEN_KEY, `old-refresh`)
-      mockedApiPost.mockResolvedValue({
+      mockedSimpleApiClientPost.mockResolvedValue({
         data: { internal_access_token: `new-access`, expires_in: 3600 }
       })
 
@@ -245,7 +235,7 @@ describe(`useAuthStore`, () => {
 
     it(`updates refresh token if rotated token is returned`, async () => {
       localStorage.setItem(INTERNAL_REFRESH_TOKEN_KEY, `old-refresh`)
-      mockedApiPost.mockResolvedValue({
+      mockedSimpleApiClientPost.mockResolvedValue({
         data: {
           internal_access_token: `new-access`,
           internal_refresh_token: `new-rotated-refresh`,
@@ -261,7 +251,7 @@ describe(`useAuthStore`, () => {
 
     it(`returns null on API error`, async () => {
       localStorage.setItem(INTERNAL_REFRESH_TOKEN_KEY, `bad-refresh`)
-      mockedApiPost.mockRejectedValue(new Error(`network error`))
+      mockedSimpleApiClientPost.mockRejectedValue(new Error(`network error`))
 
       const store = useAuthStore()
       const result = await store.refreshAccessToken()
@@ -271,7 +261,7 @@ describe(`useAuthStore`, () => {
 
     it(`returns null if no access_token in response`, async () => {
       localStorage.setItem(INTERNAL_REFRESH_TOKEN_KEY, `old-refresh`)
-      mockedApiPost.mockResolvedValue({ data: { expires_in: 3600 } })
+      mockedSimpleApiClientPost.mockResolvedValue({ data: { expires_in: 3600 } })
 
       const store = useAuthStore()
       const result = await store.refreshAccessToken()
@@ -283,7 +273,7 @@ describe(`useAuthStore`, () => {
       const user = { id: `1`, name: `Test User`, email: `test@test.com` }
       localStorage.setItem(USER_KEY, JSON.stringify(user))
       localStorage.setItem(INTERNAL_REFRESH_TOKEN_KEY, `old-refresh`)
-      mockedApiPost.mockResolvedValue({
+      mockedSimpleApiClientPost.mockResolvedValue({
         data: { internal_access_token: `new-access`, expires_in: 3600 }
       })
 
@@ -303,7 +293,7 @@ describe(`useAuthStore`, () => {
     localStorage.setItem(TOKEN_EXPIRES_AT_KEY, String(Date.now() + 30000))
     localStorage.setItem(INTERNAL_REFRESH_TOKEN_KEY, `refresh-me`)
 
-    mockedApiPost.mockResolvedValue({
+    mockedSimpleApiClientPost.mockResolvedValue({
       data: { internal_access_token: `fresh-access`, expires_in: 3600 }
     })
 
@@ -323,7 +313,7 @@ describe(`useAuthStore`, () => {
       const scheduleRefreshSpy = vi.spyOn(store, `scheduleProactiveRefresh`)
       store.init()
 
-      expect(api.setRefreshTokenFn).toHaveBeenCalled()
+      expect(authApiClient.setRefreshTokenFn).toHaveBeenCalled()
       expect(scheduleRefreshSpy).toHaveBeenCalled()
     })
 
@@ -332,7 +322,7 @@ describe(`useAuthStore`, () => {
       const scheduleRefreshSpy = vi.spyOn(store, `scheduleProactiveRefresh`)
       store.init()
 
-      expect(api.setRefreshTokenFn).toHaveBeenCalled()
+      expect(authApiClient.setRefreshTokenFn).toHaveBeenCalled()
       expect(scheduleRefreshSpy).not.toHaveBeenCalled()
     })
   })

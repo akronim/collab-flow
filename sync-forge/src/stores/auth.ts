@@ -2,16 +2,13 @@ import { ApiEndpoints } from '@/constants/apiEndpoints'
 import {
   INTERNAL_ACCESS_TOKEN_KEY,
   INTERNAL_REFRESH_TOKEN_KEY,
-  ACCESS_TOKEN_KEY,
-  ID_TOKEN_KEY,
-  IS_GOOGLE_LOGIN_KEY,
-  REFRESH_TOKEN_KEY,
   TOKEN_EXPIRES_AT_KEY,
   USER_KEY,
   CODE_VERIFIER_KEY
 } from '@/constants/localStorageKeys'
 import type { User } from '@/types/auth'
-import api, { type AxConfig } from '@/utils/api.gateway'
+import { simpleApiClient } from '@/services/simpleApiClient'
+import { authApiClient, type AxConfig } from '@/services/authApiClient'
 import Logger from '@/utils/logger'
 import { defineStore } from 'pinia'
 
@@ -55,7 +52,7 @@ export const useAuthStore = defineStore(`auth`, {
     },
 
     init() {
-      api.setRefreshTokenFn(this.refreshAccessToken.bind(this))
+      authApiClient.setRefreshTokenFn(this.refreshAccessToken.bind(this))
 
       const expiresAt = localStorage.getItem(TOKEN_EXPIRES_AT_KEY)
       if (!expiresAt || !this.user) {
@@ -114,12 +111,6 @@ export const useAuthStore = defineStore(`auth`, {
         localStorage.setItem(INTERNAL_REFRESH_TOKEN_KEY, payload.internalRefreshToken)
       }
       localStorage.setItem(TOKEN_EXPIRES_AT_KEY, String(expiresAt))
-      
-      // Deprecated items
-      localStorage.removeItem(ACCESS_TOKEN_KEY)
-      localStorage.removeItem(ID_TOKEN_KEY)
-      localStorage.removeItem(REFRESH_TOKEN_KEY)
-      localStorage.removeItem(IS_GOOGLE_LOGIN_KEY)
 
       this.scheduleProactiveRefresh(payload.expiresIn)
     },
@@ -160,7 +151,7 @@ export const useAuthStore = defineStore(`auth`, {
         }
 
         try {
-          const { data } = await api.post(
+          const { data } = await simpleApiClient.post(
             ApiEndpoints.AUTH_INTERNAL_REFRESH,
             { internal_refresh_token: refreshToken },
             { _retry: true } as AxConfig

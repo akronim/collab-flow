@@ -20,7 +20,7 @@
           </span>
         </template>
 
-        <p class="mt-2 text-sm text-gray-600">
+        <p class="text-sm text-gray-600">
           {{ project.description || 'No description' }}
         </p>
 

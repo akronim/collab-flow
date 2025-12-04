@@ -4,7 +4,7 @@ import { createRouter, createMemoryHistory } from 'vue-router'
 import AuthCallback from '@/views/AuthCallback.vue'
 import { useAuthStore } from '@/stores'
 import { setActivePinia, createPinia } from 'pinia'
-import api from '@/utils/api.gateway'
+import { simpleApiClient } from '@/services/simpleApiClient'
 import { routes } from '@/router'
 import {
   CODE_VERIFIER_KEY
@@ -12,8 +12,8 @@ import {
 import { ApiEndpoints } from '@/constants/apiEndpoints'
 import { AppRoutes } from '@/constants/routes'
 
-vi.mock(`@/utils/api.gateway`, () => ({
-  default: {
+vi.mock(`@/services/simpleApiClient`, () => ({
+  simpleApiClient: {
     post: vi.fn(),
     get: vi.fn()
   }
@@ -37,25 +37,31 @@ describe(`AuthCallback`, () => {
   })
 
    
-  it(`exchanges code for an internal token, stores it and redirects to /`, async () => {
+  it(`exchanges code for tokens, sets user, and redirects to /`, async () => {
     router.currentRoute.value.query = { code: `auth-code-123` }
     localStorage.setItem(CODE_VERIFIER_KEY, `verifier-abc`)
 
+    const mockUser = { id: `user-123`, email: `test@example.com`, name: `Test User` }
+    // A mock JWT has two dots. The payload is the base64 encoded JSON of the user.
+    const mockAccessToken = `header.${Buffer.from(JSON.stringify(mockUser)).toString(`base64`)}.signature`
+
     const internalTokenResponse = {
-      internal_access_token: `internal.jwt`,
+      internal_access_token: mockAccessToken,
+      internal_refresh_token: `new.refresh.token`,
       expires_in: 900
     }
-    vi.mocked(api.post).mockResolvedValueOnce({
+    vi.mocked(simpleApiClient.post).mockResolvedValueOnce({
       data: internalTokenResponse
     })
 
     const authStore = useAuthStore()
     const setAuthTokensSpy = vi.spyOn(authStore, `setAuthTokens`)
+    const setUserSpy = vi.spyOn(authStore, `setUser`)
 
     mount(AuthCallback, { global: { plugins: [router] } })
     await flushPromises()
 
-    expect(api.post).toHaveBeenCalledWith(
+    expect(simpleApiClient.post).toHaveBeenCalledWith(
       ApiEndpoints.AUTH_TOKEN,
       expect.objectContaining({
         code: `auth-code-123`,
@@ -63,8 +69,13 @@ describe(`AuthCallback`, () => {
       })
     )
 
+    // Verify setUser was called with the decoded user payload
+    expect(setUserSpy).toHaveBeenCalledWith({ user: expect.objectContaining(mockUser) })
+
+    // Verify setAuthTokens was called with the full payload
     expect(setAuthTokensSpy).toHaveBeenCalledWith({
-      internalAccessToken: `internal.jwt`,
+      internalAccessToken: mockAccessToken,
+      internalRefreshToken: `new.refresh.token`,
       expiresIn: 900
     })
 
@@ -84,7 +95,7 @@ describe(`AuthCallback`, () => {
     router.currentRoute.value.query = { code: `bad-code` }
     localStorage.setItem(CODE_VERIFIER_KEY, `verifier-abc`)
 
-    vi.mocked(api.post).mockRejectedValueOnce(new Error(`invalid_grant`))
+    vi.mocked(simpleApiClient.post).mockRejectedValueOnce(new Error(`invalid_grant`))
 
     mount(AuthCallback, { global: { plugins: [router] } })
     await flushPromises()

@@ -13,11 +13,13 @@
 import { onMounted } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import { useAuthStore } from '@/stores'
-import api from '@/utils/api.gateway'
+import { simpleApiClient } from '@/services/simpleApiClient'
 import axios from 'axios'
 import Logger from '@/utils/logger'
 import { RouteNames } from '@/constants/routes'
 import { ApiEndpoints } from '@/constants/apiEndpoints'
+import { jwtDecode } from 'jwt-decode'
+import type { User } from '@/types/auth'
 
 const route = useRoute()
 const router = useRouter()
@@ -33,16 +35,21 @@ onMounted(async () => {
   }
 
   try {
-    const tokenResp = await api.post(ApiEndpoints.AUTH_TOKEN, { code, codeVerifier })
+    const tokenResp = await simpleApiClient.post(ApiEndpoints.AUTH_TOKEN, { code, codeVerifier })
 
-    const { internal_access_token, expires_in } = tokenResp.data
+    const { internal_access_token, internal_refresh_token, expires_in } = tokenResp.data
 
     if (!internal_access_token) {
       throw new Error(`Missing internal_access_token in auth response`)
     }
 
+    const user = jwtDecode<User>(internal_access_token)
+
+    authStore.setUser({ user })
+
     authStore.setAuthTokens({
       internalAccessToken: internal_access_token,
+      internalRefreshToken: internal_refresh_token,
       expiresIn: expires_in
     })
 
