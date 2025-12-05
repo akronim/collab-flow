@@ -281,3 +281,267 @@
        * Only if the google_access_token has expired does the backend use the google_refresh_token to get a new one from Google.
 
   This "caching" strategy is more efficient and performant, reducing latency and reliance on the external Google API. It avoids refreshing the Google token every 10 minutes.
+
+
+```ts
+import axios, { type AxiosError, type AxiosResponse, type InternalAxiosRequestConfig, type AxiosInstance } from 'axios'
+import Logger from '@/utils/logger'
+
+export interface AxConfig extends InternalAxiosRequestConfig {
+  _retry?: boolean;
+}
+
+interface QueueItem {
+  resolve: (token: string) => void;
+  reject: (error: unknown) => void;
+}
+
+export type TokenRefreshFn = () => Promise<string | null>
+export type TokenGetFn = () => string | null
+
+
+export interface AuthApiClient extends AxiosInstance {
+  setRefreshTokenFn: (fn: TokenRefreshFn) => void;
+  setGetTokenFn: (fn: TokenGetFn) => void;
+}
+
+let refreshTokenFn: TokenRefreshFn | undefined
+let getTokenFn: TokenGetFn | undefined
+let isRefreshing = false
+let failedQueue: QueueItem[] = []
+
+const processQueue = (error: unknown = null, token: string | null = null): void => {
+  failedQueue.forEach(({ resolve, reject }) => {
+    if (error) {
+      reject(error)
+    } else if (token) {
+      resolve(token)
+    } else {
+      reject(new Error(`Token refresh failed`))
+    }
+  })
+  failedQueue = []
+}
+
+/**
+ * Factory function to create an Axios client for the main application API.
+ * It includes interceptors to handle token attachment and refreshing.
+ * @param baseURL The base URL for the main application API.
+ * @returns A "smart" Axios instance with interceptors.
+ */
+// eslint-disable-next-line max-lines-per-function
+export const createAuthApiClient = (baseURL: string): AuthApiClient => {
+  if (!baseURL) {
+    throw new Error(`Cannot create API client without a baseURL`)
+  }
+
+  const api = axios.create({
+    baseURL,
+    timeout: 10000
+  }) as AuthApiClient
+
+  api.interceptors.request.use((config: InternalAxiosRequestConfig) => {
+    if (getTokenFn) {
+      const token = getTokenFn()
+      if (token) {
+        config.headers = config.headers || {}
+        config.headers.Authorization = `Bearer ${token}`
+      }
+    }
+    return config
+  })
+
+  // eslint-disable-next-line max-lines-per-function
+  const errRespInterceptor = async (err: AxiosError): Promise<unknown> => {
+    const config = err.config as AxConfig
+
+    if (err.response?.status !== 401 || !config || !refreshTokenFn) {
+      return Promise.reject(err)
+    }
+
+    if (config._retry) {
+      return Promise.reject(err)
+    }
+
+    if (isRefreshing) {
+      return new Promise<string>((resolve, reject) => {
+        config._retry = true
+        failedQueue.push({ resolve, reject })
+      })
+        .then(token => {
+          const retryConfig = {
+            ...config,
+            headers: { ...config.headers, Authorization: `Bearer ${token}` }
+          }
+          return api.request(retryConfig)
+        })
+        .catch(queueError => {
+          const error = queueError instanceof Error ? queueError : new Error(String(queueError))
+          return Promise.reject(error)
+        })
+    }
+
+    isRefreshing = true
+    config._retry = true
+
+    try {
+      const newToken = await refreshTokenFn()
+
+      if (!newToken) {
+        const refreshError = new Error(`Token refresh failed`)
+        processQueue(refreshError)
+        return Promise.reject(refreshError)
+      }
+
+      processQueue(null, newToken)
+
+      const retryConfig = {
+        ...config,
+        headers: { ...config.headers, Authorization: `Bearer ${newToken}` }
+      }
+      return api.request(retryConfig)
+    } catch (refreshError) {
+      Logger.error(`Token refresh error:`, refreshError)
+      processQueue(refreshError)
+      const error = refreshError instanceof Error ? refreshError : new Error(String(refreshError))
+      return Promise.reject(error)
+    } finally {
+      isRefreshing = false
+    }
+  }
+
+  api.interceptors.response.use((res: AxiosResponse) => res, errRespInterceptor)
+
+  api.setRefreshTokenFn = (fn: TokenRefreshFn): void => {
+    refreshTokenFn = fn
+  }
+
+  api.setGetTokenFn = (fn: TokenGetFn): void => {
+    getTokenFn = fn
+  }
+
+  return api
+}
+
+const gatewayApiUrl = import.meta.env.VITE_GATEWAY_API_URL
+
+if (!gatewayApiUrl) {
+  throw new Error(`VITE_GATEWAY_API_URL is not defined. Please check your .env file.`)
+}
+
+/**
+ * Singleton instance of the "smart" API client for the application to use.
+ */
+export const authApiClient = createAuthApiClient(gatewayApiUrl)
+```
+
+
+
+-----------
+```ts
+import axios, { type AxiosInstance } from 'axios'
+
+/**
+ * Factory function to create a simple Axios instance.
+ * Exported for testability.
+ * @param baseURL The base URL for the authentication API.
+ * @returns A simple Axios instance.
+ */
+export const createSimpleApiClient = (baseURL: string): AxiosInstance => {
+  if (!baseURL) {
+    throw new Error(`Cannot create API client without a baseURL`)
+  }
+
+  const api = axios.create({
+    baseURL,
+    timeout: 10000,
+    withCredentials: true
+  })
+
+  // This client intentionally has NO interceptors for token refreshing,
+  // as it is used for the authentication calls themselves (e.g., /token, /refresh).
+
+  return api
+}
+
+const authApiUrl = import.meta.env.VITE_AUTH_API_URL
+
+if (!authApiUrl) {
+  throw new Error(`VITE_AUTH_API_URL is not defined. Please check your .env file.`)
+}
+
+/**
+ * Singleton instance of the auth API client for the application to use.
+ */
+export const simpleApiClient = createSimpleApiClient(authApiUrl)
+```
+
+-------------------
+
+<template>
+  <div class="flex min-h-screen items-center justify-center bg-gray-50">
+    <div class="text-center">
+      <div class="animate-spin rounded-full h-8 w-8 border-b-2 border-indigo-600 mx-auto" />
+      <p class="mt-4 text-lg font-medium text-gray-700">
+        Signing you in…
+      </p>
+    </div>
+  </div>
+</template>
+
+<script setup lang="ts">
+import { onMounted } from 'vue'
+import { useRoute, useRouter } from 'vue-router'
+import { useAuthStore } from '@/stores'
+import { simpleApiClient } from '@/services/simpleApiClient'
+import axios from 'axios'
+import Logger from '@/utils/logger'
+import { RouteNames } from '@/constants/routes'
+import { ApiEndpoints } from '@/constants/apiEndpoints'
+import { jwtDecode } from 'jwt-decode'
+import type { User } from '@/types/auth'
+
+const route = useRoute()
+const router = useRouter()
+const authStore = useAuthStore()
+
+onMounted(async () => {
+  const code = route.query.code as string | undefined
+  const codeVerifier = authStore.getPkceCodeVerifier()
+
+  if (!code || !codeVerifier) {
+    await router.replace({ name: RouteNames.LOGIN })
+    return
+  }
+
+  try {
+    const tokenResp = await simpleApiClient.post(ApiEndpoints.AUTH_TOKEN, { code, codeVerifier })
+
+    const { internal_access_token, expires_in } = tokenResp.data
+
+    if (!internal_access_token) {
+      throw new Error(`Missing internal_access_token in auth response`)
+    }
+
+    const user = jwtDecode<User>(internal_access_token)
+
+    authStore.setUser({ user })
+
+    authStore.setAuthTokens({
+      internalAccessToken: internal_access_token,
+      expiresIn: expires_in
+    })
+
+    await router.replace(`/`)
+  } catch (err) {
+    if (axios.isAxiosError(err)) {
+      Logger.error(`Auth failed:`, err.response?.data ?? err.message)
+    } else {
+      Logger.error(`Auth failed:`, err)
+    }
+    await router.replace({ name: RouteNames.LOGIN })
+  } finally {
+    authStore.clearPkceCodeVerifier()
+  }
+})
+</script>
