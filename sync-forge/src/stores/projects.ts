@@ -30,8 +30,14 @@ export const useProjectStore = defineStore(`projects`, {
       }
     },
 
-    fetchProjectById(id: string): Project | undefined {
-      return this.projects.find((p) => p.id === id)
+    async fetchProjectById(id: string): Promise<Project | undefined> {
+      const result = await projectApiService.getProjectById(id)
+      if (result.isSuccess()) {
+        return result.data
+      }
+
+      Logger.apiError(result.error, { message: `Failed to fetch project ${id}` })
+      return undefined
     },
 
     addProject(newProject: Omit<Project, `createdAt`>): void {

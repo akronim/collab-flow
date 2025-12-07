@@ -18,13 +18,15 @@
       </div>
     </header>
 
-    <!-- TODO -->
-    <!-- <div v-if="loading" class="flex justify-center items-center py-20">
+    <div
+      v-if="loading"
+      class="flex justify-center items-center py-20"
+    >
       <p>Loading project...</p>
-    </div> -->
+    </div>
 
     <div
-      v-if="!isValidProject"
+      v-else-if="!currentProject"
       class="flex items-center justify-center bg-gray-50"
     >
       <div class="text-center">
@@ -40,12 +42,12 @@
       </div>
     </div>
 
-    <KanbanBoard v-else />
+    <KanbanBoard v-else-if="currentProject" />
   </div>
 </template>
 
 <script setup lang="ts">
-import { computed } from 'vue'
+import { computed, onMounted, ref } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import KanbanBoard from '@/components/kanban/KanbanBoard.vue'
 import { useProjectStore } from '@/stores'
@@ -58,13 +60,13 @@ const router = useRouter()
 const projectStore = useProjectStore()
 
 const currentProjectId = computed(() => route.params.projectId as string)
+const currentProject = ref<Project>()
+const loading = ref(true)
 
-const currentProject = computed((): Project | undefined => {
-  if (!currentProjectId.value) {
-    return undefined
+onMounted(async () => {
+  if (currentProjectId.value) {
+    currentProject.value = await projectStore.fetchProjectById(currentProjectId.value)
   }
-  return projectStore.fetchProjectById(currentProjectId.value)
+  loading.value = false
 })
-
-const isValidProject = computed(() => !!currentProject.value)
 </script>
