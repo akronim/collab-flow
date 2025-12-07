@@ -1,47 +1,15 @@
 import { defineStore } from 'pinia'
 import type { Task } from '@/types/task'
-import { v4 as uuidv4 } from 'uuid'
+import { taskApiService } from '@/services/task.service'
+import Logger from '@/utils/logger'
 
 interface TaskState {
   tasks: Task[]
 }
 
-const mockTasks: Task[] = [
-  {
-    id: `1`,
-    projectId: `1`,
-    title: `Design homepage`,
-    description: `Create mockups in Figma`,
-    status: `todo`,
-    order: 0,
-    createdAt: new Date().toISOString(),
-    updatedAt: new Date().toISOString()
-  },
-  {
-    id: `2`,
-    projectId: `1`,
-    title: `Setup Vue project`,
-    description: `With Vite + Tailwind + Pinia`,
-    status: `inprogress`,
-    order: 0,
-    createdAt: new Date().toISOString(),
-    updatedAt: new Date().toISOString()
-  },
-  {
-    id: `3`,
-    projectId: `1`,
-    title: `User authentication`,
-    description: `Implement login flow`,
-    status: `done`,
-    order: 0,
-    createdAt: new Date().toISOString(),
-    updatedAt: new Date().toISOString()
-  }
-]
-
 export const useTaskStore = defineStore(`tasks`, {
   state: (): TaskState => ({
-    tasks: mockTasks
+    tasks: []
   }),
 
   getters: {
@@ -81,33 +49,53 @@ export const useTaskStore = defineStore(`tasks`, {
   },
 
   actions: {
+    async fetchTasksByProjectId(projectId: string): Promise<void> {
+      const result = await taskApiService.getTasksByProjectId(projectId)
+      if (result.isSuccess()) {
+        this.tasks = result.data || []
+      } else {
+        Logger.apiError(result.error, { message: `Failed to fetch tasks for project ${projectId}` })
+      }
+    },
+
     getTaskById(projectId: string, taskId: string): Task | undefined {
       return this.tasks.find((t) => t.projectId === projectId && t.id === taskId)
     },
 
-    addTask(task: Omit<Task, `id` | `createdAt` | `updatedAt`>): void {
-      const newTask: Task = {
-        ...task,
-        id: uuidv4(),
-        createdAt: new Date().toISOString(),
-        updatedAt: new Date().toISOString()
+    async addTask(task: Omit<Task, `id` | `createdAt` | `updatedAt`>): Promise<Task | undefined> {
+      const result = await taskApiService.createTask(task)
+      if (result.isSuccess() && result.data) {
+        this.tasks.push(result.data)
+        return result.data
       }
-      this.tasks.push(newTask)
+      Logger.apiError(result.error, { message: `Failed to create task` })
+      return undefined
     },
 
-    updateTask(id: string, updates: Partial<Task>): void {
-      const task = this.tasks.find((t) => t.id === id)
-      if (task) {
-        Object.assign(task, { ...updates, updatedAt: new Date().toISOString() })
+    async updateTask(id: string, updates: Partial<Task>): Promise<void> {
+      const result = await taskApiService.updateTask(id, updates)
+      if (result.isSuccess() && result.data) {
+        const index = this.tasks.findIndex((t) => t.id === id)
+        if (index !== -1) {
+          this.tasks[index] = result.data
+        }
+      } else {
+        Logger.apiError(result.error, { message: `Failed to update task ${id}` })
       }
     },
 
-    deleteTask(id: string): void {
-      this.tasks = this.tasks.filter((t) => t.id !== id)
+    async deleteTask(id: string): Promise<void> {
+      const result = await taskApiService.deleteTask(id)
+      if (result.isSuccess()) {
+        this.tasks = this.tasks.filter((t) => t.id !== id)
+      } else {
+        Logger.apiError(result.error, { message: `Failed to delete task ${id}` })
+      }
     },
 
-    moveTask(taskId: string, newStatus: Task[`status`], newOrder: number): void {
-      this.updateTask(taskId, { status: newStatus, order: newOrder })
+    // TODO should be save to DB as well
+    async moveTask(taskId: string, newStatus: Task[`status`], newOrder: number): Promise<void> {
+      await this.updateTask(taskId, { status: newStatus, order: newOrder })
     }
   }
 })

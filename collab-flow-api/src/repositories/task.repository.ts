@@ -1,27 +1,6 @@
 import { type Task } from '../types/task'
-
-const tasks: Task[] = [
-  {
-    id: `1`,
-    projectId: `1`,
-    title: `Implement authentication`,
-    description: `Set up JWT authentication with refresh tokens.`,
-    status: `done`,
-    order: 1,
-    createdAt: new Date().toISOString(),
-    updatedAt: new Date().toISOString()
-  },
-  {
-    id: `2`,
-    projectId: `1`,
-    title: `Design database schema`,
-    description: `Plan the schema for projects, tasks, and users.`,
-    status: `inprogress`,
-    order: 2,
-    createdAt: new Date().toISOString(),
-    updatedAt: new Date().toISOString()
-  }
-]
+import { tasks } from '../data/mockData'
+import { randomUUID } from 'crypto'
 
 export const taskRepository = {
   find: async (): Promise<Task[]> => {
@@ -32,14 +11,42 @@ export const taskRepository = {
     return tasks.find(task => task.id === id)
   },
 
+  findByProjectId: async (projectId: string): Promise<Task[]> => {
+    return tasks.filter(task => task.projectId === projectId)
+  },
+
   create: async (taskData: Omit<Task, `id` | `createdAt` | `updatedAt`>): Promise<Task> => {
     const newTask: Task = {
-      id: String(tasks.length + 1),
+      id: randomUUID(),
       ...taskData,
       createdAt: new Date().toISOString(),
       updatedAt: new Date().toISOString()
     }
     tasks.push(newTask)
     return newTask
+  },
+
+  update: async (id: string, updates: Partial<Task>): Promise<Task | undefined> => {
+    const index = tasks.findIndex(task => task.id === id)
+    if (index === -1) {
+      return undefined
+    }
+    const updatedTask: Task = {
+      ...tasks[index],
+      ...updates,
+      id: tasks[index].id,
+      updatedAt: new Date().toISOString()
+    }
+    tasks[index] = updatedTask
+    return updatedTask
+  },
+
+  delete: async (id: string): Promise<boolean> => {
+    const index = tasks.findIndex(task => task.id === id)
+    if (index === -1) {
+      return false
+    }
+    tasks.splice(index, 1)
+    return true
   }
 }

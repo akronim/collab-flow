@@ -95,18 +95,18 @@ export function useTaskForm(options: UseTaskFormOptions): UseTaskFormReturn {
     }
   }
 
-  function handleTaskSave(): void {
+  async function handleTaskSave(): Promise<void> {
     const trimmedTitle = form.value.title.trim()
     const trimmedDescription = form.value.description.trim()
 
     if (isEditMode.value && taskId?.value) {
-      taskStore.updateTask(taskId.value, {
+      await taskStore.updateTask(taskId.value, {
         title: trimmedTitle,
         description: trimmedDescription
       })
     } else {
       const targetStatus = status?.value ?? `todo`
-      taskStore.addTask({
+      await taskStore.addTask({
         projectId: projectId.value,
         title: trimmedTitle,
         description: trimmedDescription,
@@ -133,7 +133,7 @@ export function useTaskForm(options: UseTaskFormOptions): UseTaskFormReturn {
     error.value = null
 
     try {
-      handleTaskSave()
+      await handleTaskSave()
 
       onSuccess?.()
 

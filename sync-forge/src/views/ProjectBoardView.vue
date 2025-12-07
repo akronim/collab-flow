@@ -50,7 +50,7 @@
 import { computed, onMounted, ref } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import KanbanBoard from '@/components/kanban/KanbanBoard.vue'
-import { useProjectStore } from '@/stores'
+import { useProjectStore, useTaskStore } from '@/stores'
 import BaseButton from '@/components/ui/base/BaseButton.vue'
 import { RouteNames } from '@/constants/routes'
 import type { Project } from '@/types/project'
@@ -58,6 +58,7 @@ import type { Project } from '@/types/project'
 const route = useRoute()
 const router = useRouter()
 const projectStore = useProjectStore()
+const taskStore = useTaskStore()
 
 const currentProjectId = computed(() => route.params.projectId as string)
 const currentProject = ref<Project>()
@@ -65,7 +66,11 @@ const loading = ref(true)
 
 onMounted(async () => {
   if (currentProjectId.value) {
-    currentProject.value = await projectStore.fetchProjectById(currentProjectId.value)
+    const [project] = await Promise.all([
+      projectStore.fetchProjectById(currentProjectId.value),
+      taskStore.fetchTasksByProjectId(currentProjectId.value)
+    ])
+    currentProject.value = project
   }
   loading.value = false
 })

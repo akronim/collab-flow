@@ -6,6 +6,7 @@ import { createRouter, createMemoryHistory } from 'vue-router'
 import type { Project } from '@/types/project'
 import { RouteNames } from '@/constants/routes'
 import { projectApiService } from '@/services/project.service'
+import { taskApiService } from '@/services/task.service'
 import ApiCallResult from '@/utils/apiCallResult'
 
 vi.mock(`@/components/kanban/KanbanBoard.vue`, () => ({
@@ -17,6 +18,12 @@ vi.mock(`@/components/kanban/KanbanBoard.vue`, () => ({
 vi.mock(`@/services/project.service`, () => ({
   projectApiService: {
     getProjectById: vi.fn()
+  }
+}))
+
+vi.mock(`@/services/task.service`, () => ({
+  taskApiService: {
+    getTasksByProjectId: vi.fn()
   }
 }))
 
@@ -60,6 +67,9 @@ describe(`ProjectBoardView.vue`, () => {
     vi.mocked(projectApiService.getProjectById).mockResolvedValue(
       ApiCallResult.Success(mockProject, 200)
     )
+    vi.mocked(taskApiService.getTasksByProjectId).mockResolvedValue(
+      ApiCallResult.Success([], 200)
+    )
 
     await router.push(`/projects/project-1`)
     await router.isReady()
@@ -69,11 +79,15 @@ describe(`ProjectBoardView.vue`, () => {
 
     expect(wrapper.find(`[data-testid="kanban-board"]`).exists()).toBe(true)
     expect(wrapper.text()).toContain(`Test Project`)
+    expect(taskApiService.getTasksByProjectId).toHaveBeenCalledWith(`project-1`)
   })
 
   it(`renders a 404 message when the project is invalid`, async () => {
     vi.mocked(projectApiService.getProjectById).mockResolvedValue(
       ApiCallResult.Fail(new Error(`Not found`))
+    )
+    vi.mocked(taskApiService.getTasksByProjectId).mockResolvedValue(
+      ApiCallResult.Success([], 200)
     )
 
     await router.push(`/projects/invalid-id`)

@@ -10,9 +10,19 @@ export const taskService = {
     return await taskRepository.findById(id)
   },
 
+  getTasksByProjectId: async (projectId: string): Promise<Task[]> => {
+    return await taskRepository.findByProjectId(projectId)
+  },
+
   createTask: async (taskData: Omit<Task, `id` | `createdAt` | `updatedAt`>): Promise<Task> => {
-    // In a real application, you might have business logic here.
-    // For example, validating the taskData, checking permissions, etc.
     return await taskRepository.create(taskData)
+  },
+
+  updateTask: async (id: string, updates: Partial<Task>): Promise<Task | undefined> => {
+    return await taskRepository.update(id, updates)
+  },
+
+  deleteTask: async (id: string): Promise<boolean> => {
+    return await taskRepository.delete(id)
   }
 }

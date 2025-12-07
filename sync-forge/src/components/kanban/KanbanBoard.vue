@@ -89,14 +89,14 @@ const navigateToEditTask = async (taskId: string): Promise<void> => {
   })
 }
 
-const deleteTask = (taskId: string): void => {
+const deleteTask = async (taskId: string): Promise<void> => {
   if (confirm(`Delete this task permanently?`)) {
-    taskStore.deleteTask(taskId)
+    await taskStore.deleteTask(taskId)
   }
 }
 
-const handleMoveTask = (taskId: string, newStatus: TaskStatus): void => {
+const handleMoveTask = async (taskId: string, newStatus: TaskStatus): Promise<void> => {
   const newOrder = taskStore.tasksByStatus(currentProjectId.value, newStatus).length
-  taskStore.moveTask(taskId, newStatus, newOrder)
+  await taskStore.moveTask(taskId, newStatus, newOrder)
 }
 </script>

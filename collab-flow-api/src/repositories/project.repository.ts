@@ -1,19 +1,6 @@
 import { type Project } from '../types/project'
-
-const projects: Project[] = [
-  {
-    id: `1`,
-    name: `SyncForge Frontend`,
-    description: `The main frontend application for SyncForge.`,
-    createdAt: new Date().toISOString()
-  },
-  {
-    id: `2`,
-    name: `CollabFlow API`,
-    description: `The new backend API for tasks, projects, and users.`,
-    createdAt: new Date().toISOString()
-  }
-]
+import { projects } from '../data/mockData'
+import { randomUUID } from 'crypto'
 
 export const projectRepository = {
   find: async (): Promise<Project[]> => {
@@ -26,7 +13,7 @@ export const projectRepository = {
 
   create: async (projectData: Omit<Project, `id` | `createdAt`>): Promise<Project> => {
     const newProject: Project = {
-      id: String(projects.length + 1),
+      id: randomUUID(),
       ...projectData,
       createdAt: new Date().toISOString()
     }
