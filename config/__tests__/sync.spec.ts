@@ -1,130 +1,176 @@
-import { vi, describe, it, expect, beforeEach } from 'vitest'
-import { run } from '../sync'
-import type { Config, LocalConfig } from '../sync'
-import * as fs from 'fs'
-import type { PathOrFileDescriptor } from 'fs'
-import * as crypto from 'crypto'
+import { describe, it, expect } from 'vitest'
+import {
+  validateSecrets,
+  mergeSecrets,
+  generateEnvContents,
+  ENV_KEYS,
+  ERROR_MESSAGES,
+} from '../sync'
+import type { SecretsConfig, SharedConfig, PortsConfig } from '../sync'
 
-// Mock the external modules
-vi.mock('fs')
-vi.mock('crypto')
-
-// --- Mocks Setup ---
-
-const MOCK_JWT_SECRET_STRING = 'mock-super-secret-jwt-string'
-const MOCK_JWT_SECRET_HEX = Buffer.from(MOCK_JWT_SECRET_STRING).toString('hex')
-
-// This mock uses the SAME placeholders as the real config.json to ensure validation tests work.
-const MOCK_CONFIG: Config = {
-  development: {
-    shared: { JWT_SECRET_LENGTH: 32, JWT_EXPIRES_IN: '15m', APP_TITLE: 'CollabFlow Dev' },
-    ports: { collab_flow_api: 3002, google_oauth_backend: 3001, sync_forge: 5173 },
-    secrets: { 
-      GOOGLE_CLIENT_ID: 'your-google-client-id.apps.googleusercontent.com', 
-      GOOGLE_CLIENT_SECRET: 'your-google-client-secret' 
-    }
-  },
-  staging: {
-    shared: { JWT_SECRET_LENGTH: 32, JWT_EXPIRES_IN: '30m', APP_TITLE: 'CollabFlow Staging' },
-    ports: { collab_flow_api: 8080, google_oauth_backend: 8081, sync_forge: 80 },
-    secrets: { 
-      GOOGLE_CLIENT_ID: 'your-google-client-id.apps.googleusercontent.com', 
-      GOOGLE_CLIENT_SECRET: 'your-google-client-secret'
-    }
-  }
-}
-const MOCK_LOCAL_CONFIG: LocalConfig = {
-  development: {
-    secrets: {
-      GOOGLE_CLIENT_ID: 'real-dev-client-id',
-      GOOGLE_CLIENT_SECRET: 'real-dev-client-secret'
-    }
-  },
-  staging: {
-    secrets: {
-      GOOGLE_CLIENT_ID: 'real-stg-client-id',
-      GOOGLE_CLIENT_SECRET: 'real-stg-client-secret'
-    }
-  }
+const validSecrets: SecretsConfig = {
+  GOOGLE_CLIENT_ID: '123456789-abcdef.apps.googleusercontent.com',
+  GOOGLE_CLIENT_SECRET: 'GOCSPX-abcdef123456',
 }
 
-// --- Test Suite ---
+const baseSecrets: SecretsConfig = {
+  GOOGLE_CLIENT_ID: 'base-client-id',
+  GOOGLE_CLIENT_SECRET: 'base-client-secret',
+}
 
-describe('Config Sync Script', () => {
-  beforeEach(() => {
-    // Reset mocks before each test
-    vi.resetAllMocks()
+const sharedConfig: SharedConfig = {
+  JWT_SECRET_LENGTH: 32,
+  JWT_EXPIRES_IN: '15m',
+  APP_TITLE: 'CollabFlow Dev',
+}
 
-    // Mock console
-    vi.spyOn(console, 'log').mockImplementation(() => {})
-    vi.spyOn(console, 'error').mockImplementation(() => {})
+const portsConfig: PortsConfig = {
+  collab_flow_api: 3002,
+  google_oauth_backend: 3001,
+  sync_forge: 5173,
+}
 
-    // Mock implementations
-    vi.mocked(crypto.randomBytes).mockImplementation((_size: number) => Buffer.from(MOCK_JWT_SECRET_STRING))
+describe('validateSecrets', () => {
+  it('should not throw for valid secrets', () => {
+    expect(() => validateSecrets(validSecrets)).not.toThrow()
+  })
 
-    vi.mocked(fs.readFileSync).mockImplementation((path: PathOrFileDescriptor) => {
-      const pathStr = path.toString()
-      if (pathStr.endsWith('config.json')) return JSON.stringify(MOCK_CONFIG)
-      if (pathStr.endsWith('config.local.json')) return JSON.stringify(MOCK_LOCAL_CONFIG)
-      throw new Error(`File not found: ${pathStr}`)
+  it('should throw if GOOGLE_CLIENT_ID does not end with .apps.googleusercontent.com', () => {
+    expect(() => validateSecrets({
+      ...validSecrets,
+      GOOGLE_CLIENT_ID: 'invalid-client-id',
+    })).toThrow(ERROR_MESSAGES.INVALID_GOOGLE_CLIENT_ID)
+  })
+
+  it('should throw if GOOGLE_CLIENT_SECRET is too short', () => {
+    expect(() => validateSecrets({
+      ...validSecrets,
+      GOOGLE_CLIENT_SECRET: 'short',
+    })).toThrow(ERROR_MESSAGES.INVALID_GOOGLE_CLIENT_SECRET)
+  })
+
+  it('should throw if GOOGLE_CLIENT_ID is empty', () => {
+    expect(() => validateSecrets({
+      ...validSecrets,
+      GOOGLE_CLIENT_ID: '',
+    })).toThrow(ERROR_MESSAGES.INVALID_GOOGLE_CLIENT_ID)
+  })
+
+  it('should throw if GOOGLE_CLIENT_SECRET is empty', () => {
+    expect(() => validateSecrets({
+      ...validSecrets,
+      GOOGLE_CLIENT_SECRET: '',
+    })).toThrow(ERROR_MESSAGES.INVALID_GOOGLE_CLIENT_SECRET)
+  })
+})
+
+describe('mergeSecrets', () => {
+  it('should return base secrets when no local secrets provided', () => {
+    const result = mergeSecrets(baseSecrets)
+    expect(result).toEqual(baseSecrets)
+  })
+
+  it('should return base secrets when local secrets is undefined', () => {
+    const result = mergeSecrets(baseSecrets, undefined)
+    expect(result).toEqual(baseSecrets)
+  })
+
+  it('should override base secrets with local secrets', () => {
+    const localSecrets = { GOOGLE_CLIENT_ID: 'local-client-id' }
+    const result = mergeSecrets(baseSecrets, localSecrets)
+    expect(result).toEqual({
+      GOOGLE_CLIENT_ID: 'local-client-id',
+      GOOGLE_CLIENT_SECRET: 'base-client-secret',
     })
-    
-    vi.mocked(fs.existsSync).mockReturnValue(true)
   })
 
-  it('should generate .env files correctly for development environment', () => {
-    run({ env: 'development', testMode: true })
+  it('should override all secrets when all provided locally', () => {
+    const localSecrets = {
+      GOOGLE_CLIENT_ID: 'local-client-id',
+      GOOGLE_CLIENT_SECRET: 'local-client-secret',
+    }
+    const result = mergeSecrets(baseSecrets, localSecrets)
+    expect(result).toEqual(localSecrets)
+  })
+})
 
-    const writeFileSyncMock = vi.mocked(fs.writeFileSync)
-    
-    expect(writeFileSyncMock).toHaveBeenCalledTimes(3)
+describe('generateEnvContents', () => {
+  const input = {
+    env: 'development',
+    shared: sharedConfig,
+    ports: portsConfig,
+    secrets: validSecrets,
+    jwtSecret: 'test-jwt-secret-hex',
+  }
 
-    const backendEnvCall = writeFileSyncMock.mock.calls.find(call => (call[0] as string).includes('google-oauth-backend'))
-    expect(backendEnvCall).toBeDefined()
-    const backendEnv = backendEnvCall![1] as string
-    expect(backendEnv).toContain('PORT=3001')
-    expect(backendEnv).toContain('GOOGLE_CLIENT_ID=real-dev-client-id')
-    expect(backendEnv).toContain('GOOGLE_CLIENT_SECRET=real-dev-client-secret')
-    expect(backendEnv).toContain(`JWT_SECRET=${MOCK_JWT_SECRET_HEX}`)
+  it('should generate env content for all three services', () => {
+    const result = generateEnvContents(input)
+    expect(Object.keys(result)).toEqual(['collab-flow-api', 'google-oauth-backend', 'sync-forge'])
   })
 
-  it('should generate .env files correctly for staging environment', () => {
-    run({ env: 'staging', testMode: true })
-    
-    const writeFileSyncMock = vi.mocked(fs.writeFileSync)
-    expect(writeFileSyncMock).toHaveBeenCalledTimes(3)
-    
-    const backendEnvCall = writeFileSyncMock.mock.calls.find(call => (call[0] as string).includes('google-oauth-backend'))
-    expect(backendEnvCall).toBeDefined()
-    const backendEnv = backendEnvCall![1] as string
-    expect(backendEnv).toContain('PORT=8081')
-    expect(backendEnv).toContain('GOOGLE_CLIENT_ID=real-stg-client-id')
+  it('should generate correct collab-flow-api env', () => {
+    const result = generateEnvContents(input)
+    const apiEnv = result['collab-flow-api']
+
+    expect(apiEnv).toContain(`${ENV_KEYS.PORT}=3002`)
+    expect(apiEnv).toContain(`${ENV_KEYS.NODE_ENV}=development`)
+    expect(apiEnv).toContain(`${ENV_KEYS.GOOGLE_CLIENT_ID}=${validSecrets.GOOGLE_CLIENT_ID}`)
+    expect(apiEnv).toContain(`${ENV_KEYS.JWT_SECRET}=test-jwt-secret-hex`)
+    expect(apiEnv).toContain(`${ENV_KEYS.JWT_EXPIRES_IN}=15m`)
+    expect(apiEnv.endsWith('\n')).toBe(true)
   })
 
-  it('should throw an error if environment is not found in config.json', () => {
-    expect(() => {
-      run({ env: 'production', testMode: true })
-    }).toThrow('❌ Environment [production] not found in config.json.')
+  it('should generate correct google-oauth-backend env', () => {
+    const result = generateEnvContents(input)
+    const backendEnv = result['google-oauth-backend']
+
+    expect(backendEnv).toContain(`${ENV_KEYS.PORT}=3001`)
+    expect(backendEnv).toContain(`${ENV_KEYS.NODE_ENV}=development`)
+    expect(backendEnv).toContain(`${ENV_KEYS.CORS_ORIGIN}=http://localhost:5173`)
+    expect(backendEnv).toContain(`${ENV_KEYS.COLLAB_FLOW_API_URL}=http://localhost:3002`)
+    expect(backendEnv).toContain(`${ENV_KEYS.GOOGLE_CLIENT_ID}=${validSecrets.GOOGLE_CLIENT_ID}`)
+    expect(backendEnv).toContain(`${ENV_KEYS.GOOGLE_CLIENT_SECRET}=${validSecrets.GOOGLE_CLIENT_SECRET}`)
+    expect(backendEnv).toContain(`${ENV_KEYS.REDIRECT_URI}=http://localhost:5173/auth/callback`)
+    expect(backendEnv).toContain(`${ENV_KEYS.JWT_SECRET}=test-jwt-secret-hex`)
+    expect(backendEnv).toContain(`${ENV_KEYS.JWT_EXPIRES_IN}=15m`)
+    expect(backendEnv.endsWith('\n')).toBe(true)
   })
 
-  it('should throw an error if a secret is not provided in local config', () => {
-    const incompleteLocalConfig = { development: { secrets: { GOOGLE_CLIENT_ID: 'real-dev-client-id' } } }
-    vi.mocked(fs.readFileSync).mockImplementation((path: PathOrFileDescriptor) => {
-      const pathStr = path.toString()
-      if (pathStr.endsWith('config.json')) return JSON.stringify(MOCK_CONFIG)
-      if (pathStr.endsWith('config.local.json')) return JSON.stringify(incompleteLocalConfig)
-      throw new Error(`File not found: ${pathStr}`)
-    })
+  it('should generate correct sync-forge env', () => {
+    const result = generateEnvContents(input)
+    const frontendEnv = result['sync-forge']
 
-    expect(() => {
-      run({ env: 'development', testMode: true })
-    }).toThrow('❌ GOOGLE_CLIENT_SECRET is missing or is a placeholder in config.')
+    expect(frontendEnv).toContain(`${ENV_KEYS.VITE_APP_TITLE}=CollabFlow Dev`)
+    expect(frontendEnv).toContain(`${ENV_KEYS.VITE_GOOGLE_CLIENT_ID}=${validSecrets.GOOGLE_CLIENT_ID}`)
+    expect(frontendEnv).toContain(`${ENV_KEYS.VITE_AUTH_API_URL}=http://localhost:3001`)
+    expect(frontendEnv).toContain(`${ENV_KEYS.VITE_GATEWAY_API_URL}=http://localhost:3001`)
+    expect(frontendEnv).toContain(`${ENV_KEYS.VITE_RESOURCE_API_URL}=http://localhost:3002`)
+    expect(frontendEnv.endsWith('\n')).toBe(true)
   })
 
-  it('should throw an error if config.local.json is missing', () => {
-    vi.mocked(fs.existsSync).mockReturnValue(false)
-    expect(() => {
-      run({ env: 'development', testMode: true })
-    }).toThrow('❌ GOOGLE_CLIENT_ID is missing or is a placeholder in config.')
+  it('should use correct URLs based on ports', () => {
+    const customInput = {
+      ...input,
+      ports: {
+        collab_flow_api: 8080,
+        google_oauth_backend: 8081,
+        sync_forge: 80,
+      },
+    }
+    const result = generateEnvContents(customInput)
+
+    expect(result['collab-flow-api']).toContain(`${ENV_KEYS.PORT}=8080`)
+    expect(result['google-oauth-backend']).toContain(`${ENV_KEYS.PORT}=8081`)
+    expect(result['google-oauth-backend']).toContain(`${ENV_KEYS.CORS_ORIGIN}=http://localhost:80`)
+    expect(result['google-oauth-backend']).toContain(`${ENV_KEYS.COLLAB_FLOW_API_URL}=http://localhost:8080`)
+    expect(result['sync-forge']).toContain(`${ENV_KEYS.VITE_AUTH_API_URL}=http://localhost:8081`)
+  })
+
+  it('should use correct environment name', () => {
+    const stagingInput = { ...input, env: 'staging' }
+    const result = generateEnvContents(stagingInput)
+
+    expect(result['collab-flow-api']).toContain(`${ENV_KEYS.NODE_ENV}=staging`)
+    expect(result['google-oauth-backend']).toContain(`${ENV_KEYS.NODE_ENV}=staging`)
   })
 })
