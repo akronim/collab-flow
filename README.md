@@ -90,36 +90,30 @@ Here is a diagram of the architecture:
 
 ### Configuration
 
-You will need to create `.env` files for each service, based on the `.env.example` files.
+This project uses a centralized configuration system managed in the `/config` directory. For a detailed explanation, see `config/README.md`.
 
-**1. `google-oauth-backend/.env`**
+**Initial Setup:**
 
-You will need to create a Google OAuth 2.0 client ID and secret from the [Google API Console](https://console.developers.google.com/).
+1.  **Create Local Secrets File:**
+    First, create your local secrets file by copying the example:
+    ```bash
+    cp config/config.local.json.example config/config.local.json
+    ```
+    Next, open `config/config.local.json` and fill in your actual `GOOGLE_CLIENT_ID` and `GOOGLE_CLIENT_SECRET`. This file is git-ignored and will not be committed.
 
-```
-PORT=3001
-CORS_ORIGIN=http://localhost:5173
-COLLAB_FLOW_API_URL=http://localhost:3000
-GOOGLE_CLIENT_ID=your-google-client-id
-GOOGLE_CLIENT_SECRET=your-google-client-secret
-GOOGLE_REDIRECT_URI=http://localhost:5173/auth/callback
-JWT_SECRET=a-very-secret-key
-JWT_EXPIRES_IN=15m
-```
+2.  **Generate Environment Files:**
+    Run the synchronization script from the root of the project to generate the `.env` files for each service:
+    ```bash
+    npm run env:sync
+    ```
+    This script reads the configuration, merges your local secrets, generates a shared `JWT_SECRET`, and creates the final `.env` file in each service's directory. You should run this script once during initial setup or any time you change the configuration.
 
-**2. `collab-flow-api/.env`**
+#### How This Scales
 
-```
-PORT=3000
-JWT_SECRET=a-very-secret-key
-```
+When you are ready for a production environment, you would:
 
-**3. `sync-forge/.env`**
-
-```
-VITE_GATEWAY_API_URL=http://localhost:3001
-VITE_GOOGLE_CLIENT_ID=your-google-client-id
-```
+1.  Add a `"production"` section to `config/config.json` with production-specific settings (like a different database URL, etc.).
+2.  On your production server, you would **not** use a `config.local.json` file. Instead, your hosting provider (like Vercel, AWS, or Docker) would inject the production secrets directly as environment variables. The application is designed to prioritize these environment variables over the configuration files.
 
 ### Running the Application
 

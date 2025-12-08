@@ -3,16 +3,28 @@ import type { StringValue } from 'ms'
 
 dotenv.config()
 
-const config = {
-  port: process.env.PORT || `3002`,
-  jwt: {
-    secret: process.env.JWT_SECRET,
-    expiresIn: (process.env.JWT_EXPIRES_IN || `15m`) as StringValue
+const requiredEnvVars = [
+  `PORT`,
+  `JWT_SECRET`,
+  `JWT_EXPIRES_IN`,
+  `GOOGLE_CLIENT_ID` // Added for consistency, though may not be used directly yet
+]
+
+for (const envVar of requiredEnvVars) {
+  if (!process.env[envVar]) {
+    throw new Error(`Missing required environment variable: ${envVar}. Please check your .env file.`)
   }
 }
 
-if (!config.jwt.secret) {
-  throw new Error(`Missing JWT_SECRET. Please check your .env file.`)
+const config = {
+  port: process.env.PORT!,
+  jwt: {
+    secret: process.env.JWT_SECRET!,
+    expiresIn: process.env.JWT_EXPIRES_IN! as StringValue
+  },
+  google: {
+    clientId: process.env.GOOGLE_CLIENT_ID!
+  }
 }
 
 export default config

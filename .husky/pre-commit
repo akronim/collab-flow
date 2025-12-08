@@ -1,1 +1,1 @@
-npm --prefix ./sync-forge run test-lint-typecheck && npm --prefix ./google-oauth-backend run test-lint-typecheck && npm --prefix ./collab-flow-api run test-lint-typecheck
+npm run check:all

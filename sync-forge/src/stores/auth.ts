@@ -52,13 +52,9 @@ export const useAuthStore = defineStore(`auth`, {
       Logger.log(`Proactive refresh scheduled in ${(timeoutMs / 1000 / 60).toFixed(1)} min`)
 
       this.proactiveRefreshTimer = setTimeout(async () => {
-        if (this.isTokenFreshEnough()) {
-          // just reschedule
-          const newRemaining = ((this.expiresAt ?? 0) - Date.now()) / 1000
-          this.scheduleProactiveRefresh(newRemaining)
-          return
-        }
-
+        // The timer has fired, so its job is to refresh the token.
+        // The refreshAccessToken function itself has a guard to prevent multiple
+        // simultaneous refreshes.
         await this.refreshAccessToken()
       }, timeoutMs)
     },

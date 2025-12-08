@@ -1,0 +1,18 @@
+{
+  "development": {
+    "shared": {
+      "JWT_SECRET_LENGTH": 64,
+      "JWT_EXPIRES_IN": "15m",
+      "APP_TITLE": "CollabFlow"
+    },
+    "ports": {
+      "collab_flow_api": 3002,
+      "google_oauth_backend": 3001,
+      "sync_forge": 5173
+    },
+    "secrets": {
+      "GOOGLE_CLIENT_ID": "your-google-client-id.apps.googleusercontent.com",
+      "GOOGLE_CLIENT_SECRET": "your-google-client-secret"
+    }
+  }
+}
