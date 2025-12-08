@@ -190,12 +190,12 @@ Frontend                    Backend (gateway)              collab-flow-api
  │ Authorization: Bearer xxx │                              │
  │──────────────────────────>│                              │
  │                           │ verify internal JWT          │
- │                           │ (tokenSwap middleware)       │
+ │                           │ (tokenValidation middleware) │
  │                           │                              │
- │                           │ proxy request                │
- │                           │ X-User-Id: 123               │
- │                           │ X-User-Email: foo@bar.com    │
+ │                           │ proxy request with           │
+ │                           │ original Bearer token        │
  │                           │─────────────────────────────>│
+ │                           │                              │ verify internal JWT
  │                           │                              │ handle request
  │                           │<─────────────────────────────│
  │<──────────────────────────│                              │
@@ -286,7 +286,7 @@ Frontend                    Backend
 | `services/auth.service.ts` | Google API calls |
 | `services/jwt.service.ts` | Internal JWT signing/verification |
 | `services/tokenStore.service.ts` | Maps internal ↔ Google refresh tokens |
-| `middleware/tokenSwap.middleware.ts` | Verifies internal JWT for gateway |
+| `middleware/tokenValidation.middleware.ts` | Verifies internal JWT for gateway |
 | `middleware/gateway.middleware.ts` | Proxies to collab-flow-api |
 
 ---

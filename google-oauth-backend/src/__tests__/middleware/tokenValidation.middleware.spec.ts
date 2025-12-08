@@ -1,6 +1,6 @@
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest'
 import type { Request, Response, NextFunction } from 'express'
-import { tokenSwapMiddleware } from '../../middleware/tokenSwap.middleware'
+import { tokenValidationMiddleware } from '../../middleware/tokenValidation.middleware'
 import * as authService from '../../services/auth.service'
 import jwtService from '../../services/jwt.service'
 import type { UserInfo } from '../../types'
@@ -8,7 +8,7 @@ import type { UserInfo } from '../../types'
 vi.mock(`../../services/auth.service`)
 vi.mock(`../../services/jwt.service`)
 
-describe(`Token Swap Middleware`, () => {
+describe(`Token Validation Middleware`, () => {
   let mockRequest: Partial<Request>
   let mockResponse: Partial<Response>
   let nextFunction: NextFunction = vi.fn()
@@ -29,7 +29,7 @@ describe(`Token Swap Middleware`, () => {
   })
 
   it(`should return 401 if no authorization header is provided`, async () => {
-    await tokenSwapMiddleware(mockRequest as Request, mockResponse as Response, nextFunction)
+    await tokenValidationMiddleware(mockRequest as Request, mockResponse as Response, nextFunction)
 
     expect(mockResponse.status).toHaveBeenCalledWith(401)
     expect(mockResponse.json).toHaveBeenCalledWith({ message: `Missing or malformed token` })
@@ -42,7 +42,7 @@ describe(`Token Swap Middleware`, () => {
       throw new Error(`Invalid token`)
     })
 
-    await tokenSwapMiddleware(mockRequest as Request, mockResponse as Response, nextFunction)
+    await tokenValidationMiddleware(mockRequest as Request, mockResponse as Response, nextFunction)
 
     expect(mockResponse.status).toHaveBeenCalledWith(401)
     expect(mockResponse.json).toHaveBeenCalledWith({ message: `Unauthorized: Invalid token` })
@@ -66,7 +66,7 @@ describe(`Token Swap Middleware`, () => {
     const validateSpy = vi.spyOn(authService, `validateAccessToken`)
     const verifySpy = vi.spyOn(jwtService, `verify`).mockReturnValue(fakeUser)
 
-    await tokenSwapMiddleware(mockRequest as Request, mockResponse as Response, nextFunction)
+    await tokenValidationMiddleware(mockRequest as Request, mockResponse as Response, nextFunction)
 
     expect(nextFunction).toHaveBeenCalled()
     expect(mockResponse.status).not.toHaveBeenCalled()

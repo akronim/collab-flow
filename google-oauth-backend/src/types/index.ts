@@ -22,3 +22,12 @@ export interface UserInfo {
   link?: string; // Profile link (deprecated/optional)
   gender?: string; // Optional field
 }
+
+declare global {
+  // eslint-disable-next-line @typescript-eslint/no-namespace
+  namespace Express {
+    interface Request {
+      user?: UserInfo
+    }
+  }
+}

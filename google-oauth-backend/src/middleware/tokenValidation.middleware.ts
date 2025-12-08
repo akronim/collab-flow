@@ -17,14 +17,14 @@ const extractToken = (authorizationHeader?: string): string | null => {
 }
 
 /**
- * An async middleware to handle token validation and swapping before proxying.
+ * An async middleware to handle token validation before proxying.
  */
-export const tokenSwapMiddleware = async (req: Request, res: Response, next: NextFunction): Promise<void> => {
+export const tokenValidationMiddleware = async (req: Request, res: Response, next: NextFunction): Promise<void> => {
   try {
     const internalToken = extractToken(req.headers.authorization)
 
     if (!internalToken) {
-      Logger.log(`[TokenSwap] Missing or malformed token`)
+      Logger.log(`[TokenValidation] Missing or malformed token`)
       res.status(401).json({ message: `Missing or malformed token` })
       return
     }
@@ -32,15 +32,14 @@ export const tokenSwapMiddleware = async (req: Request, res: Response, next: Nex
     // Validate the internal JWT
     const decoded = jwtService.verify<UserInfo>(internalToken)
     
-    // Optional: Attach user info to request for downstream use
-    // @ts-expect-error: Attaching custom property to request
+    // Attach user info to request for downstream use
     req.user = decoded
 
-    Logger.log(`[TokenSwap] Internal token verified for user: ${decoded.email}`)
+    Logger.log(`[TokenValidation] Internal token verified for user: ${decoded.email}`)
     next()
   } catch (error) {
     const message = getErrorMessage(error)
-    Logger.error(`[TokenSwap] Error:`, message)
+    Logger.error(`[TokenValidation] Error:`, message)
     if (!res.headersSent) {
       res.status(401).json({ message: `Unauthorized: ${message}` })
     }
