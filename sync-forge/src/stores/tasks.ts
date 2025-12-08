@@ -93,7 +93,6 @@ export const useTaskStore = defineStore(`tasks`, {
       }
     },
 
-    // TODO should be save to DB as well
     async moveTask(taskId: string, newStatus: Task[`status`], newOrder: number): Promise<void> {
       await this.updateTask(taskId, { status: newStatus, order: newOrder })
     }
