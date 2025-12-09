@@ -15,7 +15,7 @@
     "coverage": "vitest run --coverage",
     "vitest:ui": "vitest --ui --coverage.enabled=true",
     "typecheck": "tsc --noEmit",
-    "test-lint-typecheck": "vitest run && npm run typecheck && npm run lint:no-fix"
+    "test-lint-typecheck": "npm run typecheck && npm run lint:no-fix && vitest run"
   },
   "keywords": [],
   "author": "",
