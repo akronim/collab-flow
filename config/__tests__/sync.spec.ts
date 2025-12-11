@@ -19,9 +19,12 @@ const baseSecrets: SecretsConfig = {
 }
 
 const sharedConfig: SharedConfig = {
-  JWT_SECRET_LENGTH: 32,
-  JWT_EXPIRES_IN: '15m',
-  APP_TITLE: 'CollabFlow Dev',
+  SESSION_SECRET_LENGTH: 64,
+  SESSION_MAX_AGE: `7d`,
+  INTERNAL_JWT_SECRET_LENGTH: 64,
+  INTERNAL_JWT_EXPIRES_IN: `5m`,
+  ENCRYPTION_KEY_LENGTH: 32,
+  APP_TITLE: `CollabFlow Dev`,
 }
 
 const portsConfig: PortsConfig = {
@@ -94,13 +97,15 @@ describe('mergeSecrets', () => {
   })
 })
 
-describe('generateEnvContents', () => {
+describe(`generateEnvContents`, () => {
   const input = {
-    env: 'development',
+    env: `development`,
     shared: sharedConfig,
     ports: portsConfig,
     secrets: validSecrets,
-    jwtSecret: 'test-jwt-secret-hex',
+    sessionSecret: `test-session-secret-hex`,
+    internalJwtSecret: `test-internal-jwt-secret-hex`,
+    encryptionKey: `test-encryption-key-hex`,
   }
 
   it('should generate env content for all three services', () => {
@@ -108,21 +113,20 @@ describe('generateEnvContents', () => {
     expect(Object.keys(result)).toEqual(['collab-flow-api', 'google-oauth-backend', 'sync-forge'])
   })
 
-  it('should generate correct collab-flow-api env', () => {
+  it(`should generate correct collab-flow-api env`, () => {
     const result = generateEnvContents(input)
-    const apiEnv = result['collab-flow-api']
+    const apiEnv = result[`collab-flow-api`]
 
     expect(apiEnv).toContain(`${ENV_KEYS.PORT}=3002`)
     expect(apiEnv).toContain(`${ENV_KEYS.NODE_ENV}=development`)
     expect(apiEnv).toContain(`${ENV_KEYS.GOOGLE_CLIENT_ID}=${validSecrets.GOOGLE_CLIENT_ID}`)
-    expect(apiEnv).toContain(`${ENV_KEYS.JWT_SECRET}=test-jwt-secret-hex`)
-    expect(apiEnv).toContain(`${ENV_KEYS.JWT_EXPIRES_IN}=15m`)
-    expect(apiEnv.endsWith('\n')).toBe(true)
+    expect(apiEnv).toContain(`${ENV_KEYS.INTERNAL_JWT_SECRET}=test-internal-jwt-secret-hex`)
+    expect(apiEnv.endsWith(`\n`)).toBe(true)
   })
 
-  it('should generate correct google-oauth-backend env', () => {
+  it(`should generate correct google-oauth-backend env`, () => {
     const result = generateEnvContents(input)
-    const backendEnv = result['google-oauth-backend']
+    const backendEnv = result[`google-oauth-backend`]
 
     expect(backendEnv).toContain(`${ENV_KEYS.PORT}=3001`)
     expect(backendEnv).toContain(`${ENV_KEYS.NODE_ENV}=development`)
@@ -131,9 +135,12 @@ describe('generateEnvContents', () => {
     expect(backendEnv).toContain(`${ENV_KEYS.GOOGLE_CLIENT_ID}=${validSecrets.GOOGLE_CLIENT_ID}`)
     expect(backendEnv).toContain(`${ENV_KEYS.GOOGLE_CLIENT_SECRET}=${validSecrets.GOOGLE_CLIENT_SECRET}`)
     expect(backendEnv).toContain(`${ENV_KEYS.REDIRECT_URI}=http://localhost:5173/auth/callback`)
-    expect(backendEnv).toContain(`${ENV_KEYS.JWT_SECRET}=test-jwt-secret-hex`)
-    expect(backendEnv).toContain(`${ENV_KEYS.JWT_EXPIRES_IN}=15m`)
-    expect(backendEnv.endsWith('\n')).toBe(true)
+    expect(backendEnv).toContain(`${ENV_KEYS.SESSION_SECRET}=test-session-secret-hex`)
+    expect(backendEnv).toContain(`${ENV_KEYS.SESSION_MAX_AGE}=7d`)
+    expect(backendEnv).toContain(`${ENV_KEYS.INTERNAL_JWT_SECRET}=test-internal-jwt-secret-hex`)
+    expect(backendEnv).toContain(`${ENV_KEYS.INTERNAL_JWT_EXPIRES_IN}=5m`)
+    expect(backendEnv).toContain(`${ENV_KEYS.GOOGLE_REFRESH_TOKEN_ENCRYPTION_KEY}=test-encryption-key-hex`)
+    expect(backendEnv.endsWith(`\n`)).toBe(true)
   })
 
   it('should generate correct sync-forge env', () => {

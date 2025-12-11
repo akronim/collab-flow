@@ -1,11 +1,11 @@
 import { Router } from 'express'
 import { apiEndpoints } from '../constants'
-import { handleTokenRequest, handleInternalTokenRefresh, handleLogout } from '../controllers/auth.controller'
+import { handleTokenRequest, handleGetCurrentUser, handleLogout } from '../controllers/auth.controller'
 
 const router = Router()
 
 router.post(apiEndpoints.TOKEN, handleTokenRequest)
-router.post(apiEndpoints.INTERNAL_REFRESH, handleInternalTokenRefresh)
+router.get(apiEndpoints.ME, handleGetCurrentUser)
 router.post(apiEndpoints.LOGOUT, handleLogout)
 
 export default router

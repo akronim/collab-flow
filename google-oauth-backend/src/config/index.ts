@@ -10,8 +10,11 @@ const requiredEnvVars = [
   `GOOGLE_CLIENT_ID`,
   `GOOGLE_CLIENT_SECRET`,
   `REDIRECT_URI`,
-  `JWT_SECRET`,
-  `JWT_EXPIRES_IN`,
+  `SESSION_SECRET`,
+  `SESSION_MAX_AGE`,
+  `INTERNAL_JWT_SECRET`,
+  `INTERNAL_JWT_EXPIRES_IN`,
+  `GOOGLE_REFRESH_TOKEN_ENCRYPTION_KEY`,
   `CORS_ORIGIN`
 ]
 
@@ -30,9 +33,16 @@ const config = {
     clientSecret: process.env.GOOGLE_CLIENT_SECRET!,
     redirectUri: process.env.REDIRECT_URI!
   },
-  jwt: {
-    secret: process.env.JWT_SECRET!,
-    expiresIn: process.env.JWT_EXPIRES_IN! as StringValue
+  session: {
+    secret: process.env.SESSION_SECRET!,
+    maxAge: process.env.SESSION_MAX_AGE! as StringValue
+  },
+  internalJwt: {
+    secret: process.env.INTERNAL_JWT_SECRET!,
+    expiresIn: process.env.INTERNAL_JWT_EXPIRES_IN! as StringValue
+  },
+  encryption: {
+    key: process.env.GOOGLE_REFRESH_TOKEN_ENCRYPTION_KEY!
   },
   cors: {
     origin: process.env.CORS_ORIGIN!

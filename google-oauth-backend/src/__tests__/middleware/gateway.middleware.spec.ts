@@ -1,14 +1,35 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest'
-import type { Request } from 'express'
 import http from 'http'
 import type * as net from 'net'
 import { gatewayProxyOptions } from '../../middleware/gateway.middleware'
 import config from '../../config'
 import Logger from '../../utils/logger'
+import jwtService from '../../services/jwt.service'
 
 vi.mock(`../../config`, () => ({
   default: {
-    collabFlowApiUrl: `http://mock-api.com`
+    nodeEnv: `test`,
+    port: `3001`,
+    collabFlowApiUrl: `http://mock-api.com`,
+    google: {
+      clientId: `test_client_id`,
+      clientSecret: `test_client_secret`,
+      redirectUri: `http://localhost:5173/auth/callback`
+    },
+    session: {
+      secret: `test-session-secret`,
+      maxAge: `7d`
+    },
+    internalJwt: {
+      secret: `test-internal-jwt-secret`,
+      expiresIn: `5m`
+    },
+    encryption: {
+      key: `f1d2d2f924e986ac86fdf7b36c94bcdfadd2de1c89559c48c809e21824425429`
+    },
+    cors: {
+      origin: `http://localhost:5173`
+    }
   }
 }))
 
@@ -52,218 +73,107 @@ describe(`gatewayProxyOptions`, () => {
   })
 
   describe(`on.proxyReq`, () => {
-    it(`should set Authorization header if present in original request`, () => {
-      const mockProxyReq = {
-        path: `/api/projects`,
-        setHeader: vi.fn(),
-        removeHeader: vi.fn() // Added to prevent TypeError
-      } as unknown as http.ClientRequest
-
-      const mockReq = {
-        headers: {
-          authorization: `Bearer test-token`
-        },
-        originalUrl: `/projects`
-      } as Request
-
-      const mockRes = {} as http.ServerResponse
-
-
-      const proxyReqHandler = gatewayProxyOptions.on?.proxyReq as (
-        proxyReq: http.ClientRequest,
-        req: http.IncomingMessage,
-        res: http.ServerResponse | net.Socket
-      ) => void
-
-      proxyReqHandler(mockProxyReq, mockReq, mockRes)
-
-      expect(mockProxyReq.setHeader).toHaveBeenCalledWith(`Authorization`, `Bearer test-token`)
-      expect(Logger.log).toHaveBeenCalledWith(
-        `[Gateway] Proxying request to /api/projects for original URL: /projects`
-      )
+    let proxyReqHandler: (
+      proxyReq: http.ClientRequest, 
+      req: http.IncomingMessage, 
+      res: http.ServerResponse | net.Socket
+    ) => void
+    
+    beforeEach(() => {
+      // This just extracts the function once for cleaner tests
+      proxyReqHandler = gatewayProxyOptions.on?.proxyReq as any
+      vi.spyOn(jwtService, `sign`).mockReturnValue(`mock-internal-jwt`)
     })
-
-    it(`should not set Authorization header if not present in original request`, () => {
-
-      const mockProxyReq = {
-        path: `/api/users`,
-        setHeader: vi.fn(),
-        removeHeader: vi.fn() // Added to prevent TypeError
-      } as unknown as http.ClientRequest
-
+  
+    it(`should create and set Authorization header if session exists`, () => {
+      const mockProxyReq = { setHeader: vi.fn(), removeHeader: vi.fn() } as any
       const mockReq = {
-        headers: {},
-        originalUrl: `/users`
-      } as Request
-
-      const mockRes = {} as http.ServerResponse
-
-      const proxyReqHandler = gatewayProxyOptions.on?.proxyReq as (
-        proxyReq: http.ClientRequest,
-        req: http.IncomingMessage,
-        res: http.ServerResponse | net.Socket
-      ) => void
-
-      proxyReqHandler(mockProxyReq, mockReq, mockRes)
-
-      expect(mockProxyReq.setHeader).not.toHaveBeenCalled()
-      expect(Logger.log).toHaveBeenCalledWith(
-        `[Gateway] Proxying request to /api/users for original URL: /users`
-      )
-    })
-
-    it(`should remove the 'cookie' header from the proxy request`, () => {
-      const mockProxyReq = {
-        path: `/api/projects`,
-        removeHeader: vi.fn(),
-        setHeader: vi.fn()
-      } as unknown as http.ClientRequest
-
-      const mockReq = {
-        headers: {
-          cookie: `session=abc`
-        },
+        session: { userId: `123`, email: `test@test.com`, name: `Test User` },
         originalUrl: `/projects`
-      } as Request
-
-      const mockRes = {} as http.ServerResponse
-
-      const proxyReqHandler = gatewayProxyOptions.on?.proxyReq as (
-        proxyReq: http.ClientRequest,
-        req: http.IncomingMessage,
-        res: http.ServerResponse | net.Socket
-      ) => void
-
-      proxyReqHandler(mockProxyReq, mockReq, mockRes)
-
+      } as any
+  
+      proxyReqHandler(mockProxyReq, mockReq, {} as any)
+  
+      expect(jwtService.sign).toHaveBeenCalledWith({
+        id: `123`,
+        email: `test@test.com`,
+        name: `Test User`
+      })
+      expect(mockProxyReq.setHeader).toHaveBeenCalledWith(`Authorization`, `Bearer mock-internal-jwt`)
+    })
+  
+    it(`should NOT set Authorization header if session does not exist`, () => {
+      const mockProxyReq = { setHeader: vi.fn(), removeHeader: vi.fn() } as any
+      const mockReq = { session: {}, originalUrl: `/projects` } as any
+  
+      proxyReqHandler(mockProxyReq, mockReq, {} as any)
+  
+      expect(jwtService.sign).not.toHaveBeenCalled()
+      expect(mockProxyReq.setHeader).not.toHaveBeenCalledWith(`Authorization`, expect.any(String))
+    })
+  
+    it(`should always remove the cookie header`, () => {
+      const mockProxyReq = { setHeader: vi.fn(), removeHeader: vi.fn() } as any
+      const mockReqWithCookie = { session: { userId: `123` }, headers: { cookie: `collabflow.sid=abc` } } as any
+      const mockReqWithoutCookie = { session: {} } as any
+  
+      proxyReqHandler(mockProxyReq, mockReqWithCookie, {} as any)
+      expect(mockProxyReq.removeHeader).toHaveBeenCalledWith(`cookie`)
+  
+      proxyReqHandler(mockProxyReq, mockReqWithoutCookie, {} as any)
       expect(mockProxyReq.removeHeader).toHaveBeenCalledWith(`cookie`)
     })
-
-    it(`should log the correct information`, () => {
-      const mockProxyReq = {
-        path: `/api/tasks`,
-        setHeader: vi.fn(),
-        removeHeader: vi.fn() // Added to prevent TypeError
-      } as unknown as http.ClientRequest
-
+  
+    it(`should still forward the request body if present and method is POST/PUT/PATCH`, () => {
+      const mockProxyReq = { setHeader: vi.fn(), removeHeader: vi.fn(), write: vi.fn() } as any
+      const mockBody = { name: `New Project` }
       const mockReq = {
-        headers: {
-          authorization: `Bearer another-token`
-        },
-        originalUrl: `/tasks`
-      } as Request
-
-      const mockRes = {} as http.ServerResponse
-
-      const proxyReqHandler = gatewayProxyOptions.on?.proxyReq as (
-        proxyReq: http.ClientRequest,
-        req: http.IncomingMessage,
-        res: http.ServerResponse | net.Socket
-      ) => void
-
-      proxyReqHandler(mockProxyReq, mockReq, mockRes)
-
-      expect(Logger.log).toHaveBeenCalledTimes(1)
-      expect(Logger.log).toHaveBeenCalledWith(
-        `[Gateway] Proxying request to /api/tasks for original URL: /tasks`
-      )
-    })
-
-    it(`should forward request body for POST/PUT/PATCH requests`, () => {
-      const mockProxyReq = {
-        path: `/api/projects`,
-        setHeader: vi.fn(),
-        write: vi.fn(),
-        end: vi.fn(),
-        removeHeader: vi.fn()
-      } as unknown as http.ClientRequest
-
-      const mockBody = { name: `Test Project`, description: `A description` }
-      const mockReq = {
-        headers: {},
-        originalUrl: `/projects`,
+        session: { userId: `123` },
         method: `POST`,
-        body: mockBody
-      } as Request
-
-      const mockRes = {} as http.ServerResponse
-
-      const proxyReqHandler = gatewayProxyOptions.on?.proxyReq as (
-        proxyReq: http.ClientRequest,
-        req: http.IncomingMessage,
-        res: http.ServerResponse | net.Socket
-      ) => void
-
-      proxyReqHandler(mockProxyReq, mockReq, mockRes)
-
+        body: mockBody,
+        originalUrl: `/projects`
+      } as any
+  
+      proxyReqHandler(mockProxyReq, mockReq, {} as any)
+  
+      const bodyData = JSON.stringify(mockBody)
       expect(mockProxyReq.setHeader).toHaveBeenCalledWith(`Content-Type`, `application/json`)
-      expect(mockProxyReq.setHeader).toHaveBeenCalledWith(`Content-Length`, Buffer.byteLength(JSON.stringify(mockBody)))
-      expect(mockProxyReq.write).toHaveBeenCalledWith(JSON.stringify(mockBody))
+      expect(mockProxyReq.setHeader).toHaveBeenCalledWith(`Content-Length`, Buffer.byteLength(bodyData))
+      expect(mockProxyReq.write).toHaveBeenCalledWith(bodyData)
     })
-
+  
     it(`should not forward request body if expressReq.body is empty`, () => {
-      const mockProxyReq = {
-        path: `/api/projects`,
-        setHeader: vi.fn(),
-        write: vi.fn(),
-        end: vi.fn(),
-        removeHeader: vi.fn()
-      } as unknown as http.ClientRequest
-
+      const mockProxyReq = { setHeader: vi.fn(), removeHeader: vi.fn(), write: vi.fn() } as any
       const mockReq = {
-        headers: {},
-        originalUrl: `/projects`,
+        session: { userId: `123` },
         method: `POST`,
-        body: {} // Empty body
-      } as Request
-
-      const mockRes = {} as http.ServerResponse
-
-      const proxyReqHandler = gatewayProxyOptions.on?.proxyReq as (
-        proxyReq: http.ClientRequest,
-        req: http.IncomingMessage,
-        res: http.ServerResponse | net.Socket
-      ) => void
-
-      proxyReqHandler(mockProxyReq, mockReq, mockRes)
-
+        body: {}, // Empty body
+        originalUrl: `/projects`
+      } as any
+  
+      proxyReqHandler(mockProxyReq, mockReq, {} as any)
+  
       expect(mockProxyReq.write).not.toHaveBeenCalled()
       expect(mockProxyReq.setHeader).not.toHaveBeenCalledWith(`Content-Type`, expect.any(String))
       expect(mockProxyReq.setHeader).not.toHaveBeenCalledWith(`Content-Length`, expect.any(Number))
     })
-
+  
     it(`should not forward request body for GET/HEAD/DELETE requests even if body present`, () => {
-      const mockProxyReq = {
-        path: `/api/projects`,
-        setHeader: vi.fn(),
-        write: vi.fn(),
-        end: vi.fn(),
-        removeHeader: vi.fn()
-      } as unknown as http.ClientRequest
-
+      const mockProxyReq = { setHeader: vi.fn(), removeHeader: vi.fn(), write: vi.fn() } as any
       const mockBody = { someData: `this should not be sent` }
       const mockReq = {
-        headers: {},
-        originalUrl: `/projects`,
+        session: { userId: `123` },
         method: `GET`, // Or HEAD, DELETE
-        body: mockBody
-      } as Request
-
-      const mockRes = {} as http.ServerResponse
-
-      const proxyReqHandler = gatewayProxyOptions.on?.proxyReq as (
-        proxyReq: http.ClientRequest,
-        req: http.IncomingMessage,
-        res: http.ServerResponse | net.Socket
-      ) => void
-
-      proxyReqHandler(mockProxyReq, mockReq, mockRes)
-
+        body: mockBody,
+        originalUrl: `/projects`
+      } as any
+  
+      proxyReqHandler(mockProxyReq, mockReq, {} as any)
+  
       expect(mockProxyReq.write).not.toHaveBeenCalled()
       expect(mockProxyReq.setHeader).not.toHaveBeenCalledWith(`Content-Type`, expect.any(String))
       expect(mockProxyReq.setHeader).not.toHaveBeenCalledWith(`Content-Length`, expect.any(Number))
     })
-
   })
 
   describe(`on.error`, () => {

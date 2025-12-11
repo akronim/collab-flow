@@ -1,186 +1,142 @@
-import { describe, it, expect, vi, beforeEach, type Mocked, type Mock } from 'vitest'
-
-vi.mock(`../../services/auth.service`, () => ({
-  exchangeCodeForToken: vi.fn(),
-  refreshAccessToken: vi.fn(),
-  validateAccessToken: vi.fn()
-}))
-
-vi.mock(`../../services/jwt.service`, () => ({
-  default: {
-    sign: vi.fn(),
-    verify: vi.fn()
-  }
-}))
-
-vi.mock(`../../services/tokenStore.service`, () => ({
-  default: {
-    generateAndStore: vi.fn(),
-    getGoogleRefreshToken: vi.fn(),
-    deleteToken: vi.fn()
-  }
-}))
-
-import * as authService from '../../services/auth.service'
-import jwtService, { type JwtService } from '../../services/jwt.service'
-import tokenStore from '../../services/tokenStore.service'
-import { handleInternalTokenRefresh, handleLogout, handleTokenRequest } from '../../controllers/auth.controller'
-import { ErrorMessages } from '../../constants'
+import { describe, it, expect, vi, beforeEach, afterEach, type Mock } from 'vitest'
+import type { Request, Response, NextFunction } from 'express'
+import { handleTokenRequest, handleGetCurrentUser, handleLogout } from '../../controllers/auth.controller'
+import * as AuthService from '../../services/auth.service'
+import { sessionStore } from '../../services/sessionStore.service'
+import * as Encryption from '../../utils/encryption'
 import { AppError } from '../../utils/errors'
 
-const mockedAuthService = authService as Mocked<typeof authService>
-const mockedJwtService = jwtService as Mocked<JwtService>
-const mockedTokenStore = tokenStore as Mocked<typeof tokenStore>
+// Mock services
+vi.mock(`../../services/auth.service`)
+vi.mock(`../../services/sessionStore.service`)
+vi.mock(`../../utils/encryption`)
 
-const getMockReqRes = (): { req: any; res: any; next: any } => {
-  const req: any = {
-    body: {},
-    headers: {},
-    cookies: {}
-  }
-  const res: any = {
-    json: vi.fn().mockReturnThis(),
-    cookie: vi.fn().mockReturnThis(),
-    status: vi.fn().mockReturnThis(),
-    send: vi.fn().mockReturnThis()
-  }
-  const next = vi.fn()
-  return { req, res, next }
-}
+describe(`Auth Controller`, () => {
+  let req: Partial<Request>
+  let res: Partial<Response>
+  let next: NextFunction
 
-describe(`auth.controller`, () => {
   beforeEach(() => {
+    // Mock Express objects
+    req = {
+      body: {},
+      session: {
+        regenerate: vi.fn((cb: (err: Error | null) => void) => cb(null)),
+        save: vi.fn((cb: (err: Error | null) => void) => cb(null)),
+        destroy: vi.fn((cb: (err: Error | null) => void) => cb(null))
+      } as unknown as Request[`session`]
+    }
+    res = {
+      status: vi.fn().mockReturnThis(),
+      json: vi.fn(),
+      send: vi.fn()
+    }
+    next = vi.fn() as NextFunction
+  })
+
+  afterEach(() => {
     vi.clearAllMocks()
   })
 
+  // --- Tests for handleTokenRequest ---
   describe(`handleTokenRequest`, () => {
-    it(`calls next with AppError when code or codeVerifier missing`, async () => {
-      const { req, res, next } = getMockReqRes()
-      req.body = { code: `only_code` }
+    it(`should create a session and return success on valid code`, async () => {
+      const mockGoogleTokens = { access_token: `google_access`, refresh_token: `google_refresh` }
+      const mockUserData = { id: `123`, email: `test@example.com`, name: `Test User` }
+      const mockEncryptedToken = `encrypted_token`
 
-      await handleTokenRequest(req, res, next)
+      vi.spyOn(AuthService, `exchangeCodeForToken`).mockResolvedValue(mockGoogleTokens as any)
+      vi.spyOn(AuthService, `validateAccessToken`).mockResolvedValue(mockUserData as any)
+      vi.spyOn(Encryption, `encrypt`).mockReturnValue(mockEncryptedToken)
 
-      expect(next).toHaveBeenCalled()
-      const err = next.mock.calls[0][0]
-      expect(err).toBeInstanceOf(AppError)
-      expect(err.message).toBe(ErrorMessages.MISSING_CODE_OR_VERIFIER)
-      expect(res.json).not.toHaveBeenCalled()
-    })
+      req.body = { code: `valid_code`, codeVerifier: `valid_verifier` }
 
-    it(`returns token data on success`, async () => {
-      const { req, res, next } = getMockReqRes()
-      req.body = { code: `c`, codeVerifier: `v` }
+      await handleTokenRequest(req as Request<Record<string, never>, any, any>, res as Response, next)
 
-      const googleTokenData = {
-        access_token: `google_access_token`,
-        refresh_token: `google_refresh_token`
-      }
-      const userData = {
-        id: `user-123`,
-        name: `Test User`,
-        email: `test@example.com`
-      }
-      const internalToken = `internal.jwt.token`
-      const internalRefreshToken = `internal.refresh.token`
-      const expiresIn = 900 // 15 minutes in seconds
-
-      mockedAuthService.exchangeCodeForToken.mockResolvedValueOnce(googleTokenData as any)
-      mockedAuthService.validateAccessToken.mockResolvedValueOnce(userData as any)
-      mockedJwtService.sign.mockReturnValueOnce(internalToken)
-      mockedTokenStore.generateAndStore.mockReturnValueOnce(internalRefreshToken)
-      
-      await handleTokenRequest(req, res, next)
-
+      expect(req.session!.regenerate).toHaveBeenCalled()
+      expect(req.session!.userId).toBe(mockUserData.id)
+      expect(req.session!.email).toBe(mockUserData.email)
+      expect(req.session!.name).toBe(mockUserData.name)
+      expect(Encryption.encrypt).toHaveBeenCalledWith(mockGoogleTokens.refresh_token, expect.any(String))
+      expect(req.session!.encryptedGoogleRefreshToken).toBe(mockEncryptedToken)
+      expect(req.session!.save).toHaveBeenCalled()
+      expect(res.status).toHaveBeenCalledWith(200)
+      expect(res.json).toHaveBeenCalledWith({ success: true })
       expect(next).not.toHaveBeenCalled()
-      expect(res.cookie).toHaveBeenCalledWith(`internal_refresh_token`, internalRefreshToken, expect.any(Object))
-      expect(res.json).toHaveBeenCalled()
-      const respArg = (res.json as Mock).mock.calls[0][0]
-
-      expect(respArg).toHaveProperty(`internal_access_token`, internalToken)
-      expect(respArg).not.toHaveProperty(`internal_refresh_token`)
-      expect(respArg).toHaveProperty(`expires_in`, expiresIn)
     })
 
-    it(`forwards service errors to next`, async () => {
-      const { req, res, next } = getMockReqRes()
-      req.body = { code: `c`, codeVerifier: `v` }
-      const error = new Error(`boom`)
-      mockedAuthService.exchangeCodeForToken.mockRejectedValueOnce(error)
-
-      await handleTokenRequest(req, res, next)
-
-      expect(next).toHaveBeenCalledWith(error)
+    it(`should call next with an error if code is missing`, async () => {
+      req.body = { codeVerifier: `verifier_only` }
+      await handleTokenRequest(req as Request<Record<string, never>, any, any>, res as Response, next)
+      expect(next).toHaveBeenCalledWith(expect.any(AppError))
+      expect((next as Mock).mock.calls[0][0].status).toBe(400)
     })
   })
 
-  describe(`handleInternalTokenRefresh`, () => {
-    it(`calls next with AppError when internal_refresh_token is missing`, async () => {
-      const { req, res, next } = getMockReqRes()
+  // --- Tests for handleGetCurrentUser ---
+  describe(`handleGetCurrentUser`, () => {
+    it(`should return user data if a session exists`, () => {
+      req.session!.userId = `123`
+      req.session!.email = `test@example.com`
+      req.session!.name = `Test User`
 
-      await handleInternalTokenRefresh(req, res, next)
+      handleGetCurrentUser(req as Request, res as Response, next)
 
-      expect(next).toHaveBeenCalled()
-      const err = next.mock.calls[0][0]
-      expect(err).toBeInstanceOf(AppError)
-      expect(err.message).toBe(ErrorMessages.MISSING_REFRESH_TOKEN)
+      expect(res.json).toHaveBeenCalledWith({
+        id: `123`,
+        email: `test@example.com`,
+        name: `Test User`
+      })
+      expect(next).not.toHaveBeenCalled()
     })
 
-    it(`returns new tokens on successful refresh`, async () => {
-      const { req, res, next } = getMockReqRes()
-      const internalRefreshToken = `internal-refresh`
-      req.cookies = { internal_refresh_token: internalRefreshToken }
+    it(`should call next with 401 error if no session exists`, () => {
+      req.session!.userId = undefined
 
-      const googleRefreshToken = `google-refresh`
-      const newGoogleAccessToken = `new-google-access`
-      const newInternalAccessToken = `new-internal-access`
-      const newInternalRefreshToken = `new-internal-refresh`
-      const userData = { id: `123`, name: `Test User`, email: `test@example.com` }
-      const expiresIn = 900 // 15 minutes in seconds
+      handleGetCurrentUser(req as Request, res as Response, next)
 
-      mockedTokenStore.getGoogleRefreshToken.mockReturnValueOnce(googleRefreshToken)
-      mockedAuthService.refreshAccessToken.mockResolvedValueOnce({ access_token: newGoogleAccessToken } as any)
-      mockedAuthService.validateAccessToken.mockResolvedValueOnce(userData as any)
-      mockedJwtService.sign.mockReturnValueOnce(newInternalAccessToken)
-      mockedTokenStore.generateAndStore.mockReturnValueOnce(newInternalRefreshToken)
-
-      await handleInternalTokenRefresh(req, res, next)
-
-      expect(next).not.toHaveBeenCalled()
-      expect(res.cookie).toHaveBeenCalledWith(`internal_refresh_token`, newInternalRefreshToken, expect.any(Object))
-      expect(res.json).toHaveBeenCalledWith(expect.objectContaining({
-        internal_access_token: newInternalAccessToken,
-        expires_in: expiresIn
-      }))
-      expect((res.json as Mock).mock.calls[0][0]).not.toHaveProperty(`internal_refresh_token`)
-      expect(mockedTokenStore.deleteToken).toHaveBeenCalledWith(internalRefreshToken)
+      expect(next).toHaveBeenCalledWith(expect.any(AppError))
+      expect((next as Mock).mock.calls[0][0].status).toBe(401)
     })
   })
 
+  // --- Tests for handleLogout ---
   describe(`handleLogout`, () => {
-    it(`clears cookie and deletes token when cookie is present`, async () => {
-      const { req, res, next } = getMockReqRes()
-      const refreshToken = `some-refresh-token`
-      req.cookies = { internal_refresh_token: refreshToken }
+    it(`should destroy all user sessions and the current session`, () => {
+      req.session!.userId = `123`
+      const destroyAllSpy = vi.spyOn(sessionStore, `destroyAllByUserId`)
 
-      await handleLogout(req, res)
+      handleLogout(req as Request, res as Response, next)
 
-      expect(mockedTokenStore.deleteToken).toHaveBeenCalledWith(refreshToken)
-      expect(res.cookie).toHaveBeenCalledWith(`internal_refresh_token`, ``, expect.objectContaining({ maxAge: 0 }))
+      expect(destroyAllSpy).toHaveBeenCalledWith(`123`, expect.any(Function))
+      expect(req.session!.destroy).toHaveBeenCalled()
       expect(res.status).toHaveBeenCalledWith(204)
       expect(res.send).toHaveBeenCalled()
       expect(next).not.toHaveBeenCalled()
     })
 
-    it(`clears cookie even when no cookie is present`, async () => {
-      const { req, res, next } = getMockReqRes()
+    it(`should still destroy current session even if destroyAllByUserId fails`, () => {
+      req.session!.userId = `123`
+      const destroyAllSpy = vi.spyOn(sessionStore, `destroyAllByUserId`).mockImplementation((_, cb) => {
+        if (cb) {
+          cb(new Error(`DB error`))
+        }
+      })
+      
+      handleLogout(req as Request, res as Response, next)
 
-      await handleLogout(req, res)
+      expect(destroyAllSpy).toHaveBeenCalled()
+      expect(req.session!.destroy).toHaveBeenCalled() // Crucially, this still gets called
+      expect(next).not.toHaveBeenCalled() // The error is logged but not fatal to the logout itself
+    })
 
-      expect(mockedTokenStore.deleteToken).not.toHaveBeenCalled()
-      expect(res.cookie).toHaveBeenCalledWith(`internal_refresh_token`, ``, expect.objectContaining({ maxAge: 0 }))
-      expect(res.status).toHaveBeenCalledWith(204)
-      expect(res.send).toHaveBeenCalled()
-      expect(next).not.toHaveBeenCalled()
+    it(`should call next with an error if session destruction fails`, () => {
+      req.session!.destroy = vi.fn((cb: (err: Error | null) => void) => cb(new Error(`Session destroy failed`))) as any
+
+      handleLogout(req as Request, res as Response, next)
+
+      expect(next).toHaveBeenCalledWith(expect.any(AppError))
+      expect((next as Mock).mock.calls[0][0].status).toBe(500)
     })
   })
 })

@@ -48,4 +48,4 @@ export class JwtService {
   }
 }
 
-export default new JwtService(config.jwt.secret as string, config.jwt.expiresIn)
+export default new JwtService(config.internalJwt.secret as string, config.internalJwt.expiresIn)

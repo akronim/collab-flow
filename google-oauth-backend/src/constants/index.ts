@@ -1,6 +1,6 @@
 export const apiEndpoints = {
   TOKEN: `/auth/token`,
-  INTERNAL_REFRESH: `/auth/internal-refresh`,
+  ME: `/auth/me`,
   LOGOUT: `/auth/logout`
 }
 
@@ -19,5 +19,6 @@ export const ErrorMessages = {
   MISSING_REFRESH_TOKEN: `Missing refresh_token`,
   INVALID_REFRESH_TOKEN: `Invalid refresh token`,
   MISSING_AUTH_HEADER: `Missing or invalid Authorization header`,
-  MISSING_CODE_OR_VERIFIER: `Missing code or codeVerifier`
+  MISSING_CODE_OR_VERIFIER: `Missing code or codeVerifier`,
+  LOGOUT_FAILED: `Logout failed`
 }

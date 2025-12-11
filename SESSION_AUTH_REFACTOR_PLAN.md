@@ -698,3 +698,32 @@ To minimize risk and allow incremental testing:
 28. Remove old env vars from config
 29. Update `AUTH_FLOW.md` documentation
 30. Final integration testing
+
+
+
+
+	modified:   config/__tests__/sync.spec.ts
+	modified:   config/config.json
+	modified:   config/sync.ts
+	modified:   google-oauth-backend/package-lock.json
+	modified:   google-oauth-backend/package.json
+	modified:   google-oauth-backend/src/__tests__/controllers/auth.controller.spec.ts
+	modified:   google-oauth-backend/src/__tests__/middleware/gateway.middleware.spec.ts
+	deleted:    google-oauth-backend/src/__tests__/middleware/tokenValidation.middleware.spec.ts
+	modified:   google-oauth-backend/src/__tests__/server.spec.ts
+	modified:   google-oauth-backend/src/config/index.ts
+	modified:   google-oauth-backend/src/constants/index.ts
+	modified:   google-oauth-backend/src/controllers/auth.controller.ts
+	modified:   google-oauth-backend/src/middleware/gateway.middleware.ts
+	deleted:    google-oauth-backend/src/middleware/tokenValidation.middleware.ts
+	modified:   google-oauth-backend/src/routes/auth.routes.ts
+	modified:   google-oauth-backend/src/routes/gateway.routes.ts
+	modified:   google-oauth-backend/src/server.ts
+	modified:   google-oauth-backend/src/services/jwt.service.ts
+	modified:   google-oauth-backend/src/types/index.ts
+
+	google-oauth-backend/src/__tests__/middleware/requireSession.middleware.spec.ts
+	google-oauth-backend/src/__tests__/utils/
+	google-oauth-backend/src/middleware/requireSession.middleware.ts
+	google-oauth-backend/src/services/sessionStore.service.ts
+	google-oauth-backend/src/utils/encryption.ts

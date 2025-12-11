@@ -2,21 +2,28 @@ import { describe, it, expect, vi, beforeEach, type Mocked } from 'vitest'
 import request from 'supertest'
 import app from '../server'
 import { googleApi } from '../utils/axios'
-import { apiEndpoints, ErrorMessages, GoogleOAuthEndpoints } from '../constants'
-import tokenStore from '../services/tokenStore.service'
+import { apiEndpoints, ErrorMessages } from '../constants'
 
 vi.mock(`../config`, () => ({
   default: {
+    nodeEnv: `test`,
     port: `3001`,
-    collabFlowApiUrl: `http://localhost:3002`, // Added for gateway tests
+    collabFlowApiUrl: `http://localhost:3002`,
     google: {
       clientId: `test_client_id`,
       clientSecret: `test_client_secret`,
       redirectUri: `http://localhost:5173/auth/callback`
     },
-    jwt: {
-      secret: `test-jwt-secret`,
-      expiresIn: `15m`
+    session: {
+      secret: `test-session-secret`,
+      maxAge: `7d`
+    },
+    internalJwt: {
+      secret: `test-internal-jwt-secret`,
+      expiresIn: `5m`
+    },
+    encryption: {
+      key: `f1d2d2f924e986ac86fdf7b36c94bcdfadd2de1c89559c48c809e21824425429`
     },
     cors: {
       origin: `http://localhost:5173`
@@ -40,7 +47,7 @@ vi.mock(`../services/tokenStore.service`, () => ({
 }))
 
 const mockedGoogleApi = googleApi as Mocked<typeof googleApi>
-const mockedTokenStore = tokenStore as Mocked<typeof tokenStore>
+// const mockedTokenStore = tokenStore as Mocked<typeof tokenStore>
 
 describe(`Backend API Tests`, () => {
   const API_BASE_PATH = `/api` 
@@ -80,17 +87,13 @@ describe(`Backend API Tests`, () => {
       expect(response2.body.error).toBe(ErrorMessages.MISSING_CODE_OR_VERIFIER)
     })
 
-    it(`should exchange code for tokens and return an internal JWT`, async () => {
+    it(`should create a session and set a cookie on successful code exchange`, async () => {
       mockedGoogleApi.post.mockResolvedValueOnce({
         data: {
           access_token: `mock_access_token`,
-          refresh_token: `mock_refresh_token`,
-          expires_in: 3600,
-          id_token: `mock_id_token`
+          refresh_token: `mock_refresh_token`
         }
       })
-
-      // Mock the subsequent validation call
       mockedGoogleApi.get.mockResolvedValueOnce({
         data: {
           id: `google_id_123`,
@@ -104,25 +107,13 @@ describe(`Backend API Tests`, () => {
         .send({ code: `auth_code`, codeVerifier: `code_verifier` })
 
       expect(response.status).toBe(200)
-      expect(response.body).toHaveProperty(`internal_access_token`)
-      expect(response.body).toHaveProperty(`expires_in`, 900) // 15m from mocked config
-      expect(response.body).toHaveProperty(`expires_at`)
+      expect(response.body).toEqual({ success: true })
 
-      expect(response.body).not.toHaveProperty(`access_token`)
-      expect(response.body).not.toHaveProperty(`refresh_token`)
-      expect(response.body).not.toHaveProperty(`id_token`)
-
-      // Verify both Google API calls were made
-      expect(mockedGoogleApi.post).toHaveBeenCalledWith(
-        GoogleOAuthEndpoints.TOKEN_EXCHANGE,
-        expect.stringContaining(`client_id=test_client_id`)
-      )
-      expect(mockedGoogleApi.get).toHaveBeenCalledWith(
-        GoogleOAuthEndpoints.USER_INFO,
-        expect.objectContaining({
-          headers: { Authorization: `Bearer mock_access_token` }
-        })
-      )
+      const cookie = response.headers[`set-cookie`][0]
+      expect(cookie).toContain(`collabflow.sid`)
+      expect(cookie).toContain(`HttpOnly`)
+      expect(cookie).toContain(`Path=/`)
+      expect(cookie).toContain(`SameSite=Lax`)
     })
 
     it(`should handle token exchange failure from Google`, async () => {
@@ -143,67 +134,70 @@ describe(`Backend API Tests`, () => {
     })
   })
 
-  describe(`POST ${API_BASE_PATH}${apiEndpoints.INTERNAL_REFRESH}`, () => {
-    it(`should return 400 if internal_refresh_token cookie is missing`, async () => {
-      const response = await request(app).post(`${API_BASE_PATH}${apiEndpoints.INTERNAL_REFRESH}`).send({})
-      expect(response.status).toBe(400)
-      expect(response.body.error).toBe(ErrorMessages.MISSING_REFRESH_TOKEN)
-    })
-
-    it(`should return 401 if token is not in store`, async () => {
-      mockedTokenStore.getGoogleRefreshToken.mockReturnValueOnce(undefined)
-      
-      const response = await request(app)
-        .post(`${API_BASE_PATH}${apiEndpoints.INTERNAL_REFRESH}`)
-        .set(`Cookie`, `internal_refresh_token=not-in-store`)
-
-      expect(response.status).toBe(401)
-      expect(response.body.error).toBe(ErrorMessages.INVALID_REFRESH_TOKEN)
-    })
-
-    it(`should refresh internal token successfully`, async () => {
-      mockedTokenStore.getGoogleRefreshToken.mockReturnValueOnce(`valid-google-refresh-token`)
-      mockedGoogleApi.post.mockResolvedValueOnce({
-        data: {
-          access_token: `new_google_access_token`,
-          expires_in: 3600
-        }
-      })
-      mockedGoogleApi.get.mockResolvedValueOnce({
-        data: {
-          id: `google_id_123`,
-          email: `test@example.com`,
-          name: `Test User`
-        }
-      })
-
-      const response = await request(app)
-        .post(`${API_BASE_PATH}${apiEndpoints.INTERNAL_REFRESH}`)
-        .set(`Cookie`, `internal_refresh_token=valid-internal-refresh`)
-
-      expect(response.status).toBe(200)
-      expect(response.body).toHaveProperty(`internal_access_token`)
-      expect(response.body).not.toHaveProperty(`internal_refresh_token`)
-      
-      const cookie = response.headers[`set-cookie`][0]
-      expect(cookie).toContain(`internal_refresh_token=new-internal-from-valid-google-refresh-token`)
-      expect(cookie).toContain(`HttpOnly`)
-      expect(cookie).toContain(`SameSite=Strict`)
-
-      expect(mockedTokenStore.deleteToken).toHaveBeenCalledWith(`valid-internal-refresh`)
-    })
-  })
+  /* eslint-disable vitest/no-commented-out-tests -- Temporarily disabling a suite for debugging */
+  // TODO: [SESSION-REFACTOR] This test block is for the old JWT-based /internal-refresh endpoint and needs to be rewritten or removed.
+  // describe(`POST ${API_BASE_PATH}${apiEndpoints.INTERNAL_REFRESH}`, () => {
+  //   it(`should return 400 if internal_refresh_token cookie is missing`, async () => {
+  //     const response = await request(app).post(`${API_BASE_PATH}${apiEndpoints.INTERNAL_REFRESH}`).send({})
+  //     expect(response.status).toBe(400)
+  //     expect(response.body.error).toBe(ErrorMessages.MISSING_REFRESH_TOKEN)
+  //   })
+  //
+  //   it(`should return 401 if token is not in store`, async () => {
+  //     mockedTokenStore.getGoogleRefreshToken.mockReturnValueOnce(undefined)
+  //    
+  //     const response = await request(app)
+  //       .post(`${API_BASE_PATH}${apiEndpoints.INTERNAL_REFRESH}`)
+  //       .set(`Cookie`, `internal_refresh_token=not-in-store`)
+  //
+  //     expect(response.status).toBe(401)
+  //     expect(response.body.error).toBe(ErrorMessages.INVALID_REFRESH_TOKEN)
+  //   })
+  //
+  //   it(`should refresh internal token successfully`, async () => {
+  //     mockedTokenStore.getGoogleRefreshToken.mockReturnValueOnce(`valid-google-refresh-token`)
+  //     mockedGoogleApi.post.mockResolvedValueOnce({
+  //       data: {
+  //         access_token: `new_google_access_token`,
+  //         expires_in: 3600
+  //       }
+  //     })
+  //     mockedGoogleApi.get.mockResolvedValueOnce({
+  //       data: {
+  //         id: `google_id_123`,
+  //         email: `test@example.com`,
+  //         name: `Test User`
+  //       }
+  //     })
+  //
+  //     const response = await request(app)
+  //       .post(`${API_BASE_PATH}${apiEndpoints.INTERNAL_REFRESH}`)
+  //       .set(`Cookie`, `internal_refresh_token=valid-internal-refresh`)
+  //
+  //     expect(response.status).toBe(200)
+  //     expect(response.body).toHaveProperty(`internal_access_token`)
+  //     expect(response.body).not.toHaveProperty(`internal_refresh_token`)
+  //    
+  //     const cookie = response.headers[`set-cookie`][0]
+  //     expect(cookie).toContain(`internal_refresh_token=new-internal-from-valid-google-refresh-token`)
+  //     expect(cookie).toContain(`HttpOnly`)
+  //     expect(cookie).toContain(`SameSite=Strict`)
+  //
+  //     expect(mockedTokenStore.deleteToken).toHaveBeenCalledWith(`valid-internal-refresh`)
+  //   })
+  // })
+  /* eslint-enable vitest/no-commented-out-tests */
 
   describe(`POST ${API_BASE_PATH}${apiEndpoints.LOGOUT}`, () => {
-    it(`should clear the refresh token cookie`, async () => {
+    it(`should return 204 for a session-less logout request`, async () => {
       const response = await request(app)
         .post(`${API_BASE_PATH}${apiEndpoints.LOGOUT}`)
-        .set(`Cookie`, `internal_refresh_token=some-token-to-clear`)
+        .send()
 
       expect(response.status).toBe(204)
-      const cookie = response.headers[`set-cookie`][0]
-      expect(cookie).toContain(`internal_refresh_token=;`)
-      expect(cookie).toContain(`Max-Age=0`)
+      // For a request without a session, there's no cookie to clear,
+      // so we don't expect a set-cookie header in the response.
+      expect(response.headers[`set-cookie`]).toBeUndefined()
     })
   })
 })

@@ -31,3 +31,13 @@ declare global {
     }
   }
 }
+
+// Augment express-session to include our custom session data
+declare module 'express-session' {
+  interface SessionData {
+    userId: string
+    email: string
+    name: string
+    encryptedGoogleRefreshToken: string
+  }
+}

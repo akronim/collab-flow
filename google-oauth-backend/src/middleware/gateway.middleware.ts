@@ -1,9 +1,10 @@
 import { createProxyMiddleware, type Options } from 'http-proxy-middleware'
 import http from 'http'
 import type * as net from 'net'
+import { type Request } from 'express'
 import config from '../config'
 import Logger from '../utils/logger'
-import { type Request } from 'express' // Import Request from express for casting
+import jwtService from '../services/jwt.service'
 
 /**
  * Configuration options for the API Gateway proxy.
@@ -28,14 +29,19 @@ export const gatewayProxyOptions: Options = {
 
   on: {
     proxyReq: (proxyReq, req: http.IncomingMessage, _res: http.ServerResponse | net.Socket) => {
-      // Cast the incoming request to Express.Request to access augmented properties
       const expressReq = req as Request
-      const authorizationHeader = expressReq.headers.authorization
-      if (authorizationHeader) {
-        proxyReq.setHeader(`Authorization`, authorizationHeader)
+
+      // Create internal JWT from session data
+      if (expressReq.session?.userId) {
+        const internalToken = jwtService.sign({
+          id: expressReq.session.userId,
+          email: expressReq.session.email,
+          name: expressReq.session.name
+        })
+        proxyReq.setHeader(`Authorization`, `Bearer ${internalToken}`)
       }
 
-      // Remove sensitive headers that shouldn't be forwarded to downstream services
+      // Remove session cookie - downstream services don't need it
       proxyReq.removeHeader(`cookie`)
 
       // Forward request body for POST/PUT/PATCH

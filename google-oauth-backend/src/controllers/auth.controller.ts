@@ -1,12 +1,11 @@
 import { type Request, type Response, type NextFunction } from 'express'
-import { exchangeCodeForToken, refreshAccessToken, validateAccessToken } from '../services/auth.service'
-import jwtService from '../services/jwt.service'
-import tokenStore from '../services/tokenStore.service'
+import { exchangeCodeForToken, validateAccessToken } from '../services/auth.service'
+import { sessionStore } from '../services/sessionStore.service'
 import { AppError } from '../utils/errors'
 import { ErrorMessages } from '../constants'
 import Logger from '../utils/logger'
 import config from '../config'
-import ms from 'ms'
+import { encrypt } from '../utils/encryption'
 
 export interface TokenRequest {
   code: string;
@@ -18,128 +17,84 @@ export const handleTokenRequest = async (
   res: Response,
   next: NextFunction
 ): Promise<void> => {
-  Logger.log(`>>>>>>>>>>>>>>> handleTokenRequest called`)
+  Logger.log(`Handling token request`)
   const { code, codeVerifier } = req.body
 
   if (!code || !codeVerifier) {
-    next(new AppError(ErrorMessages.MISSING_CODE_OR_VERIFIER, 400))
-    return
+    return next(new AppError(ErrorMessages.MISSING_CODE_OR_VERIFIER, 400))
   }
 
   try {
-    // exchange authorization code for Google's tokens
     const googleTokenData = await exchangeCodeForToken(code, codeVerifier)
-
-    // validate the Google access token to get user info
     const userData = await validateAccessToken(googleTokenData.access_token)
 
-    // securely store the Google refresh token and get an internal refresh token
-    let internalRefreshToken: string | undefined
-    if (googleTokenData.refresh_token) {
-      internalRefreshToken = tokenStore.generateAndStore(googleTokenData.refresh_token)
-    }
+    // Regenerate session to prevent session fixation attacks
+    req.session.regenerate(regenerateErr => {
+      if (regenerateErr) {
+        return next(regenerateErr)
+      }
 
-    // generate an internal JWT
-    const internalAccessToken = jwtService.sign({
-      id: userData.id,
-      email: userData.email,
-      name: userData.name
-    })
+      // Store user data in session
+      req.session.userId = userData.id
+      req.session.email = userData.email
+      req.session.name = userData.name
 
-    // return the internal tokens to the client
-    const expiresIn = config.jwt.expiresIn
-    const expiresInMs = ms(expiresIn)
-    const expiresAt = Date.now() + expiresInMs
+      // Encrypt and store Google refresh token if it exists
+      if (googleTokenData.refresh_token) {
+        req.session.encryptedGoogleRefreshToken = encrypt(
+          googleTokenData.refresh_token,
+          config.encryption.key
+        )
+      }
 
-    if (internalRefreshToken) {
-      res.cookie(`internal_refresh_token`, internalRefreshToken, {
-        httpOnly: true,
-        secure: config.nodeEnv === `production`,
-        sameSite: `strict`,
-        maxAge: ms(`30d`)
+      // Save the session before responding
+      req.session.save(saveErr => {
+        if (saveErr) {
+          return next(saveErr)
+        }
+        return res.status(200).json({ success: true })
       })
-    }
-
-    res.json({
-      internal_access_token: internalAccessToken,
-      expires_in: expiresInMs / 1000,
-      expires_at: expiresAt
+      return undefined
     })
   } catch (error) {
     next(error)
   }
+  return undefined
 }
 
-export const handleInternalTokenRefresh = async (
-  req: Request,
-  res: Response,
-  next: NextFunction
-): Promise<void> => {
-  Logger.log(`>>>>>>>>>>>>>>> handleInternalTokenRefresh called`)
-  const { internal_refresh_token } = req.cookies
-
-  if (!internal_refresh_token) {
-    next(new AppError(ErrorMessages.MISSING_REFRESH_TOKEN, 400))
-    return
+export const handleGetCurrentUser = (req: Request, res: Response, next: NextFunction): void => {
+  if (!req.session?.userId) {
+    return next(new AppError(ErrorMessages.UNAUTHORIZED, 401))
   }
 
-  try {
-    const googleRefreshToken = tokenStore.getGoogleRefreshToken(internal_refresh_token)
-    if (!googleRefreshToken) {
-      next(new AppError(ErrorMessages.INVALID_REFRESH_TOKEN, 401))
-      return
-    }
-
-    const newGoogleTokenData = await refreshAccessToken(googleRefreshToken)
-
-    const userData = await validateAccessToken(newGoogleTokenData.access_token)
-
-    const newInternalAccessToken = jwtService.sign({
-      id: userData.id,
-      email: userData.email,
-      name: userData.name
-    })
-
-    const newInternalRefreshToken = tokenStore.generateAndStore(
-      newGoogleTokenData.refresh_token || googleRefreshToken
-    )
-    
-    tokenStore.deleteToken(internal_refresh_token)
-
-    const expiresIn = config.jwt.expiresIn
-    const expiresInMs = ms(expiresIn)
-    const expiresAt = Date.now() + expiresInMs
-
-    res.cookie(`internal_refresh_token`, newInternalRefreshToken, {
-      httpOnly: true,
-      secure: config.nodeEnv === `production`,
-      sameSite: `strict`,
-      maxAge: ms(`30d`)
-    })
-
-    res.json({
-      internal_access_token: newInternalAccessToken,
-      expires_in: expiresInMs / 1000,
-      expires_at: expiresAt
-    })
-  } catch (error) {
-    next(error)
-  }
-}
-
-export const handleLogout = async (req: Request, res: Response): Promise<void> => {
-  const { internal_refresh_token } = req.cookies
-
-  if (internal_refresh_token) {
-    tokenStore.deleteToken(internal_refresh_token)
-  }
-
-  res.cookie(`internal_refresh_token`, ``, {
-    httpOnly: true,
-    secure: config.nodeEnv === `production`,
-    sameSite: `strict`,
-    maxAge: 0
+  res.json({
+    id: req.session.userId,
+    email: req.session.email,
+    name: req.session.name
   })
+  return undefined
+}
 
-  res.status(204).send()
+export const handleLogout = (req: Request, res: Response, next: NextFunction): void => {
+  const userId = req.session.userId
+
+  if (userId) {
+    // Destroy all sessions for this user (logout from all devices)
+    sessionStore.destroyAllByUserId(userId, destroyAllErr => {
+      if (destroyAllErr) {
+        Logger.error(`Error destroying all sessions for user ${userId}`, destroyAllErr)
+        // Non-fatal, proceed with logging out the current session
+      }
+    })
+  }
+
+  // Destroy the current session
+  req.session.destroy(destroyErr => {
+    if (destroyErr) {
+      return next(new AppError(ErrorMessages.LOGOUT_FAILED, 500))
+    }
+    // The session cookie will be cleared by express-session's destroy method
+    res.status(204).send()
+    return undefined
+  })
 }

@@ -1,15 +1,18 @@
 import express, { type Request, type Response } from 'express'
 import cors from 'cors'
 import cookieParser from 'cookie-parser'
-import apiRouter from './routes' 
-import helmet from 'helmet' 
+import session from 'express-session'
+import ms from 'ms'
+import apiRouter from './routes'
+import helmet from 'helmet'
 import { errorMiddleware } from './middleware/error.middleware'
 import config from './config'
 import Logger from './utils/logger'
+import { sessionStore } from './services/sessionStore.service'
 
 const app = express()
 
-app.use(helmet()) 
+app.use(helmet())
 
 app.use(
   cors({
@@ -20,6 +23,22 @@ app.use(
 
 app.use(express.json())
 app.use(cookieParser())
+
+app.use(
+  session({
+    store: sessionStore,
+    secret: config.session.secret,
+    name: `collabflow.sid`,
+    resave: false,
+    saveUninitialized: false,
+    cookie: {
+      httpOnly: true,
+      secure: config.nodeEnv === `production`,
+      sameSite: `lax`,
+      maxAge: ms(config.session.maxAge)
+    }
+  })
+)
 
 app.get(`/`, (req: Request, res: Response) => {
   res.json({ status: `OK`, message: `OAuth Backend Running` })
