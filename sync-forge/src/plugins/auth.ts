@@ -1,12 +1,12 @@
-import type { Store } from 'pinia'
-import { useAuthStore } from '@/stores/auth'
+import type { PiniaPluginContext, Store } from 'pinia'
+import { useAuthStore } from '@/stores'
 
-function isAuthStore(s: Store): s is ReturnType<typeof useAuthStore> {
-  return s.$id === `auth` && `init` in s
+function isAuthStore(store: Store): store is ReturnType<typeof useAuthStore> {
+  return store.$id === `auth` && `fetchUser` in store
 }
 
-export const authPlugin = ({ store }: { store: Store }): void => {
+export const authPlugin = async ({ store }: PiniaPluginContext): Promise<void> => {
   if (isAuthStore(store)) {
-    store.init()
+    await store.fetchUser()
   }
 }

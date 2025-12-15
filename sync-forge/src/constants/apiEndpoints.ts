@@ -6,8 +6,8 @@ export const googleOAuthEndpoints = {
 // TODO: rename to GoogleOAuthApiEndpoints
 export const ApiEndpoints = {
   AUTH_TOKEN: `/api/auth/token`,
-  AUTH_INTERNAL_REFRESH: `/api/auth/internal-refresh`,
-  AUTH_LOGOUT: `/api/auth/logout`
+  AUTH_LOGOUT: `/api/auth/logout`,
+  ME: `/api/auth/me`
 } as const
 
 export const CollabFlowApiEndpoints = {
@@ -16,7 +16,7 @@ export const CollabFlowApiEndpoints = {
 
   TASKS: `/api/tasks`,
   TASK_BY_ID: (id: string) => `/api/tasks/${id}`,
-  
+
   USERS: `/api/users`,
   USER_BY_ID: (id: string) => `/api/users/${id}`
 } as const

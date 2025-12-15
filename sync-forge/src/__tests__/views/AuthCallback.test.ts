@@ -4,94 +4,94 @@ import { createRouter, createMemoryHistory } from 'vue-router'
 import AuthCallback from '@/views/AuthCallback.vue'
 import { useAuthStore } from '@/stores'
 import { setActivePinia, createPinia } from 'pinia'
-import { simpleApiClient } from '@/services/simpleApiClient'
+import { apiClient } from '@/services/apiClient'
 import { routes } from '@/router'
-import {
-  CODE_VERIFIER_KEY
-} from '@/constants/localStorageKeys'
 import { ApiEndpoints } from '@/constants/apiEndpoints'
-import { AppRoutes } from '@/constants/routes'
+import { RouteNames } from '@/constants/routes'
 
-vi.mock(`@/services/simpleApiClient`, () => ({
-  simpleApiClient: {
-    post: vi.fn(),
-    get: vi.fn()
+vi.mock(`@/services/apiClient`, () => ({
+  apiClient: {
+    post: vi.fn()
   }
 }))
 
-describe(`AuthCallback`, () => {
+const mockedApiClientPost = vi.mocked(apiClient.post)
+
+describe(`AuthCallback (Session-based)`, () => {
   let router: ReturnType<typeof createRouter>
 
   beforeEach(async () => {
     setActivePinia(createPinia())
-    localStorage.clear()
     vi.clearAllMocks()
+    localStorage.clear()
 
     router = createRouter({
       history: createMemoryHistory(),
       routes
     })
 
-    await router.push(AppRoutes.AUTH_CALLBACK)
+    // Start at a different route to test the navigation
+    await router.push(`/`)
     await router.isReady()
   })
 
-
-  it(`exchanges code for tokens, sets auth data, and redirects to /`, async () => {
-    router.currentRoute.value.query = { code: `auth-code-123` }
-    localStorage.setItem(CODE_VERIFIER_KEY, `verifier-abc`)
-
-    const mockUser = { id: `user-123`, email: `test@example.com`, name: `Test User` }
-    // A mock JWT has two dots. The payload is the base64 encoded JSON of the user.
-    const mockAccessToken = `header.${Buffer.from(JSON.stringify(mockUser)).toString(`base64`)}.signature`
-
-    const internalTokenResponse = {
-      internal_access_token: mockAccessToken,
-      expires_in: 900
-    }
-    vi.mocked(simpleApiClient.post).mockResolvedValueOnce({
-      data: internalTokenResponse
-    })
-
+  it(`calls the token endpoint and redirects to / on success`, async () => {
+    // Set up the conditions for the component's onMounted hook
+    await router.push({ name: RouteNames.AUTH_CALLBACK, query: { code: `auth-code-123` } })
     const authStore = useAuthStore()
-    const setAuthDataSpy = vi.spyOn(authStore, `setAuthData`)
+    const clearPkceSpy = vi.spyOn(authStore, `clearPkceCodeVerifier`)
+    authStore.setPkceCodeVerifier(`verifier-abc`)
 
+    mockedApiClientPost.mockResolvedValue({})
+
+    // Mount the component
     mount(AuthCallback, { global: { plugins: [router] } })
     await flushPromises()
 
-    expect(simpleApiClient.post).toHaveBeenCalledWith(
+    // Assert API call is correct
+    expect(apiClient.post).toHaveBeenCalledWith(
       ApiEndpoints.AUTH_TOKEN,
-      expect.objectContaining({
-        code: `auth-code-123`,
-        codeVerifier: `verifier-abc`
-      })
+      { code: `auth-code-123`, codeVerifier: `verifier-abc` }
     )
 
-    // Verify setAuthData was called with the access token and expiry
-    expect(setAuthDataSpy).toHaveBeenCalledWith(mockAccessToken, 900)
-
-    expect(localStorage.getItem(CODE_VERIFIER_KEY)).toBeNull()
+    // Assert redirection and cleanup
     expect(router.currentRoute.value.path).toBe(`/`)
+    expect(clearPkceSpy).toHaveBeenCalled()
   })
 
-
-  it(`redirects to /login when code or verifier is missing`, async () => {
-    mount(AuthCallback, { global: { plugins: [router] } })
-    await flushPromises()
-
-    expect(router.currentRoute.value.path).toBe(`/login`)
-  })
-
-  it(`redirects to /login on token-exchange failure`, async () => {
-    router.currentRoute.value.query = { code: `bad-code` }
-    localStorage.setItem(CODE_VERIFIER_KEY, `verifier-abc`)
-
-    vi.mocked(simpleApiClient.post).mockRejectedValueOnce(new Error(`invalid_grant`))
+  it(`redirects to /login on token exchange failure`, async () => {
+    await router.push({ name: RouteNames.AUTH_CALLBACK, query: { code: `bad-code` } })
+    const authStore = useAuthStore()
+    const clearPkceSpy = vi.spyOn(authStore, `clearPkceCodeVerifier`)
+    authStore.setPkceCodeVerifier(`verifier-abc`)
+    
+    mockedApiClientPost.mockRejectedValueOnce(new Error(`invalid_grant`))
 
     mount(AuthCallback, { global: { plugins: [router] } })
     await flushPromises()
 
-    expect(router.currentRoute.value.path).toBe(`/login`)
-    expect(localStorage.getItem(CODE_VERIFIER_KEY)).toBeNull()
+    expect(router.currentRoute.value.name).toBe(RouteNames.LOGIN)
+    expect(clearPkceSpy).toHaveBeenCalled()
+  })
+
+  it(`redirects to /login if code is missing`, async () => {
+    await router.push({ name: RouteNames.AUTH_CALLBACK }) // No query params
+    const authStore = useAuthStore()
+    authStore.setPkceCodeVerifier(`verifier-abc`)
+    
+    mount(AuthCallback, { global: { plugins: [router] } })
+    await flushPromises()
+
+    expect(router.currentRoute.value.name).toBe(RouteNames.LOGIN)
+  })
+
+  it(`redirects to /login if code verifier is missing`, async () => {
+    await router.push({ name: RouteNames.AUTH_CALLBACK, query: { code: `some-code` } })
+    // No verifier in store
+    
+    mount(AuthCallback, { global: { plugins: [router] } })
+    await flushPromises()
+
+    expect(router.currentRoute.value.name).toBe(RouteNames.LOGIN)
   })
 })

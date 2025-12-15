@@ -13,17 +13,17 @@
 import { onMounted } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import { useAuthStore } from '@/stores'
-import { simpleApiClient } from '@/services/simpleApiClient'
-import axios from 'axios'
+import { authApiService } from '@/services/authService'
 import Logger from '@/utils/logger'
 import { RouteNames } from '@/constants/routes'
-import { ApiEndpoints } from '@/constants/apiEndpoints'
 
 const route = useRoute()
 const router = useRouter()
 const authStore = useAuthStore()
 
 onMounted(async () => {
+  Logger.log(`[AuthCallback.vue onMounted]`)
+
   const code = route.query.code as string | undefined
   const codeVerifier = authStore.getPkceCodeVerifier()
 
@@ -33,23 +33,18 @@ onMounted(async () => {
   }
 
   try {
-    const tokenResp = await simpleApiClient.post(ApiEndpoints.AUTH_TOKEN, { code, codeVerifier })
+    const result = await authApiService.exchangeToken(code, codeVerifier)
 
-    const { internal_access_token, expires_in } = tokenResp.data
-
-    if (!internal_access_token) {
-      throw new Error(`Missing internal_access_token in auth response`)
-    }
-
-    authStore.setAuthData(internal_access_token, expires_in)
-
-    await router.replace(`/`)
-  } catch (err) {
-    if (axios.isAxiosError(err)) {
-      Logger.error(`Auth failed:`, err.response?.data ?? err.message)
+    if (result.isSuccess()) {
+      await authStore.fetchUser()
+      await router.replace(`/`)
     } else {
-      Logger.error(`Auth failed:`, err)
+      Logger.error(`Auth failed:`, result.error)
+      await router.replace({ name: RouteNames.LOGIN })
     }
+  } catch (err) {
+    // This catch block is for unexpected errors in the service call itself
+    Logger.error(`An unexpected error occurred during token exchange:`, err)
     await router.replace({ name: RouteNames.LOGIN })
   } finally {
     authStore.clearPkceCodeVerifier()

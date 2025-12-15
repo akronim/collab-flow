@@ -1,4 +1,5 @@
 import session from 'express-session'
+import Logger from '../utils/logger'
 
 /**
  * Custom session data stored in each session.
@@ -29,6 +30,7 @@ export class InMemorySessionStore extends session.Store {
     callback: (err?: Error | null, session?: session.SessionData | null) => void
   ): void {
     const data = this.sessions.get(sid)
+    Logger.log(`[SessionStore] GET sid: ${sid} | data: ${data}`)
     callback(null, data ? JSON.parse(data) : null)
   }
 
@@ -41,6 +43,7 @@ export class InMemorySessionStore extends session.Store {
     sessionData: session.SessionData,
     callback?: (err?: Error) => void
   ): void {
+    Logger.log(`[SessionStore] SET sid: ${sid} | sessionData: ${JSON.stringify(sessionData)}`)
     this.sessions.set(sid, JSON.stringify(sessionData))
 
     // Track session by userId for "logout all devices"

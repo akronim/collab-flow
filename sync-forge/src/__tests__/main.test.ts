@@ -1,36 +1,50 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest'
+import { useAuthStore } from '@/stores'
+import { apiClient } from '@/services/apiClient'
+import type { User } from '@/types/auth'
+import { ApiEndpoints } from '@/constants/apiEndpoints'
 
-const setRefreshTokenFnMock = vi.fn()
-const setGetTokenFnMock = vi.fn()
-
-vi.mock(`@/services/authApiClient`, () => ({
-  authApiClient: {
-    setRefreshTokenFn: setRefreshTokenFnMock,
-    setGetTokenFn: setGetTokenFnMock
+vi.mock(`@/services/apiClient`, () => ({
+  apiClient: {
+    get: vi.fn(),
+    post: vi.fn()
   }
 }))
 
-// Mock simpleApiClient to prevent real HTTP calls during router navigation
-vi.mock(`@/services/simpleApiClient`, () => ({
-  simpleApiClient: {
-    post: vi.fn().mockRejectedValue(new Error(`no session`)),
-    get: vi.fn()
-  }
-}))
+const mockedApiClientGet = vi.mocked(apiClient.get)
+
+const mockUser: User = { id: `1`, name: `Test User`, email: `test@example.com` }
 
 describe(`main.ts`, () => {
   beforeEach(() => {
-    vi.clearAllMocks()
     document.body.innerHTML = `<div id="app"></div>`
     vi.resetModules()
+    vi.clearAllMocks()
   })
 
-  it(`initializes the auth store and sets up API refresh token function`, async () => {
+  it(`initializes the auth store by calling fetchUser`, async () => {
+    mockedApiClientGet.mockResolvedValueOnce({ data: mockUser })
+
     await import(`@/main`)
 
-    expect(setRefreshTokenFnMock).toHaveBeenCalled()
-    expect(setRefreshTokenFnMock).toHaveBeenCalledWith(expect.any(Function))
-    expect(setGetTokenFnMock).toHaveBeenCalled()
-    expect(setGetTokenFnMock).toHaveBeenCalledWith(expect.any(Function))
+    const authStore = useAuthStore()
+
+    expect(mockedApiClientGet).toHaveBeenCalledWith(ApiEndpoints.ME)
+    expect(authStore.user).toStrictEqual(mockUser)
+    expect(authStore.isAuthenticated).toBe(true)
+  })
+
+  it(`clears user state when API call fails`, async () => {
+    mockedApiClientGet.mockRejectedValueOnce(new Error(`Unauthorized`))
+
+    await import(`@/main`)
+
+    const authStore = useAuthStore()
+
+    expect(mockedApiClientGet).toHaveBeenCalledExactlyOnceWith(ApiEndpoints.ME)
+    expect(authStore.user).toBeNull()
+    expect(authStore.isAuthenticated).toBe(false)
   })
 })
+
+

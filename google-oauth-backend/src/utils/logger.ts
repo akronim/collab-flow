@@ -7,6 +7,11 @@ const Logger = {
     console.log(...args)
   },
 
+  warn(...args: unknown[]): void {
+    // eslint-disable-next-line no-console
+    console.warn(...args)
+  },
+
   error(...args: unknown[]): void {
     // eslint-disable-next-line no-console
     console.error(...args)

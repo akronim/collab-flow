@@ -1,4 +1,4 @@
-import { authApiClient } from '@/services/authApiClient'
+import { apiClient } from '@/services/apiClient'
 import ApiCallResult from '@/utils/apiCallResult'
 import { CollabFlowApiEndpoints } from '@/constants/apiEndpoints'
 import type { Task } from '@/types/task'
@@ -6,7 +6,7 @@ import type { Task } from '@/types/task'
 export const taskApiService = {
   async getAllTasks(): Promise<ApiCallResult<Task[]>> {
     try {
-      const response = await authApiClient.get<Task[]>(CollabFlowApiEndpoints.TASKS)
+      const response = await apiClient.get<Task[]>(CollabFlowApiEndpoints.TASKS)
       return ApiCallResult.Success(response.data, response.status)
     } catch (error) {
       return ApiCallResult.Fail(error)
@@ -15,7 +15,7 @@ export const taskApiService = {
 
   async getTasksByProjectId(projectId: string): Promise<ApiCallResult<Task[]>> {
     try {
-      const response = await authApiClient.get<Task[]>(
+      const response = await apiClient.get<Task[]>(
         `${CollabFlowApiEndpoints.TASKS}?projectId=${projectId}`
       )
       return ApiCallResult.Success(response.data, response.status)
@@ -26,7 +26,7 @@ export const taskApiService = {
 
   async getTaskById(id: string): Promise<ApiCallResult<Task>> {
     try {
-      const response = await authApiClient.get<Task>(CollabFlowApiEndpoints.TASK_BY_ID(id))
+      const response = await apiClient.get<Task>(CollabFlowApiEndpoints.TASK_BY_ID(id))
       return ApiCallResult.Success(response.data, response.status)
     } catch (error) {
       return ApiCallResult.Fail(error)
@@ -35,7 +35,7 @@ export const taskApiService = {
 
   async createTask(task: Omit<Task, `id` | `createdAt` | `updatedAt`>): Promise<ApiCallResult<Task>> {
     try {
-      const response = await authApiClient.post<Task>(CollabFlowApiEndpoints.TASKS, task)
+      const response = await apiClient.post<Task>(CollabFlowApiEndpoints.TASKS, task)
       return ApiCallResult.Success(response.data, response.status)
     } catch (error) {
       return ApiCallResult.Fail(error)
@@ -44,7 +44,7 @@ export const taskApiService = {
 
   async updateTask(id: string, updates: Partial<Task>): Promise<ApiCallResult<Task>> {
     try {
-      const response = await authApiClient.put<Task>(CollabFlowApiEndpoints.TASK_BY_ID(id), updates)
+      const response = await apiClient.put<Task>(CollabFlowApiEndpoints.TASK_BY_ID(id), updates)
       return ApiCallResult.Success(response.data, response.status)
     } catch (error) {
       return ApiCallResult.Fail(error)
@@ -53,7 +53,7 @@ export const taskApiService = {
 
   async deleteTask(id: string): Promise<ApiCallResult<void>> {
     try {
-      const response = await authApiClient.delete(CollabFlowApiEndpoints.TASK_BY_ID(id))
+      const response = await apiClient.delete(CollabFlowApiEndpoints.TASK_BY_ID(id))
       return ApiCallResult.Success(undefined, response.status)
     } catch (error) {
       return ApiCallResult.Fail(error)

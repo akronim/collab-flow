@@ -1,13 +1,10 @@
 import dotenv from 'dotenv'
-import type { StringValue } from 'ms'
 
 dotenv.config()
 
 const requiredEnvVars = [
   `PORT`,
-  `JWT_SECRET`,
-  `JWT_EXPIRES_IN`,
-  `GOOGLE_CLIENT_ID` // Added for consistency, though may not be used directly yet
+  `INTERNAL_JWT_SECRET`
 ]
 
 for (const envVar of requiredEnvVars) {
@@ -19,11 +16,7 @@ for (const envVar of requiredEnvVars) {
 const config = {
   port: process.env.PORT!,
   jwt: {
-    secret: process.env.JWT_SECRET!,
-    expiresIn: process.env.JWT_EXPIRES_IN! as StringValue
-  },
-  google: {
-    clientId: process.env.GOOGLE_CLIENT_ID!
+    secret: process.env.INTERNAL_JWT_SECRET!
   }
 }
 

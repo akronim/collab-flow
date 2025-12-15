@@ -17,7 +17,7 @@ export const handleTokenRequest = async (
   res: Response,
   next: NextFunction
 ): Promise<void> => {
-  Logger.log(`Handling token request`)
+  Logger.log(`[AuthController] Starting token exchange.`)
   const { code, codeVerifier } = req.body
 
   if (!code || !codeVerifier) {
@@ -52,6 +52,7 @@ export const handleTokenRequest = async (
         if (saveErr) {
           return next(saveErr)
         }
+        Logger.log(`[AuthController] Token exchange successful, session saved.`)
         return res.status(200).json({ success: true })
       })
       return undefined
@@ -63,7 +64,9 @@ export const handleTokenRequest = async (
 }
 
 export const handleGetCurrentUser = (req: Request, res: Response, next: NextFunction): void => {
+  Logger.log(`[AuthController] handleGetCurrentUser called.`)
   if (!req.session?.userId) {
+    Logger.warn(`[AuthController] handleGetCurrentUser failed: No user ID in session.`)
     return next(new AppError(ErrorMessages.UNAUTHORIZED, 401))
   }
 

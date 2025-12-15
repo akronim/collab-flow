@@ -1,109 +1,148 @@
 import { describe, it, expect, beforeEach, vi } from 'vitest'
-import { mount, flushPromises } from '@vue/test-utils'
+import { mount } from '@vue/test-utils'
+import { createMemoryHistory, createRouter, type Router } from 'vue-router'
 import { createTestingPinia } from '@pinia/testing'
+
 import App from '@/App.vue'
-import ProjectsView from '@/views/ProjectsView.vue'
+import HomeView from '@/views/HomeView.vue'
 import LoginView from '@/views/LoginView.vue'
+import ProjectsView from '@/views/ProjectsView.vue'
+import DefaultLayout from '@/components/layouts/DefaultLayout.vue'
+
 import { useAuthStore } from '@/stores'
-import router from '@/router'
+import { apiClient } from '@/services/apiClient'
+import { routes } from '@/router'
+import { RouteNames } from '@/constants/routes'
 
-// Mock API clients to prevent real HTTP calls
-vi.mock(`@/services/simpleApiClient`, () => ({
-  simpleApiClient: {
-    post: vi.fn().mockRejectedValue(new Error(`no session`)),
-    get: vi.fn()
-  }
-}))
-
-vi.mock(`@/services/authApiClient`, () => ({
-  authApiClient: {
-    post: vi.fn(),
+vi.mock(`@/services/apiClient`, () => ({
+  apiClient: {
     get: vi.fn(),
-    setRefreshTokenFn: vi.fn(),
-    setGetTokenFn: vi.fn()
+    post: vi.fn()
   }
 }))
+
+const mockedGet = vi.mocked(apiClient.get)
+
+function makeTestRouter(): Router {
+  const router = createRouter({
+    history: createMemoryHistory(),
+    routes
+  })
+
+  router.beforeEach((to, _from, next) => {
+    const auth = useAuthStore()
+
+    if (to.meta.requiresAuth && !auth.isAuthenticated) {
+      next({ name: RouteNames.LOGIN })
+    } else {
+      next()
+    }
+  })
+
+  return router
+}
 
 describe(`App.vue`, () => {
-  beforeEach(async () => {
-    createTestingPinia({ createSpy: vi.fn, stubActions: false })
-    localStorage.clear()
+  beforeEach(() => {
     vi.clearAllMocks()
-    await router.push(`/login`)
-    await router.replace(router.currentRoute.value.fullPath)
   })
 
-  it(`shows LoginView when not authenticated and navigating to a protected route`, async () => {
-    const auth = useAuthStore()
-    vi.spyOn(auth, `refreshAccessToken`).mockResolvedValue(null)
+  it(`redirects unauthenticated users to login`, async () => {
+    mockedGet.mockRejectedValue(new Error(`Unauthorized`))
+
+    const pinia = createTestingPinia({ createSpy: vi.fn, stubActions: false })
+    const router = makeTestRouter()
+    const pushSpy = vi.spyOn(router, `push`)
+
+    await router.push(`/projects`)
+
+    const wrapper = mount(App, {
+      global: {
+        plugins: [router, pinia]
+      }
+    })
+
+    await router.isReady()
+
+    expect(pushSpy).toHaveBeenCalledWith(`/projects`)
+    expect(router.currentRoute.value.name).toBe(RouteNames.LOGIN)
+    expect(wrapper.findComponent(LoginView).exists()).toBe(true)
+    expect(wrapper.findComponent(DefaultLayout).exists()).toBe(false)
+  })
+
+  it(`allows authenticated users to access protected routes`, async () => {
+    const mockUser = { id: `1`, name: `Test User`, email: `test@example.com` }
+    mockedGet.mockResolvedValueOnce({ data: mockUser })
+
+    const pinia = createTestingPinia({ createSpy: vi.fn, stubActions: false })
+    const router = makeTestRouter()
+
+    // Ensure the auth store is initialized in tests by calling fetchUser()
+    const authStore = useAuthStore(pinia)
+    await authStore.fetchUser()
+
+    await router.push(`/projects`)
+
+    const wrapper = mount(App, {
+      global: {
+        plugins: [router, pinia]
+      }
+    })
+
+    await router.isReady()
+
+    expect(router.currentRoute.value.name).toBe(RouteNames.PROJECTS)
+    
+    expect(authStore.user).toStrictEqual(mockUser)
+    
+    expect(wrapper.findComponent(DefaultLayout).exists()).toBe(true)
+    expect(wrapper.findComponent(ProjectsView).exists()).toBe(true)
+  })
+
+  it(`shows home page when authenticated at root`, async () => {
+    mockedGet.mockResolvedValue({ data: { id: `1`, name: `Test`, email: `test@test.com` } })
+
+    const pinia = createTestingPinia({ createSpy: vi.fn, stubActions: false })
+    const router = makeTestRouter()
+
+    // Ensure the auth store is initialized in tests by calling fetchUser()
+    const authStore = useAuthStore(pinia)
+    await authStore.fetchUser()
 
     await router.push(`/`)
-    await flushPromises()
 
     const wrapper = mount(App, {
       global: {
-        plugins: [router]
+        plugins: [router, pinia]
       }
     })
 
-    await flushPromises()
+    await router.isReady()
+    await new Promise(resolve => setTimeout(resolve, 0))
 
-    expect(router.currentRoute.value.path).toBe(`/login`)
+    expect(router.currentRoute.value.name).toBe(RouteNames.HOME)
+    expect(wrapper.findComponent(DefaultLayout).exists()).toBe(true)
+    expect(wrapper.findComponent(HomeView).exists()).toBe(true)
+  })
+
+  it(`lets anyone access login page`, async () => {
+    mockedGet.mockRejectedValue(new Error(`Unauthorized`))
+
+    const pinia = createTestingPinia({ createSpy: vi.fn, stubActions: false })
+    const router = makeTestRouter()
+
+    await router.push(`/login`)
+
+    const wrapper = mount(App, {
+      global: {
+        plugins: [router, pinia]
+      }
+    })
+
+    await router.isReady()
+
+    expect(router.currentRoute.value.name).toBe(RouteNames.LOGIN)
     expect(wrapper.findComponent(LoginView).exists()).toBe(true)
-    expect(wrapper.findComponent(ProjectsView).exists()).toBe(false)
-  })
-
-  it(`shows ProjectsView when authenticated`, async () => {
-    const auth = useAuthStore()
-    auth.$patch({
-      user: { id: `1`, email: `john@example.com`, name: `John` }
-    })
-
-    await router.push(`/projects`)
-    await flushPromises()
-
-    const wrapper = mount(App, {
-      global: {
-        plugins: [router]
-      }
-    })
-
-    await flushPromises()
-
-    expect(wrapper.findComponent(ProjectsView).exists()).toBe(true)
-    expect(wrapper.findComponent(LoginView).exists()).toBe(false)
-    expect(wrapper.text()).toContain(`Projects`)
-  })
-
-  it(`silently refreshes and allows navigation on expired session`, async () => {
-    const auth = useAuthStore()
-
-    expect(auth.isAuthenticated).toBe(false)
-
-    const refreshSpy = vi
-      .spyOn(auth, `refreshAccessToken`)
-      .mockImplementation(() => {
-        auth.$patch({
-          user: { id: `1`, email: `john@example.com`, name: `John` },
-          accessToken: `new-access-token`,
-          expiresAt: Date.now() + 3600000
-        })
-        return Promise.resolve(`new-access-token`)
-      })
-
-    await router.push(`/projects`)
-    await flushPromises()
-
-    const wrapper = mount(App, {
-      global: {
-        plugins: [router]
-      }
-    })
-
-    await flushPromises()
-
-    expect(refreshSpy).toHaveBeenCalled()
-    expect(router.currentRoute.value.path).toBe(`/projects`)
-    expect(wrapper.findComponent(ProjectsView).exists()).toBe(true)
+    expect(wrapper.findComponent(DefaultLayout).exists()).toBe(false)
   })
 })

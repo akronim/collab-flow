@@ -1,8 +1,11 @@
+// google-oauth-backend/src/__tests__/server.spec.ts
+
 import { describe, it, expect, vi, beforeEach, type Mocked } from 'vitest'
-import request from 'supertest'
+import request from 'supertest' // <-- ADDED SuperAgentTest import
 import app from '../server'
 import { googleApi } from '../utils/axios'
 import { apiEndpoints, ErrorMessages } from '../constants'
+import type TestAgent from 'supertest/lib/agent'
 
 vi.mock(`../config`, () => ({
   default: {
@@ -47,18 +50,30 @@ vi.mock(`../services/tokenStore.service`, () => ({
 }))
 
 const mockedGoogleApi = googleApi as Mocked<typeof googleApi>
-// const mockedTokenStore = tokenStore as Mocked<typeof tokenStore>
 
 describe(`Backend API Tests`, () => {
-  const API_BASE_PATH = `/api` 
+  const API_BASE_PATH = `/api`
+  let agent: InstanceType<typeof TestAgent> 
+  let csrfToken: string
 
-  beforeEach(() => {
+  beforeEach(async () => {
     vi.clearAllMocks()
+    agent = request.agent(app) 
+    const res = await agent.get(`/health`)
+    const csrfCookieHeader = res.headers[`set-cookie`]
+    if (csrfCookieHeader && Array.isArray(csrfCookieHeader)) {
+      const csrfCookie = (csrfCookieHeader as string[]).find(c => c.startsWith(`collabflow.csrf=`))
+      if (csrfCookie) {
+        csrfToken = csrfCookie.split(`;`)[0].split(`=`)[1]
+        return
+      }
+    }
+    throw new Error(`CSRF cookie not found in response`)
   })
 
   describe(`GET /`, () => {
     it(`responds with a success message`, async () => {
-      const response = await request(app).get(`/`)
+      const response = await agent.get(`/`)
       expect(response.status).toBe(200)
       expect(response.body).toEqual({ status: `OK`, message: `OAuth Backend Running` })
     })
@@ -66,23 +81,29 @@ describe(`Backend API Tests`, () => {
 
   describe(`GET /health`, () => {
     it(`responds with status OK and service details`, async () => {
-      const response = await request(app).get(`/health`)
+      const response = await agent.get(`/health`)
       expect(response.status).toBe(200)
       expect(response.body).toEqual({
         status: `OK`,
         service: `oauth-gateway`,
-        downstream: `http://localhost:3002` // From mocked config
+        downstream: `http://localhost:3002`
       })
     })
   })
 
   describe(`POST ${API_BASE_PATH}${apiEndpoints.TOKEN}`, () => {
     it(`should return 400 if code or codeVerifier is missing`, async () => {
-      const response1 = await request(app).post(`${API_BASE_PATH}${apiEndpoints.TOKEN}`).send({ code: `some_code` })
+      const response1 = await agent
+        .post(`${API_BASE_PATH}${apiEndpoints.TOKEN}`)
+        .set(`x-csrf-token`, csrfToken)
+        .send({ code: `some_code` })
       expect(response1.status).toBe(400)
       expect(response1.body.error).toBe(ErrorMessages.MISSING_CODE_OR_VERIFIER)
 
-      const response2 = await request(app).post(`${API_BASE_PATH}${apiEndpoints.TOKEN}`).send({ codeVerifier: `some_verifier` })
+      const response2 = await agent
+        .post(`${API_BASE_PATH}${apiEndpoints.TOKEN}`)
+        .set(`x-csrf-token`, csrfToken)
+        .send({ codeVerifier: `some_verifier` })
       expect(response2.status).toBe(400)
       expect(response2.body.error).toBe(ErrorMessages.MISSING_CODE_OR_VERIFIER)
     })
@@ -102,18 +123,22 @@ describe(`Backend API Tests`, () => {
         }
       })
 
-      const response = await request(app)
+      const response = await agent
         .post(`${API_BASE_PATH}${apiEndpoints.TOKEN}`)
+        .set(`x-csrf-token`, csrfToken)
         .send({ code: `auth_code`, codeVerifier: `code_verifier` })
 
       expect(response.status).toBe(200)
       expect(response.body).toEqual({ success: true })
 
-      const cookie = response.headers[`set-cookie`][0]
-      expect(cookie).toContain(`collabflow.sid`)
-      expect(cookie).toContain(`HttpOnly`)
-      expect(cookie).toContain(`Path=/`)
-      expect(cookie).toContain(`SameSite=Lax`)
+      const setCookieHeader = response.headers[`set-cookie`]
+      expect(Array.isArray(setCookieHeader)).toBe(true)
+      if (Array.isArray(setCookieHeader)) {
+        const sessionCookie = (setCookieHeader as string[]).find(c => c.startsWith(`collabflow.sid=`))
+        expect(sessionCookie).toContain(`HttpOnly`)
+        expect(sessionCookie).toContain(`Path=/`)
+        expect(sessionCookie).toContain(`SameSite=Lax`)
+      }
     })
 
     it(`should handle token exchange failure from Google`, async () => {
@@ -124,8 +149,9 @@ describe(`Backend API Tests`, () => {
         }
       })
 
-      const response = await request(app)
+      const response = await agent
         .post(`${API_BASE_PATH}${apiEndpoints.TOKEN}`)
+        .set(`x-csrf-token`, csrfToken)
         .send({ code: `bad_code`, codeVerifier: `code_verifier` })
 
       expect(response.status).toBe(401)
@@ -134,70 +160,35 @@ describe(`Backend API Tests`, () => {
     })
   })
 
-  /* eslint-disable vitest/no-commented-out-tests -- Temporarily disabling a suite for debugging */
-  // TODO: [SESSION-REFACTOR] This test block is for the old JWT-based /internal-refresh endpoint and needs to be rewritten or removed.
-  // describe(`POST ${API_BASE_PATH}${apiEndpoints.INTERNAL_REFRESH}`, () => {
-  //   it(`should return 400 if internal_refresh_token cookie is missing`, async () => {
-  //     const response = await request(app).post(`${API_BASE_PATH}${apiEndpoints.INTERNAL_REFRESH}`).send({})
-  //     expect(response.status).toBe(400)
-  //     expect(response.body.error).toBe(ErrorMessages.MISSING_REFRESH_TOKEN)
-  //   })
-  //
-  //   it(`should return 401 if token is not in store`, async () => {
-  //     mockedTokenStore.getGoogleRefreshToken.mockReturnValueOnce(undefined)
-  //    
-  //     const response = await request(app)
-  //       .post(`${API_BASE_PATH}${apiEndpoints.INTERNAL_REFRESH}`)
-  //       .set(`Cookie`, `internal_refresh_token=not-in-store`)
-  //
-  //     expect(response.status).toBe(401)
-  //     expect(response.body.error).toBe(ErrorMessages.INVALID_REFRESH_TOKEN)
-  //   })
-  //
-  //   it(`should refresh internal token successfully`, async () => {
-  //     mockedTokenStore.getGoogleRefreshToken.mockReturnValueOnce(`valid-google-refresh-token`)
-  //     mockedGoogleApi.post.mockResolvedValueOnce({
-  //       data: {
-  //         access_token: `new_google_access_token`,
-  //         expires_in: 3600
-  //       }
-  //     })
-  //     mockedGoogleApi.get.mockResolvedValueOnce({
-  //       data: {
-  //         id: `google_id_123`,
-  //         email: `test@example.com`,
-  //         name: `Test User`
-  //       }
-  //     })
-  //
-  //     const response = await request(app)
-  //       .post(`${API_BASE_PATH}${apiEndpoints.INTERNAL_REFRESH}`)
-  //       .set(`Cookie`, `internal_refresh_token=valid-internal-refresh`)
-  //
-  //     expect(response.status).toBe(200)
-  //     expect(response.body).toHaveProperty(`internal_access_token`)
-  //     expect(response.body).not.toHaveProperty(`internal_refresh_token`)
-  //    
-  //     const cookie = response.headers[`set-cookie`][0]
-  //     expect(cookie).toContain(`internal_refresh_token=new-internal-from-valid-google-refresh-token`)
-  //     expect(cookie).toContain(`HttpOnly`)
-  //     expect(cookie).toContain(`SameSite=Strict`)
-  //
-  //     expect(mockedTokenStore.deleteToken).toHaveBeenCalledWith(`valid-internal-refresh`)
-  //   })
-  // })
-  /* eslint-enable vitest/no-commented-out-tests */
-
   describe(`POST ${API_BASE_PATH}${apiEndpoints.LOGOUT}`, () => {
     it(`should return 204 for a session-less logout request`, async () => {
-      const response = await request(app)
+      const freshAgent = request.agent(app)
+      const healthRes = await freshAgent.get(`/health`)
+      
+      let freshCsrfToken = ``
+      const csrfCookieHeader = healthRes.headers[`set-cookie`]
+      if (csrfCookieHeader && Array.isArray(csrfCookieHeader)) {
+        const freshCsrfCookie = (csrfCookieHeader as string[]).find(c => c.startsWith(`collabflow.csrf=`))
+        if (freshCsrfCookie) {
+          freshCsrfToken = freshCsrfCookie.split(`;`)[0].split(`=`)[1]
+        }
+      }
+      if (!freshCsrfToken) {
+        throw new Error(`CSRF cookie not found in response for fresh agent`)
+      }
+
+
+      const response = await freshAgent
         .post(`${API_BASE_PATH}${apiEndpoints.LOGOUT}`)
+        .set(`x-csrf-token`, freshCsrfToken)
         .send()
 
       expect(response.status).toBe(204)
-      // For a request without a session, there's no cookie to clear,
-      // so we don't expect a set-cookie header in the response.
-      expect(response.headers[`set-cookie`]).toBeUndefined()
+      const setCookieHeader = response.headers[`set-cookie`]
+      if (setCookieHeader && Array.isArray(setCookieHeader)) {
+        const sessionCookie = (setCookieHeader as string[]).find(c => c.startsWith(`collabflow.sid=`))
+        expect(sessionCookie).toBeUndefined()
+      }
     })
   })
 })

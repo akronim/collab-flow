@@ -51,16 +51,10 @@ const router = createRouter({
 router.beforeEach(async (to, _from, next) => {
   const auth = useAuthStore()
 
-  if (to.meta.requiresAuth && !auth.isAuthenticated) {
-    try {
-      await auth.refreshAccessToken()
-    } catch {
-      // no valid session
-    }
-  }
+  await auth.fetchUser()
 
   if (to.meta.requiresAuth && !auth.isAuthenticated) {
-    next(`/login`)
+    next({ name: RouteNames.LOGIN })
   } else {
     next()
   }

@@ -1,38 +1,39 @@
 import { describe, it, expect, vi } from 'vitest'
-import { createPinia, defineStore } from 'pinia'
+import type { PiniaPluginContext, Store } from 'pinia'
 import { authPlugin } from '@/plugins/auth'
 
 describe(`authPlugin`, () => {
-  it(`calls init on the auth store`, () => {
-    const pinia = createPinia()
-    const useTestAuthStore = defineStore(`auth`, {
-      state: () => ({}),
-      actions: {
-        init: vi.fn()
-      }
-    })
+  it(`calls fetchUser only on auth store`, async () => {
+    const mockFetchUser = vi.fn().mockResolvedValue(undefined)
+    
+    const authStore = {
+      $id: `auth`,
+      fetchUser: mockFetchUser
+    } as unknown as Store
 
-    const store = useTestAuthStore(pinia)
+    const otherStore = {
+      $id: `not-auth`,
+      fetchUser: mockFetchUser
+    } as unknown as Store
 
-    const spy = vi.spyOn(store, `init`)
-    authPlugin({ store })
+    await authPlugin({ store: authStore } as PiniaPluginContext)
 
-    expect(spy).toHaveBeenCalled()
+    expect(mockFetchUser).toHaveBeenCalledTimes(1)
+
+    mockFetchUser.mockClear()
+    
+    await authPlugin({ store: otherStore } as PiniaPluginContext)
+
+    expect(mockFetchUser).not.toHaveBeenCalled()
   })
 
-  it(`does not call init on other stores`, () => {
-    const pinia = createPinia()
-    const useOtherStore = defineStore(`other`, {
-      state: () => ({}),
-      actions: {
-        init: vi.fn()
-      }
-    })
-    const store = useOtherStore(pinia)
+  it(`does nothing if store has no fetchUser method`, async () => {
+    const storeWithoutFetchUser = {
+      $id: `auth`
+    } as unknown as Store
 
-    const spy = vi.spyOn(store, `init`)
-    authPlugin({ store })
-
-    expect(spy).not.toHaveBeenCalled()
+    await expect(
+      authPlugin({ store: storeWithoutFetchUser } as PiniaPluginContext)
+    ).resolves.not.toThrow()
   })
 })
