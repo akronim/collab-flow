@@ -4,93 +4,186 @@ This document details the specific flow of events when the `sync-forge` applicat
 
 **Assumed starting condition:** The user navigates to the root URL (`/`).
 
-1.  **`main.ts`:** The application's `main.ts` file is the entry point. It orchestrates the setup in this order:
-    *   A Pinia instance (for state management) is created.
-    *   The custom `authPlugin` is registered with Pinia (`pinia.use(authPlugin)`).
-    *   The Vue Router instance is registered with the app (`app.use(router)`).
-    *   The app is mounted to the DOM (`app.mount('#app')`), which triggers the initial routing.
-
-2.  **`plugins/auth.ts`:** Because the `authPlugin` was registered, as soon as the `auth` store is needed, the plugin executes `store.fetchUser()`. This happens almost immediately and initiates an asynchronous API call.
-
-3.  **`stores/auth.ts` & `services/apiClient.ts`:** The `fetchUser` action makes a `GET` request to `/api/auth/me` via the `apiClient`.
-    *   Based on its configuration, `apiClient` automatically sends this request with the `withCredentials: true` option. This causes the browser to attach any existing session cookies, allowing the backend to check for a valid session.
-    *   The `apiClient`'s CSRF token interceptor is skipped, as this is a `GET` request.
-    *   While this background network request is in flight, the `user` state in the `auth` store remains `null`.
-
-4.  **`router/index.ts`:** The router attempts its first navigation to the requested `/` route.
-    *   The `router.beforeEach` navigation guard intercepts this attempt.
-    *   It checks the condition: `if (to.meta.requiresAuth && !auth.isAuthenticated)`.
-    *   For the `/` route, `to.meta.requiresAuth` is `true`.
-    *   Because the API call from `fetchUser` has not returned yet, `auth.isAuthenticated` is `false` (since `user` is `null`).
-    *   The condition is met (`true && true`), so the guard executes `next({ name: RouteNames.LOGIN })`. This cancels the navigation to `/` and starts a new navigation to the `/login` route.
-
-5.  **`router/index.ts` (Again):** The `beforeEach` guard runs again for the new navigation to `/login`.
-    *   It checks the same condition.
-    *   For the `/login` route, `to.meta.requiresAuth` is `undefined` (falsy).
-    *   The condition is not met, so the `else` block runs, executing `next()`. This permits the navigation. The `LoginView` component is rendered, and the user sees the login page.
-
-6.  **`stores/auth.ts` & `services/apiClient.ts` (In the background):**
-    *   The `/api/auth/me` request that was initiated in step 3 finally completes. Since there is no user session, the API returns a `401 Unauthorized` error.
-    *   The `try...catch` block within the `fetchUser` action catches this error and sets `this.user = null`. The state remains unchanged but is now confirmed.
-    *   The `apiClient`'s response interceptor also sees the 401 error but ignores it because it came from the `/api/auth/me` endpoint, preventing an unnecessary redirect.
-
-**End Result:** The user is correctly shown the login page, and the application state accurately reflects that no user is authenticated.
+1. `main.ts` mounts app with Pinia and Router
+2. Router `beforeEach` guard intercepts navigation to `/`
+3. Guard calls `await auth.fetchUser()`
+4. `fetchUser()` checks if `this.user` is null → yes, so calls `authApiService.getUser()` → `GET /api/auth/me`
+   - `apiClient` sends request with `withCredentials: true` (cookies sent, but none exist yet)
+   - CSRF interceptor skipped (only applies to POST/PUT/PATCH/DELETE)
+5. Backend receives `GET /api/auth/me`
+   - Middleware chain: helmet → cors → cookieParser → sessionMiddleware → csrfMiddleware
+   - `sessionMiddleware`: no session cookie → `req.session` empty
+   - `csrfMiddleware`:
+     - No `collabflow.csrf` cookie in request → generates new CSRF token
+     - Sets `collabflow.csrf` cookie in response (httpOnly: false, so frontend JS can read it)
+     - GET method → skips CSRF validation
+   - `handleGetCurrentUser`: checks `req.session.userId` → undefined → returns 401
+6. Frontend receives 401 response
+   - Browser stores `collabflow.csrf` cookie from response
+   - `apiClient` response interceptor: 401 on `/api/auth/me` → no hard redirect (expected for unauthenticated)
+   - Error propagated to `authApiService.getUser()` → returns `ApiCallResult.Fail(error)`
+   - `fetchUser()` receives failed result → sets `this.user = null` → `isAuthenticated` = false
+7. Router guard: route `/` has `requiresAuth: true` and `isAuthenticated` = false → redirect to `/login`
+8. User sees the login page
 
 ---
 
-## Backend Flow: `google-oauth-backend`
+## Login Flow (PKCE OAuth)
 
-This section details how the backend processes the `GET /api/auth/me` request from an unauthenticated user.
+**Scenario:** User clicks "Sign in with Google" button.
 
-1.  **Entry & Core Middleware (`server.ts`):** The request first passes through standard middleware, including `cors` (allowing the request from the frontend) and `cookieParser` (to parse cookies).
-
-2.  **Session Middleware (`session.middleware.ts`):** The `express-session` middleware looks for a valid session cookie (`collabflow.sid`). Finding none, it creates a new, empty session object and attaches it to the request as `req.session`. Due to the `saveUninitialized: false` setting, this empty session will not be saved to the database.
-
-3.  **CSRF Middleware (`csrf.middleware.ts`):** This middleware runs next. A CSRF (Cross-Site Request Forgery) token is a security measure; it's a secret value used to ensure that state-changing requests are genuinely from the application, not a malicious site. Because the current request method is `GET`, the middleware skips validation. It also generates a new CSRF token cookie to be sent back with the response, as one does not already exist.
-
-4.  **Routing (`auth.routes.ts`):** The request is routed to the `handleGetCurrentUser` controller. This route is intentionally not protected by a global session check (the `requireSession` middleware is NOT used on this specific route), allowing the controller to perform its own logic.
-
-5.  **Controller Logic (`auth.controller.ts`):** The `handleGetCurrentUser` function executes and immediately checks if `req.session.userId` exists. Since `req.session` is new and empty (does not have a `userId` property), this check fails.
-
-6.  **Error Response:** Upon failing the check, the controller generates a new `AppError` with a `401 Unauthorized` status and passes it to the central `errorMiddleware`. This middleware then sends the final `401` JSON response back to the frontend.
-
----
-
-## Frontend Response Handling
-
-While the user is already viewing the login page (due to the router's initial, quick redirect), the `401 Unauthorized` response from the backend is processed in the background.
-
-1.  **API Client Interceptor (`services/apiClient.ts`):** The `apiClient`'s response interceptor is the first to receive the `401` error. It is specifically designed to ignore `401`s that come from the `/api/auth/me` endpoint, so it does not trigger a redirect. Instead, it allows the error to propagate.
-
-2.  **Auth Store Action (`stores/auth.ts`):** The `try...catch` block within the `fetchUser` action catches the propagated error. This sets the user state to `null`, confirming the unauthenticated status and preventing any uncaught errors in the console.
-
-3.  **Browser Cookie Storage:** The browser receives the `Set-Cookie` header from the backend's response and stores the new `collabflow.csrf` token cookie.
-
-### Final Idle State
-
-The application is now stable and idle with the following conditions met:
-*   The user is viewing the login page.
-*   The global `auth` store correctly reflects that no user is authenticated.
-*   The browser now holds the necessary CSRF token for the subsequent login request.
+1. User clicks button → `login()` called
+2. Generate PKCE code verifier (random 32 bytes, base64url encoded)
+3. Store verifier in localStorage via `authStore.setPkceCodeVerifier()`
+4. Generate code challenge (SHA-256 hash of verifier, base64url encoded)
+5. Build Google OAuth URL with params:
+   - `client_id`, `redirect_uri`, `response_type=code`
+   - `scope=openid email profile`
+   - `code_challenge` and `code_challenge_method=S256`
+   - `access_type=offline`, `prompt=consent` (for refresh token)
+6. Redirect browser to Google OAuth
+7. User authenticates with Google
+8. Google redirects to `/auth/callback?code=...`
 
 ---
 
-## Login Initiation: OAuth 2.0 Flow
+## OAuth Callback Flow
 
-When the user clicks the "Sign in with Google" button, the frontend initiates the OAuth 2.0 Authorization Code Flow with PKCE.
+**Scenario:** Google redirects back to app with authorization code.
 
-1.  **PKCE Code Generation:** The frontend script generates a random, secret `code_verifier` and a corresponding hashed `code_challenge`.
-
-2.  **Store Verifier:** The secret `code_verifier` is saved in the browser's `localStorage` via the `auth` store. This is required for the final step of the login process.
-
-3.  **Construct Authorization URL:** A URL to Google's authorization server is built. This URL includes parameters like the `client_id`, the `redirect_uri` (pointing back to the app's callback page), the `scope` of requested permissions, and the `code_challenge`.
-
-4.  **Redirect to Google:** The script redirects the user's browser to the constructed Google URL. The user is now interacting directly with Google to approve the sign-in request.
+1. `main.ts` mounts app with Pinia and Router (full page load)
+2. Router `beforeEach` guard intercepts navigation to `/auth/callback`
+3. Guard calls `await auth.fetchUser()`
+4. `fetchUser()` checks if `this.user` is null → yes, so calls `authApiService.getUser()` → `GET /api/auth/me`
+   - `apiClient` sends request with `withCredentials: true` (has `collabflow.csrf` cookie from earlier)
+   - CSRF interceptor skipped (GET request)
+5. Backend receives `GET /api/auth/me`
+   - `sessionMiddleware`: no session cookie → `req.session` empty
+   - `csrfMiddleware`: has `collabflow.csrf` cookie → no new token generated, GET → skips validation
+   - `handleGetCurrentUser`: `req.session.userId` undefined → returns 401
+6. Frontend receives 401 response
+   - `apiClient` response interceptor: 401 on `/api/auth/me` → no hard redirect
+   - `fetchUser()` in `stores/auth.ts` sets `this.user = null` → `isAuthenticated` getter returns false
+7. Router guard in `router/index.ts`: `/auth/callback` has no `requiresAuth` meta → `next()` called, navigation proceeds
+8. `AuthCallback.vue` mounts
+9. `onMounted` extracts `code` from `route.query.code`
+10. Gets `codeVerifier` from localStorage via `authStore.getPkceCodeVerifier()`
+11. If either missing → redirect to `/login`
+12. Calls `authApiService.exchangeToken(code, codeVerifier)` → `POST /api/auth/token`
+    - `apiClient` sends request with `withCredentials: true`
+    - CSRF interceptor: POST request → reads `collabflow.csrf` cookie, attaches to `x-csrf-token` header
+13. Backend receives `POST /api/auth/token`
+    - Middleware chain: helmet → cors → cookieParser → sessionMiddleware → csrfMiddleware
+    - `sessionMiddleware`: no session cookie → creates empty session
+    - `csrfMiddleware`:
+      - `collabflow.csrf` cookie exists in request (set during earlier GET /api/auth/me)
+      - POST request → validates `x-csrf-token` header matches `collabflow.csrf` cookie value
+      - Match → validation passes
+    - `handleTokenRequest` controller:
+      - Extracts `code` and `codeVerifier` from request body
+      - Calls `exchangeCodeForToken(code, codeVerifier)` in `auth.service.ts`
+        - POST to Google `https://oauth2.googleapis.com/token` with `client_id`, `client_secret`, `redirect_uri`, `grant_type=authorization_code`, `code`, `code_verifier`
+        - Google validates code + verifier, returns `{ access_token, refresh_token, ... }`
+      - Calls `validateAccessToken(access_token)` in `auth.service.ts`
+        - GET to Google `https://www.googleapis.com/oauth2/v3/userinfo` with Bearer token
+        - Returns `{ id, email, name, ... }`
+      - `req.session.regenerate()` - prevents session fixation attacks
+      - Stores in session: `userId`, `email`, `name`
+      - If `refresh_token` exists → encrypts with AES-256-GCM, stores as `encryptedGoogleRefreshToken` (for later refreshing Google access token without re-authentication)
+      - `req.session.save()` - persists session to store
+      - Response: `res.status(200).json({ success: true })` (`auth.controller.ts:56`)
+      - `express-session` automatically sets `Set-Cookie: collabflow.sid=...` header (configured in `session.middleware.ts:9`)
+        - httpOnly: true (not accessible by JavaScript), secure in production, sameSite: lax
+        - Used to identify user's session on subsequent requests
+14. sync-forge's `AuthCallback.vue` receives 200 response
+    - Browser stores `collabflow.sid` session cookie
+    - `authApiService.exchangeToken()` returns `ApiCallResult.Success`
+15. `result.isSuccess()` → calls `authStore.fetchUser()`
+16. `fetchUser()` calls `GET /api/auth/me`
+    - `apiClient` sends request with `withCredentials: true`
+    - Cookies sent: `collabflow.sid` (session), `collabflow.csrf` (CSRF token)
+17. Backend receives `GET /api/auth/me`
+    - `sessionMiddleware`: has `collabflow.sid` cookie → extracts session ID from the cookie, loads session data from store → populates `req.session` with `userId`, `email`, `name`, etc.
+    - `csrfMiddleware`: GET → skips validation
+    - `handleGetCurrentUser`: `req.session.userId` exists → returns `{ id, email, name }`
+18. `fetchUser()` receives success → sets `this.user = { id, email, name }` → `isAuthenticated` = true
+19. `AuthCallback.vue`: `router.replace('/')` → navigates to home
+20. `finally` block: `authStore.clearPkceCodeVerifier()` → clears verifier from localStorage
+21. Router `beforeEach` guard intercepts navigation to `/`
+22. Guard calls `auth.fetchUser()` → `this.user` already exists → skips API call
+23. Route `/` has `requiresAuth: true`, `isAuthenticated` = true → `next()` called, navigation proceeds
+24. User sees the home page (authenticated)
 
 ---
 
-## Finalizing Login: The Auth Callback
+## Authenticated Request Flow - Getting Projects
 
-After the user approves the login with Google, they are redirected back to the `/auth/callback` route in the frontend application. This begins the final phase of the login process.
+**Scenario:** User on `ProjectsView.vue`, `onMounted` calls `projectStore.fetchProjects()`
 
-### TODO
+1. `ProjectsView.vue` `onMounted` calls `projectStore.fetchProjects()`
+2. `fetchProjects()` calls `projectApiService.getAllProjects()` → `GET /api/projects`
+   - `apiClient` sends request with `withCredentials: true`
+   - Cookies sent: `collabflow.sid` (session), `collabflow.csrf` (CSRF token)
+   - CSRF interceptor skipped (GET request)
+3. `google-oauth-backend` receives `GET /api/projects`
+   - Middleware chain: helmet → cors → cookieParser → sessionMiddleware → csrfMiddleware
+   - `sessionMiddleware`: has `collabflow.sid` cookie → loads session data
+   - `csrfMiddleware`: GET → skips validation
+   - Routes: `authRoutes` don't match → falls through to `gatewayRouter`
+   - `gatewayRouter`: `requireSession` middleware → checks `req.session.userId` exists → passes
+   - `gatewayProxy` middleware:
+     - Creates internal JWT from session data (`userId`, `email`, `name`)
+     - Sets `Authorization: Bearer <jwt>` header
+     - Removes `cookie` header (downstream doesn't need it)
+     - Proxies to `collab-flow-api` at `/api/projects`
+4. `collab-flow-api` receives `GET /api/projects`
+   - Middleware: `authGatewayMiddleware` → extracts JWT from `Authorization` header → verifies → attaches `req.user`
+   - Route: `/api/projects` → `projectController.getProjects`
+   - Returns projects array
+5. Response flows back: `collab-flow-api` → `google-oauth-backend` (gateway) → `sync-forge`
+6. `fetchProjects()` receives success → sets `this.projects = result.data`
+
+---
+
+## Logout Flow
+
+*TODO*
+
+---
+
+## Session Expiry Handling
+
+*TODO*
+
+---
+
+## Potential Issues / Improvements
+
+### 1. CSRF Token Not Rotated After Login
+The `collabflow.csrf` token is generated on the first unauthenticated request and never regenerated after successful authentication. This could be a session fixation vector for CSRF. Best practice: rotate CSRF token after login.
+
+### 2. Session Cookie vs CSRF Token Lifecycle
+The session cookie (`collabflow.sid`) is regenerated on login (`req.session.regenerate()`), but the CSRF cookie persists. These should ideally be in sync.
+
+### 3. `fetchUser()` Called on Every Navigation
+In `router/index.ts:54`, `await auth.fetchUser()` is called on every route change. While there's an early return if `this.user` exists, this means:
+- If user is already loaded → no API call (good)
+- But if something clears `this.user` → API call every navigation
+
+This is probably fine, but could be more explicit about intent.
+
+### 4. Unused `authPlugin`
+The `plugins/auth.ts` exists but isn't registered in `main.ts`. Dead code or incomplete implementation?
+
+### 5. Hard Redirect on 401
+In `apiClient.ts:40-41`, a 401 (except on `/api/auth/me`) triggers `window.location.href = '/login'`. This is a hard refresh that loses all Pinia state. Could use `router.push()` instead for a smoother UX, though the hard redirect does ensure a clean slate.
+
+### 6. No Token Refresh Logic on Frontend
+The backend stores `encryptedGoogleRefreshToken` and has `refreshAccessToken()` in `auth.service.ts`, but it's not used anywhere. The Google access token will expire, but there's no mechanism to refresh it.
+
+### 7. Internal JWT Expiry
+The gateway creates JWTs for downstream services. Need to verify in `jwt.service.ts` if these have short expiry times. If they're long-lived, a compromised internal network could be problematic.
+
+### 8. `requireSession` vs Route-Level Protection
+The gateway uses `requireSession` middleware for all proxied routes. This is good, but it means ALL downstream routes require auth. If you ever need a public API endpoint, you'd need to restructure.
+
