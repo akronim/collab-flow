@@ -6,9 +6,8 @@ import { csrfMiddleware } from '../../middleware/csrf.middleware'
 import type TestAgent from 'supertest/lib/agent'
 import { errorMiddleware } from '../../middleware/error.middleware'
 import * as csrfTokenGeneration from "../../utils/csrfToken"
+import { CSRF_COOKIE_NAME, CSRF_HEADER_NAME } from '../../constants'
 
-const CSRF_COOKIE_NAME = `collabflow.csrf`
-const CSRF_HEADER_NAME = `x-csrf-token`
 const MOCKED_TOKEN = `mocked_csrf_token_value`
 
 vi.mock(`../../config`, () => ({

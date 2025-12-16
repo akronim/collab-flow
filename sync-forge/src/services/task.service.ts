@@ -1,4 +1,4 @@
-import { apiClient } from '@/services/apiClient'
+import { apiClient } from '@/http/apiClient'
 import ApiCallResult from '@/utils/apiCallResult'
 import { CollabFlowApiEndpoints } from '@/constants/apiEndpoints'
 import type { Task } from '@/types/task'

@@ -13,15 +13,33 @@ vi.mock(`../../config`, () => ({
       clientId: `test_client_id`,
       clientSecret: `test_client_secret`,
       redirectUri: `http://localhost:5173/auth/callback`
+    },
+    internalJwt: {
+      secret: `test-secret`,
+      expiresIn: `5m`
     }
   }
 }))
 
+// Mock jwtService
+vi.mock(`../../services/jwt.service`, () => ({
+  default: {
+    sign: vi.fn()
+  }
+}))
+
 import { googleApi } from '../../utils/axios'
-import { exchangeCodeForToken, refreshAccessToken, validateAccessToken } from '../../services/auth.service'
+import {
+  exchangeCodeForToken,
+  refreshAccessToken,
+  validateAccessToken,
+  generateInternalToken
+} from '../../services/auth.service'
 import { GoogleOAuthEndpoints } from '../../constants'
+import jwtService from '../../services/jwt.service'
 
 const mockedGoogleApi = googleApi as Mocked<typeof googleApi>
+const mockedJwtService = jwtService as Mocked<typeof jwtService>
 
 describe(`auth.service`, () => {
   beforeEach(() => {
@@ -90,7 +108,7 @@ describe(`auth.service`, () => {
 
   describe(`validateAccessToken`, () => {
     it(`calls user info endpoint with Authorization header and returns user data`, async () => {
-      const user = { id: `u1`, email: `e@test`, name: `User` }
+      const user = { sub: `u1`, email: `e@test`, name: `User` }
       mockedGoogleApi.get.mockResolvedValueOnce({ data: user } as any)
 
       const res = await validateAccessToken(`atoken`)
@@ -109,6 +127,20 @@ describe(`auth.service`, () => {
 
       await expect(validateAccessToken(`bad`)).rejects.toThrow(err)
       expect(mockedGoogleApi.get).toHaveBeenCalled()
+    })
+  })
+
+  describe(`generateInternalToken`, () => {
+    it(`should sign the user data and return a token`, () => {
+      const userData = { id: `user1`, email: `user@example.com`, name: `Test User` }
+      const expectedToken = `dummy-jwt-token`
+      mockedJwtService.sign.mockReturnValue(expectedToken)
+
+      const token = generateInternalToken(userData)
+
+      expect(token).toBe(expectedToken)
+      expect(mockedJwtService.sign).toHaveBeenCalledTimes(1)
+      expect(mockedJwtService.sign).toHaveBeenCalledWith(userData)
     })
   })
 })

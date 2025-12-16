@@ -1,12 +1,13 @@
 export const apiEndpoints = {
   TOKEN: `/auth/token`,
   ME: `/auth/me`,
-  LOGOUT: `/auth/logout`
+  LOGOUT: `/auth/logout`,
+  INTERNAL_TOKEN: `/auth/internal-token`
 }
 
 export const GoogleOAuthEndpoints = {
   TOKEN_EXCHANGE: `https://oauth2.googleapis.com/token`,
-  USER_INFO: `https://www.googleapis.com/oauth2/v2/userinfo`
+  USER_INFO: `https://www.googleapis.com/oauth2/v3/userinfo`
 }
 
 export const ErrorMessages = {
@@ -22,3 +23,6 @@ export const ErrorMessages = {
   MISSING_CODE_OR_VERIFIER: `Missing code or codeVerifier`,
   LOGOUT_FAILED: `Logout failed`
 }
+
+export const CSRF_COOKIE_NAME = `collabflow.csrf`
+export const CSRF_HEADER_NAME = `x-csrf-token`

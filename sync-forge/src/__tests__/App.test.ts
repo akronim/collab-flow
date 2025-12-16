@@ -10,11 +10,11 @@ import ProjectsView from '@/views/ProjectsView.vue'
 import DefaultLayout from '@/components/layouts/DefaultLayout.vue'
 
 import { useAuthStore } from '@/stores'
-import { apiClient } from '@/services/apiClient'
+import { apiClient } from '@/http/apiClient'
 import { routes } from '@/router'
 import { RouteNames } from '@/constants/routes'
 
-vi.mock(`@/services/apiClient`, () => ({
+vi.mock(`@/http/apiClient`, () => ({
   apiClient: {
     get: vi.fn(),
     post: vi.fn()

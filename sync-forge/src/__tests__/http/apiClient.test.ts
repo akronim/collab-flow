@@ -6,7 +6,8 @@ import axios, {
   type AxiosError,
   type AxiosRequestHeaders
 } from 'axios'
-import { createApiClient, CSRF_COOKIE_NAME, CSRF_HEADER_NAME } from '../../services/apiClient'
+import { type CollabApiClient, createApiClient, CSRF_COOKIE_NAME, CSRF_HEADER_NAME } from '@/http/apiClient'
+import type { Router } from 'vue-router'
 
 vi.mock(`axios`, () => ({
   default: {
@@ -457,6 +458,110 @@ describe(`createApiClient`, () => {
       const newConfig = requestInterceptor(config)
 
       expect(newConfig.headers?.[CSRF_HEADER_NAME]).toBeUndefined()
+    })
+  })
+
+  describe(`401 Response Interceptor (with Router)`, () => {
+    let apiClient: CollabApiClient
+    let mockRouter: Router
+
+    beforeEach(() => {
+      // Create a fresh client for each test in this describe block
+      apiClient = createApiClient(MOCK_URL)
+
+      // Mock Vue Router
+      mockRouter = {
+        push: vi.fn().mockResolvedValue(undefined)
+      } as unknown as Router
+
+      // Inject the router
+      apiClient.injectRouter(mockRouter)
+
+      // Extract the response error interceptor from the underlying axios instance
+      const axiosInstance = apiClient as unknown as AxiosInstance
+      const respInterceptorUse = vi.mocked(axiosInstance.interceptors.response.use)
+      responseInterceptorError = respInterceptorUse.mock.calls[0]?.[1] as (error: AxiosError) => Promise<never>
+    })
+
+    it(`should use router.push on 401 error`, async () => {
+      const mockError: AxiosError = {
+        response: {
+          status: 401,
+          statusText: `Unauthorized`,
+          data: {},
+          headers: {},
+          config: {}
+        },
+        config: {
+          url: `/some-protected-endpoint`,
+          headers: {} as Record<string, string>
+        },
+        isAxiosError: true,
+        toJSON: () => ({}),
+        name: ``,
+        message: ``
+      } as AxiosError
+
+      await expect(responseInterceptorError(mockError)).rejects.toStrictEqual(mockError)
+
+      expect(mockRouter.push).toHaveBeenCalledExactlyOnceWith(`/login`)
+      expect(locationHrefSpy).not.toHaveBeenCalled()
+    })
+
+    it(`should still redirect using window.location if router is not injected`, async () => {
+      // Create a client without injecting router
+      const clientWithoutRouter = createApiClient(MOCK_URL)
+      const axiosInstance = clientWithoutRouter as unknown as AxiosInstance
+      const respInterceptorUse = vi.mocked(axiosInstance.interceptors.response.use)
+      const errorHandler = respInterceptorUse.mock.calls[0]?.[1] as (error: AxiosError) => Promise<never>
+
+      const mockError: AxiosError = {
+        response: {
+          status: 401,
+          statusText: `Unauthorized`,
+          data: {},
+          headers: {},
+          config: {}
+        },
+        config: {
+          url: `/some-protected-endpoint`,
+          headers: {} as Record<string, string>
+        },
+        isAxiosError: true,
+        toJSON: () => ({}),
+        name: ``,
+        message: ``
+      } as AxiosError
+
+      await expect(errorHandler(mockError)).rejects.toStrictEqual(mockError)
+
+      expect(locationHrefSpy).toHaveBeenCalledWith(`/login`)
+      // router.push should not be called because router was never injected
+    })
+
+    it(`should not redirect when endpoint is /api/auth/me even with router injected`, async () => {
+      const mockError: AxiosError = {
+        response: {
+          status: 401,
+          statusText: `Unauthorized`,
+          data: {},
+          headers: {},
+          config: {}
+        },
+        config: {
+          url: `/api/auth/me`,
+          headers: {} as Record<string, string>
+        },
+        isAxiosError: true,
+        toJSON: () => ({}),
+        name: ``,
+        message: ``
+      } as AxiosError
+
+      await expect(responseInterceptorError(mockError)).rejects.toStrictEqual(mockError)
+
+      expect(mockRouter.push).not.toHaveBeenCalled()
+      expect(locationHrefSpy).not.toHaveBeenCalled()
     })
   })
 })

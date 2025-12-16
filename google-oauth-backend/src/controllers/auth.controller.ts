@@ -1,11 +1,12 @@
 import { type Request, type Response, type NextFunction } from 'express'
-import { exchangeCodeForToken, validateAccessToken } from '../services/auth.service'
+import { exchangeCodeForToken, validateAccessToken, generateInternalToken } from '../services/auth.service'
 import { sessionStore } from '../services/sessionStore.service'
 import { AppError } from '../utils/errors'
-import { ErrorMessages } from '../constants'
+import { CSRF_COOKIE_NAME, ErrorMessages } from '../constants'
 import Logger from '../utils/logger'
 import config from '../config'
 import { encrypt } from '../utils/encryption'
+import { generateCsrfToken } from '../utils/csrfToken'
 
 export interface TokenRequest {
   code: string;
@@ -35,7 +36,7 @@ export const handleTokenRequest = async (
       }
 
       // Store user data in session
-      req.session.userId = userData.id
+      req.session.userId = userData.sub
       req.session.email = userData.email
       req.session.name = userData.name
 
@@ -52,7 +53,18 @@ export const handleTokenRequest = async (
         if (saveErr) {
           return next(saveErr)
         }
-        Logger.log(`[AuthController] Token exchange successful, session saved.`)
+
+        // --- CSRF Token Rotation ---
+        // After successful login and session regeneration, issue a new CSRF token.
+        const newCsrfToken = generateCsrfToken()
+        res.cookie(CSRF_COOKIE_NAME, newCsrfToken, {
+          httpOnly: false,
+          secure: config.nodeEnv === `production`,
+          sameSite: `lax`
+        })
+        // --- End CSRF Token Rotation ---
+
+        Logger.log(`[AuthController] Token exchange successful, session and new CSRF token saved.`)
         return res.status(200).json({ success: true })
       })
       return undefined
@@ -100,4 +112,17 @@ export const handleLogout = (req: Request, res: Response, next: NextFunction): v
     res.status(204).send()
     return undefined
   })
+}
+
+export const handleGetInternalToken = (req: Request, res: Response): void => {
+  // Note: requireSession middleware should have already run and ensured session exists
+  Logger.log(`[AuthController] handleGetInternalToken called for user ${req.session.userId}`)
+
+  const token = generateInternalToken({
+    id: req.session.userId!,
+    email: req.session.email!,
+    name: req.session.name!
+  })
+
+  res.json({ token })
 }

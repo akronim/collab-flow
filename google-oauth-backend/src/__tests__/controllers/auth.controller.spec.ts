@@ -1,6 +1,11 @@
 import { describe, it, expect, vi, beforeEach, afterEach, type Mock } from 'vitest'
 import type { Request, Response, NextFunction } from 'express'
-import { handleTokenRequest, handleGetCurrentUser, handleLogout } from '../../controllers/auth.controller'
+import {
+  handleTokenRequest,
+  handleGetCurrentUser,
+  handleLogout,
+  handleGetInternalToken
+} from '../../controllers/auth.controller'
 import * as AuthService from '../../services/auth.service'
 import { sessionStore } from '../../services/sessionStore.service'
 import * as Encryption from '../../utils/encryption'
@@ -29,7 +34,8 @@ describe(`Auth Controller`, () => {
     res = {
       status: vi.fn().mockReturnThis(),
       json: vi.fn(),
-      send: vi.fn()
+      send: vi.fn(),
+      cookie: vi.fn()
     }
     next = vi.fn() as NextFunction
   })
@@ -42,7 +48,7 @@ describe(`Auth Controller`, () => {
   describe(`handleTokenRequest`, () => {
     it(`should create a session and return success on valid code`, async () => {
       const mockGoogleTokens = { access_token: `google_access`, refresh_token: `google_refresh` }
-      const mockUserData = { id: `123`, email: `test@example.com`, name: `Test User` }
+      const mockUserData = { sub: `123`, email: `test@example.com`, name: `Test User` }
       const mockEncryptedToken = `encrypted_token`
 
       vi.spyOn(AuthService, `exchangeCodeForToken`).mockResolvedValue(mockGoogleTokens as any)
@@ -54,7 +60,7 @@ describe(`Auth Controller`, () => {
       await handleTokenRequest(req as Request<Record<string, never>, any, any>, res as Response, next)
 
       expect(req.session!.regenerate).toHaveBeenCalled()
-      expect(req.session!.userId).toBe(mockUserData.id)
+      expect(req.session!.userId).toBe(mockUserData.sub)
       expect(req.session!.email).toBe(mockUserData.email)
       expect(req.session!.name).toBe(mockUserData.name)
       expect(Encryption.encrypt).toHaveBeenCalledWith(mockGoogleTokens.refresh_token, expect.any(String))
@@ -97,6 +103,36 @@ describe(`Auth Controller`, () => {
 
       expect(next).toHaveBeenCalledWith(expect.any(AppError))
       expect((next as Mock).mock.calls[0][0].status).toBe(401)
+    })
+  })
+
+  // --- Tests for handleGetInternalToken ---
+  describe(`handleGetInternalToken`, () => {
+    it(`should return a JWT if a valid session exists`, () => {
+      // Setup session
+      req.session!.userId = `user-id-456`
+      req.session!.email = `authed@example.com`
+      req.session!.name = `Authed User`
+
+      // Mock service layer
+      const expectedToken = `dummy-internal-jwt`
+      const generateTokenSpy = vi
+        .spyOn(AuthService, `generateInternalToken`)
+        .mockReturnValue(expectedToken)
+
+      // Execute controller
+      handleGetInternalToken(req as Request, res as Response)
+
+      // Assert service call
+      expect(generateTokenSpy).toHaveBeenCalledWith({
+        id: `user-id-456`,
+        email: `authed@example.com`,
+        name: `Authed User`
+      })
+
+      // Assert response
+      expect(res.json).toHaveBeenCalledWith({ token: expectedToken })
+      expect(next).not.toHaveBeenCalled()
     })
   })
 

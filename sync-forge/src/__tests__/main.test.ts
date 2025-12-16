@@ -1,13 +1,14 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest'
 import { useAuthStore } from '@/stores'
-import { apiClient } from '@/services/apiClient'
+import { apiClient } from '@/http/apiClient'
 import type { User } from '@/types/auth'
 import { ApiEndpoints } from '@/constants/apiEndpoints'
 
-vi.mock(`@/services/apiClient`, () => ({
+vi.mock(`@/http/apiClient`, () => ({
   apiClient: {
     get: vi.fn(),
-    post: vi.fn()
+    post: vi.fn(),
+    injectRouter: vi.fn() // Add mock for the new function
   }
 }))
 

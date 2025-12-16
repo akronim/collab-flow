@@ -4,6 +4,7 @@ import config from '../config'
 import Logger from '../utils/logger'
 import { getErrorMessage } from '../utils/errorHandler'
 import { type TokenResponse, type UserInfo } from '../types'
+import jwtService from './jwt.service'
 
 export const exchangeCodeForToken = async (code: string, codeVerifier: string): Promise<TokenResponse> => {
   const params = new URLSearchParams({
@@ -59,4 +60,9 @@ export const validateAccessToken = async (accessToken: string): Promise<UserInfo
     Logger.error(`${ErrorMessages.TOKEN_VALIDATION_FAILED}:`, getErrorMessage(error))
     throw error
   }
+}
+
+export const generateInternalToken = (userData: { id: string, email: string, name: string }): string => {
+  const token = jwtService.sign(userData)
+  return token
 }

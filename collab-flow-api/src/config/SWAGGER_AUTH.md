@@ -1,6 +1,6 @@
 # How to Authenticate with Swagger
 
-To use the protected endpoints in the Swagger UI, you need to obtain a JWT (JSON Web Token) by logging in through the web interface.
+To use the protected endpoints in the Swagger UI, you need a JWT (JSON Web Token) that is generated after you log in.
 
 ## 1. Run the Services
 
@@ -28,17 +28,16 @@ npm run dev
 
 1.  Once all services are running, open your browser and go to the `sync-forge` application (usually at `http://localhost:5173`).
 2.  Click the 'Sign in with Google' button and complete the login process.
-3.  After you are redirected back to the application, open your browser's **Developer Tools** (usually by pressing F12 or Ctrl+Shift+I).
-4.  Go to the **Network** tab.
-5.  Look for a `POST` request to a URL that ends with `/api/auth/token` or `/api/auth/internal-refresh`.
-6.  Click on that request, and in the **Response** or **Preview** tab, you will see a JSON object.
-7.  Find the `internal_access_token` property and copy its value.
+3.  After you are redirected back to the application, open a **new browser tab**.
+4.  Navigate to the developer token endpoint provided by the auth backend: `http://localhost:3001/api/auth/internal-token`.
+5.  You will see a JSON response like `{"token":"ey..."}`.
+6.  Copy the long string value of the `token` property (without the quotes).
 
 ## 3. Use the Token in Swagger
 
-1.  Go back to the Swagger UI for `collab-flow-api` (at `http://localhost:3002/api-docs`).
-2.  Click the **Authorize** button.
-3.  In the dialog, paste the `internal_access_token` you copied into the **Value** field.
-4.  Click **Authorize**.
+1.  Go to the Swagger UI for `collab-flow-api` (usually at `http://localhost:3002/api-docs`).
+2.  Click the **Authorize** button at the top right of the page.
+3.  In the dialog that appears, paste the token you copied into the **Value** field for the `BearerAuth` security scheme.
+4.  Click **Authorize** and then **Close**.
 
-Now you should be able to successfully make requests to the protected API endpoints through the Swagger UI.
+You should now be able to successfully make requests to the protected API endpoints through the Swagger UI.

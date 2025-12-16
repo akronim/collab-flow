@@ -117,7 +117,7 @@ describe(`Backend API Tests`, () => {
       })
       mockedGoogleApi.get.mockResolvedValueOnce({
         data: {
-          id: `google_id_123`,
+          sub: `google_id_123`,
           email: `test@example.com`,
           name: `Test User`
         }

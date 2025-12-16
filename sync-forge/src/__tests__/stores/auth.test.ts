@@ -1,13 +1,13 @@
 import { describe, it, expect, beforeEach, vi } from 'vitest'
 import { setActivePinia, createPinia } from 'pinia'
 import { useAuthStore } from '@/stores'
-import { apiClient } from '@/services/apiClient'
+import { apiClient } from '@/http/apiClient'
 import { ApiEndpoints } from '@/constants/apiEndpoints'
 import { CODE_VERIFIER_KEY } from '@/constants/localStorageKeys'
 import type { User } from '@/types/auth'
 
 // Mock the apiClient
-vi.mock(`@/services/apiClient`, () => ({
+vi.mock(`@/http/apiClient`, () => ({
   apiClient: {
     get: vi.fn(),
     post: vi.fn()

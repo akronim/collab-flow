@@ -4,12 +4,12 @@ import { createRouter, createMemoryHistory } from 'vue-router'
 import AuthCallback from '@/views/AuthCallback.vue'
 import { useAuthStore } from '@/stores'
 import { setActivePinia, createPinia } from 'pinia'
-import { apiClient } from '@/services/apiClient'
+import { apiClient } from '@/http/apiClient'
 import { routes } from '@/router'
 import { ApiEndpoints } from '@/constants/apiEndpoints'
 import { RouteNames } from '@/constants/routes'
 
-vi.mock(`@/services/apiClient`, () => ({
+vi.mock(`@/http/apiClient`, () => ({
   apiClient: {
     post: vi.fn()
   }

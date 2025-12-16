@@ -8,18 +8,17 @@ export interface TokenResponse {
   id_token?: string; // Only if openid scope requested
 }
 
-// UserInfo endpoint response: https://www.googleapis.com/oauth2/v2/userinfo
+// UserInfo endpoint response: https://www.googleapis.com/oauth2/v3/userinfo
 export interface UserInfo {
-  id: string;
+  sub: string;
   email: string;
-  verified_email: boolean;
+  email_verified: boolean;
   name: string;
   given_name: string;
   family_name: string;
   picture: string;
   locale: string;
   hd?: string; // Hosted domain (for G Suite accounts)
-  link?: string; // Profile link (deprecated/optional)
   gender?: string; // Optional field
 }
 

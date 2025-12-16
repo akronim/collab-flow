@@ -1,12 +1,9 @@
-
 import type { Request, Response, NextFunction } from 'express'
 import config from '../config'
 import { AppError } from '../utils/errors'
 import { generateCsrfToken } from '../utils/csrfToken'
 import Logger from '../utils/logger'
-
-const CSRF_COOKIE_NAME = `collabflow.csrf`
-const CSRF_HEADER_NAME = `x-csrf-token`
+import { CSRF_COOKIE_NAME, CSRF_HEADER_NAME } from '../constants'
 
 export const csrfMiddleware = (req: Request, res: Response, next: NextFunction): void => {
   Logger.log(`[CSRF Middleware] Received request: ${req.method} ${req.originalUrl}`)
@@ -41,4 +38,3 @@ export const csrfMiddleware = (req: Request, res: Response, next: NextFunction):
   next()
   return undefined
 }
-

@@ -1,7 +1,7 @@
 import { ApiEndpoints } from '@/constants/apiEndpoints'
 import type { User } from '@/types/auth'
 import ApiCallResult from '@/utils/apiCallResult'
-import { apiClient } from './apiClient'
+import { apiClient } from '@/http/apiClient'
 
 export const authApiService = {
   /**
