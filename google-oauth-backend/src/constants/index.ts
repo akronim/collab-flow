@@ -26,3 +26,4 @@ export const ErrorMessages = {
 
 export const CSRF_COOKIE_NAME = `collabflow.csrf`
 export const CSRF_HEADER_NAME = `x-csrf-token`
+export const SESSION_COOKIE_NAME = `collabflow.sid`

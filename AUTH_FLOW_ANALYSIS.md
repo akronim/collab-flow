@@ -93,7 +93,7 @@ This document details the specific flow of events when the `sync-forge` applicat
       - `req.session.save()` - persists session to store
       - **CSRF Token Rotation:** A new `collabflow.csrf` cookie is generated and sent with the response.
       - Response: `res.status(200).json({ success: true })` (`auth.controller.ts:56`)
-      - `express-session` automatically sets `Set-Cookie: collabflow.sid=...` header (configured in `session.middleware.ts:9`)
+      - `express-session` automatically sets `Set-Cookie: collabflow.sid=...` header (configured in `session.middleware.ts`)
         - httpOnly: true (not accessible by JavaScript), secure in production, sameSite: lax
         - Used to identify user's session on subsequent requests
 14. sync-forge's `AuthCallback.vue` receives 200 response
@@ -160,19 +160,9 @@ This document details the specific flow of events when the `sync-forge` applicat
 
 ## Potential Issues / Improvements
 
-### 1. `fetchUser()` Called on Every Navigation
-In `router/index.ts:54`, `await auth.fetchUser()` is called on every route change. While there's an early return if `this.user` exists, this means:
-- If user is already loaded → no API call (good)
-- But if something clears `this.user` → API call every navigation
-
-This is probably fine, but could be more explicit about intent.
-
-### 2. No Token Refresh Logic on Frontend
+### 1. No Token Refresh Logic
 The backend stores `encryptedGoogleRefreshToken` and has `refreshAccessToken()` in `auth.service.ts`, but it's not used anywhere. The Google access token will expire, but there's no mechanism to refresh it.
 
-### 3. Internal JWT Expiry
-The gateway creates JWTs for downstream services. Need to verify in `jwt.service.ts` if these have short expiry times. If they're long-lived, a compromised internal network could be problematic.
-
-### 4. `requireSession` vs Route-Level Protection
+### 2. `requireSession` vs Route-Level Protection
 The gateway uses `requireSession` middleware for all proxied routes. This is good, but it means ALL downstream routes require auth. If you ever need a public API endpoint, you'd need to restructure.
 

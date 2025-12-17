@@ -2,7 +2,7 @@ import { type Request, type Response, type NextFunction } from 'express'
 import { exchangeCodeForToken, validateAccessToken, generateInternalToken } from '../services/auth.service'
 import { sessionStore } from '../services/sessionStore.service'
 import { AppError } from '../utils/errors'
-import { CSRF_COOKIE_NAME, ErrorMessages } from '../constants'
+import { CSRF_COOKIE_NAME, ErrorMessages, SESSION_COOKIE_NAME } from '../constants'
 import Logger from '../utils/logger'
 import config from '../config'
 import { encrypt } from '../utils/encryption'
@@ -108,7 +108,10 @@ export const handleLogout = (req: Request, res: Response, next: NextFunction): v
     if (destroyErr) {
       return next(new AppError(ErrorMessages.LOGOUT_FAILED, 500))
     }
-    // The session cookie will be cleared by express-session's destroy method
+    // The session cookie is cleared by express-session's destroy method.
+    // We can also explicitly clear it for defense-in-depth and to remove the CSRF cookie.
+    res.clearCookie(SESSION_COOKIE_NAME)
+    res.clearCookie(CSRF_COOKIE_NAME)
     res.status(204).send()
     return undefined
   })

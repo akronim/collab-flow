@@ -1,7 +1,5 @@
 # Session-Based Authentication - Architecture Diagrams
 
-Visual diagrams for the session-based authentication system described in `SESSION_AUTH_REFACTOR_PLAN.md`.
-
 ---
 
 ## 1. High-Level Component Architecture

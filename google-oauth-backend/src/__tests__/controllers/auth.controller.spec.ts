@@ -35,7 +35,8 @@ describe(`Auth Controller`, () => {
       status: vi.fn().mockReturnThis(),
       json: vi.fn(),
       send: vi.fn(),
-      cookie: vi.fn()
+      cookie: vi.fn(),
+      clearCookie: vi.fn()
     }
     next = vi.fn() as NextFunction
   })

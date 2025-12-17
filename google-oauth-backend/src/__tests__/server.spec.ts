@@ -187,7 +187,9 @@ describe(`Backend API Tests`, () => {
       const setCookieHeader = response.headers[`set-cookie`]
       if (setCookieHeader && Array.isArray(setCookieHeader)) {
         const sessionCookie = (setCookieHeader as string[]).find(c => c.startsWith(`collabflow.sid=`))
-        expect(sessionCookie).toBeUndefined()
+        // we now expect a Set-Cookie header that expires the cookie.
+        expect(sessionCookie).toBeDefined()
+        expect(sessionCookie).toContain(`Expires=Thu, 01 Jan 1970`)
       }
     })
   })
