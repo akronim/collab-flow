@@ -1,7 +1,8 @@
 import type { Project } from '@/types/project'
 import { defineStore } from 'pinia'
 import { projectApiService } from '@/services/project.service'
-import Logger from '@/utils/logger'
+import { showErrorNotification } from '@/utils/notificationHelper'
+import { NotificationMessages } from '@/constants/notificationMessages'
 
 interface ProjectState {
   projects: Project[]
@@ -26,7 +27,7 @@ export const useProjectStore = defineStore(`projects`, {
       if (result.isSuccess()) {
         this.projects = result.data || []
       } else {
-        Logger.apiError(result.error, { message: `Failed to fetch projects` })
+        showErrorNotification(result.error, NotificationMessages.FETCH_FAILED)
       }
     },
 
@@ -36,7 +37,7 @@ export const useProjectStore = defineStore(`projects`, {
         return result.data
       }
 
-      Logger.apiError(result.error, { message: `Failed to fetch project ${id}` })
+      showErrorNotification(result.error, NotificationMessages.FETCH_FAILED)
       return undefined
     },
 

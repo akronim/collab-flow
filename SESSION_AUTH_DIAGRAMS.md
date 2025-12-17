@@ -90,7 +90,8 @@ sequenceDiagram
     GW->>GW: req.session.regenerate()
     GW->>GW: Encrypt Google refresh token
     GW->>SS: Store session {userId, email, name, encryptedToken}
-    GW-->>FE: Set-Cookie: collabflow.sid (HttpOnly)
+    GW->>GW: Rotate CSRF token
+    GW-->>FE: Set-Cookie: collabflow.sid (HttpOnly)<br/>Set-Cookie: collabflow.csrf
     FE->>FE: Clear PKCE verifier
     FE->>GW: GET /api/auth/me
     GW-->>FE: {id, email, name}
@@ -100,7 +101,7 @@ sequenceDiagram
 
 ---
 
-## 4. API Request Flow
+## 4. API Request Flow (State-Changing)
 
 ```mermaid
 sequenceDiagram
@@ -109,17 +110,20 @@ sequenceDiagram
     participant SS as Session Store
     participant API as collab-flow-api
 
-    FE->>GW: GET /api/projects<br/>Cookie: collabflow.sid<br/>X-CSRF-Token: xxx
+    FE->>GW: POST /api/projects<br/>Cookie: collabflow.sid<br/>X-CSRF-Token: xxx<br/>[req body]
     GW->>SS: Lookup session by sid
     SS-->>GW: {userId, email, name, ...}
-    GW->>GW: Validate CSRF token
+    GW->>GW: Validate CSRF token<br/>(cookie vs header)
     GW->>GW: Create internal JWT (5min)<br/>{id, email, name}
-    GW->>API: GET /api/projects<br/>Authorization: Bearer <internal-jwt>
+    GW->>API: POST /api/projects<br/>Authorization: Bearer <internal-jwt><br/>[req body]
     API->>API: Verify JWT signature
     API->>API: Process request
-    API-->>GW: {projects: [...]}
-    GW-->>FE: {projects: [...]}
+    API-->>GW: [response]
+    GW-->>FE: [response]
 ```
+
+> **Note:** CSRF validation only occurs for state-changing methods (POST, PUT, PATCH, DELETE).
+> GET, HEAD, and OPTIONS requests skip CSRF validation.
 
 ---
 

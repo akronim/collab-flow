@@ -6,7 +6,7 @@ interface NotificationState {
   message: string;
   type: NotificationType;
   visible: boolean;
-  timeoutId?: number;
+  timeoutId?: ReturnType<typeof setTimeout>;
 }
 
 export const useNotificationStore = defineStore(`notification`, {
@@ -33,7 +33,7 @@ export const useNotificationStore = defineStore(`notification`, {
 
       this.timeoutId = setTimeout(() => {
         this.hide()
-      }, notification.duration ?? 5000) as unknown as number
+      }, notification.duration ?? 5000)
     },
 
     hide() {

@@ -1,7 +1,8 @@
 import { defineStore } from 'pinia'
 import type { Task } from '@/types/task'
 import { taskApiService } from '@/services/task.service'
-import Logger from '@/utils/logger'
+import { showErrorNotification, showSuccessNotification } from '@/utils/notificationHelper'
+import { NotificationMessages } from '@/constants/notificationMessages'
 
 interface TaskState {
   tasks: Task[]
@@ -54,7 +55,7 @@ export const useTaskStore = defineStore(`tasks`, {
       if (result.isSuccess()) {
         this.tasks = result.data || []
       } else {
-        Logger.apiError(result.error, { message: `Failed to fetch tasks for project ${projectId}` })
+        showErrorNotification(result.error, NotificationMessages.FETCH_FAILED)
       }
     },
 
@@ -66,9 +67,10 @@ export const useTaskStore = defineStore(`tasks`, {
       const result = await taskApiService.createTask(task)
       if (result.isSuccess() && result.data) {
         this.tasks.push(result.data)
+        showSuccessNotification(NotificationMessages.CREATED)
         return result.data
       }
-      Logger.apiError(result.error, { message: `Failed to create task` })
+      showErrorNotification(result.error, NotificationMessages.SAVE_FAILED)
       return undefined
     },
 
@@ -79,8 +81,9 @@ export const useTaskStore = defineStore(`tasks`, {
         if (index !== -1) {
           this.tasks[index] = result.data
         }
+        showSuccessNotification(NotificationMessages.UPDATED)
       } else {
-        Logger.apiError(result.error, { message: `Failed to update task ${id}` })
+        showErrorNotification(result.error, NotificationMessages.SAVE_FAILED)
       }
     },
 
@@ -88,8 +91,9 @@ export const useTaskStore = defineStore(`tasks`, {
       const result = await taskApiService.deleteTask(id)
       if (result.isSuccess()) {
         this.tasks = this.tasks.filter((t) => t.id !== id)
+        showSuccessNotification(NotificationMessages.DELETED)
       } else {
-        Logger.apiError(result.error, { message: `Failed to delete task ${id}` })
+        showErrorNotification(result.error, NotificationMessages.DELETE_FAILED)
       }
     },
 

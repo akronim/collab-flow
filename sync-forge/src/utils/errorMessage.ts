@@ -1,4 +1,5 @@
 import { isAxiosError, type AxiosError } from 'axios'
+import { NotificationMessages } from '@/constants/notificationMessages'
 
 interface ErrorWithMessage {
   message: string;
@@ -11,7 +12,7 @@ interface AxiosErrorData {
 }
 
 // eslint-disable-next-line complexity
-export const getErrorMessage = (error: unknown, fallback = `An unexpected error occurred`): string => {
+export const getErrorMessage = (error: unknown, fallback: string = NotificationMessages.UNEXPECTED_ERROR): string => {
   if (isAxiosError(error)) {
     const axiosError = error as AxiosError<AxiosErrorData>
     const data = axiosError.response?.data
