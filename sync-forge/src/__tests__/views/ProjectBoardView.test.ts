@@ -62,7 +62,8 @@ describe(`ProjectBoardView.vue`, () => {
       id: `project-1`,
       name: `Test Project`,
       description: ``,
-      createdAt: new Date().toISOString()
+      createdAt: new Date().toISOString(),
+      taskCount: 0
     }
     vi.mocked(projectApiService.getProjectById).mockResolvedValue(
       ApiCallResult.Success(mockProject, 200)

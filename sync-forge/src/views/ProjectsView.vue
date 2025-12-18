@@ -27,7 +27,7 @@
         <template #footer>
           <div class="flex items-center justify-between">
             <span class="text-xs text-gray-500">
-              {{ taskStore.taskCountByProjectId(project.id) }} tasks
+              {{ project.taskCount }} tasks
             </span>
             <BaseButton
               variant="outline-blue"
@@ -48,7 +48,7 @@
 import BaseButton from '@/components/ui/base/BaseButton.vue'
 import BaseCard from '@/components/ui/base/BaseCard.vue'
 import { RouteNames } from '@/constants/routes'
-import { useProjectStore, useTaskStore } from '@/stores'
+import { useProjectStore } from '@/stores'
 import { ExternalLink as LiExternalLink } from 'lucide-vue-next'
 import { storeToRefs } from 'pinia'
 import { onMounted } from 'vue'
@@ -57,7 +57,6 @@ import { useRouter } from 'vue-router'
 const projectStore = useProjectStore()
 
 const { projects } = storeToRefs(projectStore)
-const taskStore = useTaskStore()
 const router = useRouter()
 
 onMounted(async () => {

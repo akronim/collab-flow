@@ -18,12 +18,7 @@
       </div>
     </header>
 
-    <div
-      v-if="loading"
-      class="flex justify-center items-center py-20"
-    >
-      <p>Loading project...</p>
-    </div>
+    <LoadingState v-if="loading" />
 
     <div
       v-else-if="!currentProject"
@@ -54,6 +49,7 @@ import { useProjectStore, useTaskStore } from '@/stores'
 import BaseButton from '@/components/ui/base/BaseButton.vue'
 import { RouteNames } from '@/constants/routes'
 import type { Project } from '@/types/project'
+import LoadingState from '@/components/ui/LoadingState.vue'
 
 const route = useRoute()
 const router = useRouter()

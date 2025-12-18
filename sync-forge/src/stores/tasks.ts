@@ -59,8 +59,14 @@ export const useTaskStore = defineStore(`tasks`, {
       }
     },
 
-    getTaskById(projectId: string, taskId: string): Task | undefined {
-      return this.tasks.find((t) => t.projectId === projectId && t.id === taskId)
+    async getTaskById(projectId: string, taskId: string): Promise<Task | undefined> {
+      const result = await taskApiService.getTaskById(taskId)
+      if (result.isSuccess()) {
+        return result.data
+      } else {
+        showErrorNotification(result.error, NotificationMessages.FETCH_FAILED)
+        return undefined
+      }
     },
 
     async addTask(task: Omit<Task, `id` | `createdAt` | `updatedAt`>): Promise<Task | undefined> {

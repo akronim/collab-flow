@@ -64,7 +64,7 @@ export function useTaskForm(options: UseTaskFormOptions): UseTaskFormReturn {
     error.value = null
 
     try {
-      const task = taskStore.getTaskById(projectId.value, taskId.value)
+      const task = await taskStore.getTaskById(projectId.value, taskId.value)
 
       if (!task) {
         const errorMsg = `Task not found: ${taskId.value}`

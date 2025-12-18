@@ -9,9 +9,7 @@
       <h3 class="font-semibold text-gray-700 uppercase tracking-wider text-xs">
         {{ title }}
       </h3>
-      <span class="bg-gray-300 text-gray-700 text-xs px-2 py-1 rounded-full">
-        {{ tasks.length }}
-      </span>
+      <BaseBadge>{{ tasks.length }}</BaseBadge>
     </div>
 
     <BaseButton
@@ -46,6 +44,7 @@ import KanbanCard from './KanbanCard.vue'
 import type { Task, TaskStatus } from '@/types/task'
 import { Plus as LiPlus } from 'lucide-vue-next'
 import BaseButton from '@/components/ui/base/BaseButton.vue'
+import BaseBadge from '@/components/ui/base/BaseBadge.vue'
 
 interface Props {
   title: string

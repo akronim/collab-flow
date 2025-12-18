@@ -1,21 +1,32 @@
 import { type Project } from '../types/project'
-import { projects } from '../data/mockData'
+import { projects, tasks } from '../data/mockData'
 import { randomUUID } from 'crypto'
 
 export const projectRepository = {
   find: async (): Promise<Project[]> => {
-    return projects
+    return projects.map(p => ({
+      ...p,
+      taskCount: tasks.filter(t => t.projectId === p.id).length
+    }))
   },
 
   findById: async (id: string): Promise<Project | undefined> => {
-    return projects.find(project => project.id === id)
+    const project = projects.find(p => p.id === id)
+    if (project) {
+      return {
+        ...project,
+        taskCount: tasks.filter(t => t.projectId === project.id).length
+      }
+    }
+    return undefined
   },
 
-  create: async (projectData: Omit<Project, `id` | `createdAt`>): Promise<Project> => {
+  create: async (projectData: Omit<Project, `id` | `createdAt` | `taskCount`>): Promise<Project> => {
     const newProject: Project = {
       id: randomUUID(),
       ...projectData,
-      createdAt: new Date().toISOString()
+      createdAt: new Date().toISOString(),
+      taskCount: 0
     }
     projects.push(newProject)
     return newProject

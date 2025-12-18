@@ -42,13 +42,15 @@ const initialProjects: Project[] = [
     id: `proj-1`,
     name: `SyncForge Frontend`,
     description: `The main frontend application for SyncForge.`,
-    createdAt: `2024-01-01T00:00:00.000Z`
+    createdAt: `2024-01-01T00:00:00.000Z`,
+    taskCount: 3
   },
   {
     id: `proj-2`,
     name: `CollabFlow API`,
     description: `The new backend API for tasks, projects, and users.`,
-    createdAt: `2024-01-05T00:00:00.000Z`
+    createdAt: `2024-01-05T00:00:00.000Z`,
+    taskCount: 2
   }
 ]
 

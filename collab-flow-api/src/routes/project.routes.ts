@@ -14,6 +14,7 @@ const router = Router()
  *         - name
  *         - description
  *         - createdAt
+ *         - taskCount
  *       properties:
  *         id:
  *           type: string
@@ -28,6 +29,9 @@ const router = Router()
  *           type: string
  *           format: date-time
  *           description: The creation date of the project
+ *         taskCount:
+ *           type: integer
+ *           description: The number of tasks in the project
  */
 
 /**

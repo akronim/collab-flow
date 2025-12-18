@@ -11,7 +11,8 @@ describe(`Project Service`, () => {
     id: `1`,
     name: `Test Project`,
     description: `A test project`,
-    createdAt: new Date().toISOString()
+    createdAt: new Date().toISOString(),
+    taskCount: 1
   }
 
   beforeEach(() => {
@@ -40,9 +41,14 @@ describe(`Project Service`, () => {
   it(`should create a project using the repository`, async () => {
     const newProjectData: Omit<Project, `id` | `createdAt`> = {
       name: `New Project`,
-      description: `A new project`
+      description: `A new project`,
+      taskCount: 0
     }
-    vi.mocked(projectRepository.create).mockResolvedValue({ id: `2`, ...newProjectData, createdAt: `` })
+    vi.mocked(projectRepository.create).mockResolvedValue({
+      id: `2`,
+      ...newProjectData,
+      createdAt: new Date().toISOString()
+    })
 
     const createdProject = await projectService.createProject(newProjectData)
 

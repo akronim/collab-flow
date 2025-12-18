@@ -41,6 +41,7 @@ export const mockProjects: Project[] = [
     id: `proj-1`,
     name: `Website Redesign`,
     description: `Update marketing site`,
-    createdAt: ``
+    createdAt: new Date().toISOString(),
+    taskCount: 3
   }
 ]
