@@ -24,9 +24,9 @@ export const taskApiService = {
     }
   },
 
-  async getTaskById(id: string): Promise<ApiCallResult<Task>> {
+  async getTaskById(projectId: string, taskId: string): Promise<ApiCallResult<Task>> {
     try {
-      const response = await apiClient.get<Task>(CollabFlowApiEndpoints.TASK_BY_ID(id))
+      const response = await apiClient.get<Task>(CollabFlowApiEndpoints.TASK_BY_ID(projectId, taskId))
       return ApiCallResult.Success(response.data, response.status)
     } catch (error) {
       return ApiCallResult.Fail(error)
@@ -42,18 +42,18 @@ export const taskApiService = {
     }
   },
 
-  async updateTask(id: string, updates: Partial<Task>): Promise<ApiCallResult<Task>> {
+  async updateTask(projectId: string, id: string, updates: Partial<Task>): Promise<ApiCallResult<Task>> {
     try {
-      const response = await apiClient.put<Task>(CollabFlowApiEndpoints.TASK_BY_ID(id), updates)
+      const response = await apiClient.put<Task>(CollabFlowApiEndpoints.TASK_BY_ID(projectId, id), updates)
       return ApiCallResult.Success(response.data, response.status)
     } catch (error) {
       return ApiCallResult.Fail(error)
     }
   },
 
-  async deleteTask(id: string): Promise<ApiCallResult<void>> {
+  async deleteTask(projectId: string, id: string): Promise<ApiCallResult<void>> {
     try {
-      const response = await apiClient.delete(CollabFlowApiEndpoints.TASK_BY_ID(id))
+      const response = await apiClient.delete(CollabFlowApiEndpoints.TASK_BY_ID(projectId, id))
       return ApiCallResult.Success(undefined, response.status)
     } catch (error) {
       return ApiCallResult.Fail(error)

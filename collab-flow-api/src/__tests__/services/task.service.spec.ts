@@ -47,11 +47,11 @@ describe(`Task Service`, () => {
   describe(`getTasksByProjectId`, () => {
     it(`should get tasks by project id from the repository`, async () => {
       const mockTasks = [mockTask]
-      vi.mocked(taskRepository.findByProjectId).mockResolvedValue(mockTasks)
+      vi.mocked(taskRepository.findAllByProjectId).mockResolvedValue(mockTasks)
 
       const tasks = await taskService.getTasksByProjectId(`1`)
 
-      expect(taskRepository.findByProjectId).toHaveBeenCalledWith(`1`)
+      expect(taskRepository.findAllByProjectId).toHaveBeenCalledWith(`1`)
       expect(tasks).toEqual(mockTasks)
     })
   })

@@ -4,6 +4,7 @@ import { useProjectTaskStore } from '@/stores'
 import type { TaskStatus, TaskFormData } from '@/types/task'
 import Logger from '@/utils/logger'
 import { RouteNames } from '@/constants/routes'
+import { showErrorNotification } from '@/utils/notificationHelper'
 
 interface UseTaskFormOptions {
   projectId: Ref<string>
@@ -59,17 +60,14 @@ export function useTaskForm(options: UseTaskFormOptions): UseTaskFormReturn {
     error.value = null
 
     try {
-      const task = await projectTaskStore.getTaskById(taskId.value)
+      const task = await projectTaskStore.getTaskById(projectId.value, taskId.value)
 
       if (!task) {
-        const errorMsg = `Task not found: ${taskId.value}`
+        const errorMsg = `Task not found`
         Logger.error(errorMsg)
-        error.value = errorMsg
-
+        showErrorNotification(null, errorMsg)
         onError?.(new Error(errorMsg))
-
         await cancel()
-
         return false
       }
 
@@ -95,7 +93,7 @@ export function useTaskForm(options: UseTaskFormOptions): UseTaskFormReturn {
     const trimmedDescription = form.value.description.trim()
 
     if (isEditMode.value && taskId?.value) {
-      await projectTaskStore.updateTask(taskId.value, {
+      await projectTaskStore.updateTask(projectId.value, taskId.value, {
         title: trimmedTitle,
         description: trimmedDescription
       })
@@ -115,12 +113,12 @@ export function useTaskForm(options: UseTaskFormOptions): UseTaskFormReturn {
     if (!projectId.value) {
       const errorMsg = `No current project set`
       Logger.error(errorMsg)
-      error.value = errorMsg
+      showErrorNotification(null, errorMsg)
       return false
     }
 
     if (!titleExists.value) {
-      error.value = `Title is required`
+      showErrorNotification(null, `Title is required`)
       return false
     }
 

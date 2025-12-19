@@ -78,6 +78,12 @@ router.get(`/`, taskController.getTasks)
  *           type: string
  *         required: true
  *         description: The task id
+ *       - in: query
+ *         name: projectId
+ *         schema:
+ *           type: string
+ *         required: true
+ *         description: The project id the task belongs to
  *     responses:
  *       200:
  *         description: The task description by id
@@ -85,6 +91,8 @@ router.get(`/`, taskController.getTasks)
  *           application/json:
  *             schema:
  *               $ref: '#/components/schemas/Task'
+ *       400:
+ *         description: projectId is required
  *       404:
  *         description: The task was not found
  */
@@ -125,6 +133,12 @@ router.post(`/`, taskController.createTask)
  *           type: string
  *         required: true
  *         description: The task id
+ *       - in: query
+ *         name: projectId
+ *         schema:
+ *           type: string
+ *         required: true
+ *         description: The project id the task belongs to
  *     requestBody:
  *       required: true
  *       content:
@@ -138,10 +152,10 @@ router.post(`/`, taskController.createTask)
  *           application/json:
  *             schema:
  *               $ref: '#/components/schemas/Task'
+ *       400:
+ *         description: projectId is required
  *       404:
  *         description: The task was not found
- *       400:
- *         description: Bad request
  */
 router.put(`/:id`, taskController.updateTask)
 
@@ -157,9 +171,17 @@ router.put(`/:id`, taskController.updateTask)
  *           type: string
  *         required: true
  *         description: The task id
+ *       - in: query
+ *         name: projectId
+ *         schema:
+ *           type: string
+ *         required: true
+ *         description: The project id the task belongs to
  *     responses:
  *       204:
  *         description: The task was successfully deleted
+ *       400:
+ *         description: projectId is required
  *       404:
  *         description: The task was not found
  */

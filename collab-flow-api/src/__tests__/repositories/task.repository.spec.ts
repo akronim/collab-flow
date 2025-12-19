@@ -32,16 +32,16 @@ describe(`Task Repository`, () => {
     })
   })
 
-  describe(`findByProjectId`, () => {
+  describe(`findAllByProjectId`, () => {
     it(`should return all tasks for a project`, async () => {
-      const result = await taskRepository.findByProjectId(`proj-1`)
+      const result = await taskRepository.findAllByProjectId(`proj-1`)
 
       expect(result).toHaveLength(3)
       expect(result.every(t => t.projectId === `proj-1`)).toBe(true)
     })
 
     it(`should return empty array for project with no tasks`, async () => {
-      const result = await taskRepository.findByProjectId(`non-existent`)
+      const result = await taskRepository.findAllByProjectId(`non-existent`)
 
       expect(result).toEqual([])
     })

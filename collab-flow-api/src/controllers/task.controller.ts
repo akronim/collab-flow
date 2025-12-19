@@ -14,7 +14,12 @@ export const taskController = {
   },
 
   getTask: async (req: Request, res: Response): Promise<void> => {
-    const task = await taskService.getTaskById(req.params.id)
+    const { projectId } = req.query
+    if (!projectId) {
+      res.status(400).json({ message: `projectId is required` })
+      return
+    }
+    const task = await taskService.getTaskByProjectAndId(projectId as string, req.params.id)
     if (task) {
       res.status(200).json(task)
     } else {
@@ -28,20 +33,32 @@ export const taskController = {
   },
 
   updateTask: async (req: Request, res: Response): Promise<void> => {
-    const updatedTask = await taskService.updateTask(req.params.id, req.body)
-    if (updatedTask) {
-      res.status(200).json(updatedTask)
-    } else {
-      res.status(404).json({ message: `Task not found` })
+    const { projectId } = req.query
+    if (!projectId) {
+      res.status(400).json({ message: `projectId is required` })
+      return
     }
+    const task = await taskService.getTaskByProjectAndId(projectId as string, req.params.id)
+    if (!task) {
+      res.status(404).json({ message: `Task not found` })
+      return
+    }
+    const updatedTask = await taskService.updateTask(req.params.id, req.body)
+    res.status(200).json(updatedTask)
   },
 
   deleteTask: async (req: Request, res: Response): Promise<void> => {
-    const deleted = await taskService.deleteTask(req.params.id)
-    if (deleted) {
-      res.status(204).send()
-    } else {
-      res.status(404).json({ message: `Task not found` })
+    const { projectId } = req.query
+    if (!projectId) {
+      res.status(400).json({ message: `projectId is required` })
+      return
     }
+    const task = await taskService.getTaskByProjectAndId(projectId as string, req.params.id)
+    if (!task) {
+      res.status(404).json({ message: `Task not found` })
+      return
+    }
+    await taskService.deleteTask(req.params.id)
+    res.status(204).send()
   }
 }

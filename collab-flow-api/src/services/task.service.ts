@@ -11,7 +11,11 @@ export const taskService = {
   },
 
   getTasksByProjectId: async (projectId: string): Promise<Task[]> => {
-    return await taskRepository.findByProjectId(projectId)
+    return await taskRepository.findAllByProjectId(projectId)
+  },
+
+  getTaskByProjectAndId: async (projectId: string, taskId: string): Promise<Task | undefined> => {
+    return await taskRepository.findByProjectAndId(projectId, taskId)
   },
 
   createTask: async (taskData: Omit<Task, `id` | `createdAt` | `updatedAt`>): Promise<Task> => {

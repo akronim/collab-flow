@@ -194,6 +194,6 @@ describe(`KanbanBoard.vue`, () => {
     const columns = wrapper.findAllComponents(KanbanColumn)
     columns[0]?.vm.$emit(`delete-task`, `task-1`)
 
-    expect(taskStore.deleteTask).toHaveBeenCalledWith(`task-1`)
+    expect(taskStore.deleteTask).toHaveBeenCalledWith(`proj-1`, `task-1`)
   })
 })

@@ -89,11 +89,11 @@ const navigateToEditTask = async (taskId: string): Promise<void> => {
 }
 
 const deleteTask = async (taskId: string): Promise<void> => {
-  await projectTaskStore.deleteTask(taskId)
+  await projectTaskStore.deleteTask(currentProjectId.value, taskId)
 }
 
 const handleMoveTask = async (taskId: string, newStatus: TaskStatus): Promise<void> => {
   const newOrder = projectTaskStore.byStatus(newStatus).length
-  await projectTaskStore.moveTask(taskId, newStatus, newOrder)
+  await projectTaskStore.moveTask(currentProjectId.value, taskId, newStatus, newOrder)
 }
 </script>

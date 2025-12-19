@@ -41,19 +41,26 @@ describe(`Task Controller`, () => {
 
   describe(`GET /:id`, () => {
     it(`should return a single task`, async () => {
-      const mockTask = { id: `1`, title: `Test Task` }
-      vi.mocked(taskService.getTaskById).mockResolvedValue(mockTask as any)
+      const mockTask = { id: `1`, title: `Test Task`, projectId: `proj-1` }
+      vi.mocked(taskService.getTaskByProjectAndId).mockResolvedValue(mockTask as any)
 
-      const res = await request(app).get(`/1`)
+      const res = await request(app).get(`/1?projectId=proj-1`)
 
       expect(res.status).toBe(200)
+      expect(taskService.getTaskByProjectAndId).toHaveBeenCalledWith(`proj-1`, `1`)
       expect(res.body).toEqual(mockTask)
     })
 
-    it(`should return 404 if task not found`, async () => {
-      vi.mocked(taskService.getTaskById).mockResolvedValue(undefined)
+    it(`should return 400 if projectId is missing`, async () => {
+      const res = await request(app).get(`/1`)
 
-      const res = await request(app).get(`/999`)
+      expect(res.status).toBe(400)
+    })
+
+    it(`should return 404 if task not found`, async () => {
+      vi.mocked(taskService.getTaskByProjectAndId).mockResolvedValue(undefined)
+
+      const res = await request(app).get(`/999?projectId=proj-1`)
 
       expect(res.status).toBe(404)
     })
@@ -74,21 +81,30 @@ describe(`Task Controller`, () => {
 
   describe(`PUT /:id`, () => {
     it(`should update an existing task`, async () => {
+      const existingTask = { id: `1`, title: `Test Task`, projectId: `proj-1` }
       const updates = { title: `Updated Task` }
-      const updatedTask = { id: `1`, title: `Updated Task`, projectId: `1` }
+      const updatedTask = { ...existingTask, ...updates }
+      vi.mocked(taskService.getTaskByProjectAndId).mockResolvedValue(existingTask as any)
       vi.mocked(taskService.updateTask).mockResolvedValue(updatedTask as any)
 
-      const res = await request(app).put(`/1`).send(updates)
+      const res = await request(app).put(`/1?projectId=proj-1`).send(updates)
 
       expect(res.status).toBe(200)
+      expect(taskService.getTaskByProjectAndId).toHaveBeenCalledWith(`proj-1`, `1`)
       expect(taskService.updateTask).toHaveBeenCalledWith(`1`, updates)
       expect(res.body).toEqual(updatedTask)
     })
 
-    it(`should return 404 if task not found`, async () => {
-      vi.mocked(taskService.updateTask).mockResolvedValue(undefined)
+    it(`should return 400 if projectId is missing`, async () => {
+      const res = await request(app).put(`/1`).send({ title: `Test` })
 
-      const res = await request(app).put(`/999`).send({ title: `Test` })
+      expect(res.status).toBe(400)
+    })
+
+    it(`should return 404 if task not found`, async () => {
+      vi.mocked(taskService.getTaskByProjectAndId).mockResolvedValue(undefined)
+
+      const res = await request(app).put(`/999?projectId=proj-1`).send({ title: `Test` })
 
       expect(res.status).toBe(404)
     })
@@ -96,18 +112,27 @@ describe(`Task Controller`, () => {
 
   describe(`DELETE /:id`, () => {
     it(`should delete an existing task`, async () => {
+      const existingTask = { id: `1`, title: `Test Task`, projectId: `proj-1` }
+      vi.mocked(taskService.getTaskByProjectAndId).mockResolvedValue(existingTask as any)
       vi.mocked(taskService.deleteTask).mockResolvedValue(true)
 
-      const res = await request(app).delete(`/1`)
+      const res = await request(app).delete(`/1?projectId=proj-1`)
 
       expect(res.status).toBe(204)
+      expect(taskService.getTaskByProjectAndId).toHaveBeenCalledWith(`proj-1`, `1`)
       expect(taskService.deleteTask).toHaveBeenCalledWith(`1`)
     })
 
-    it(`should return 404 if task not found`, async () => {
-      vi.mocked(taskService.deleteTask).mockResolvedValue(false)
+    it(`should return 400 if projectId is missing`, async () => {
+      const res = await request(app).delete(`/1`)
 
-      const res = await request(app).delete(`/999`)
+      expect(res.status).toBe(400)
+    })
+
+    it(`should return 404 if task not found`, async () => {
+      vi.mocked(taskService.getTaskByProjectAndId).mockResolvedValue(undefined)
+
+      const res = await request(app).delete(`/999?projectId=proj-1`)
 
       expect(res.status).toBe(404)
     })

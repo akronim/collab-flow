@@ -36,8 +36,8 @@ export const useProjectTaskStore = defineStore(`projectTasks`, {
       }
     },
 
-    async getTaskById(taskId: string): Promise<Task | undefined> {
-      const result = await taskApiService.getTaskById(taskId)
+    async getTaskById(projectId: string, taskId: string): Promise<Task | undefined> {
+      const result = await taskApiService.getTaskById(projectId, taskId)
       if (result.isSuccess()) {
         return result.data
       } else {
@@ -57,8 +57,8 @@ export const useProjectTaskStore = defineStore(`projectTasks`, {
       return undefined
     },
 
-    async updateTask(id: string, updates: Partial<Task>): Promise<void> {
-      const result = await taskApiService.updateTask(id, updates)
+    async updateTask(projectId: string, id: string, updates: Partial<Task>): Promise<void> {
+      const result = await taskApiService.updateTask(projectId, id, updates)
       if (result.isSuccess() && result.data) {
         const index = this.tasks.findIndex((t) => t.id === id)
         if (index !== -1) {
@@ -70,8 +70,8 @@ export const useProjectTaskStore = defineStore(`projectTasks`, {
       }
     },
 
-    async deleteTask(id: string): Promise<void> {
-      const result = await taskApiService.deleteTask(id)
+    async deleteTask(projectId: string, id: string): Promise<void> {
+      const result = await taskApiService.deleteTask(projectId, id)
       if (result.isSuccess()) {
         this.tasks = this.tasks.filter((t) => t.id !== id)
         showSuccessNotification(NotificationMessages.DELETED)
@@ -80,8 +80,8 @@ export const useProjectTaskStore = defineStore(`projectTasks`, {
       }
     },
 
-    async moveTask(taskId: string, newStatus: Task[`status`], newOrder: number): Promise<void> {
-      await this.updateTask(taskId, { status: newStatus, order: newOrder })
+    async moveTask(projectId: string, taskId: string, newStatus: Task[`status`], newOrder: number): Promise<void> {
+      await this.updateTask(projectId, taskId, { status: newStatus, order: newOrder })
     }
   }
 })

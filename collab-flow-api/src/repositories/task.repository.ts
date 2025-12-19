@@ -11,8 +11,12 @@ export const taskRepository = {
     return tasks.find(task => task.id === id)
   },
 
-  findByProjectId: async (projectId: string): Promise<Task[]> => {
+  findAllByProjectId: async (projectId: string): Promise<Task[]> => {
     return tasks.filter(task => task.projectId === projectId)
+  },
+
+  findByProjectAndId: async (projectId: string, taskId: string): Promise<Task | undefined> => {
+    return tasks.find(task => task.projectId === projectId && task.id === taskId)
   },
 
   create: async (taskData: Omit<Task, `id` | `createdAt` | `updatedAt`>): Promise<Task> => {

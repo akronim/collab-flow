@@ -9,20 +9,10 @@
       </p>
     </div>
 
-    <!-- Error Alert -->
-    <div
-      v-if="error"
-      class="mb-4 bg-red-50 border border-red-200 text-red-700 px-4 py-3 rounded"
-    >
-      {{ error }}
-    </div>
-
-    <div
+    <SfLoadingState
       v-if="isLoading"
-      class="bg-white rounded-lg shadow p-6 text-center"
-    >
-      <p>Loading task...</p>
-    </div>
+      message="Loading task..."
+    />
 
     <TaskForm
       v-else
@@ -42,6 +32,7 @@ import { useRoute } from 'vue-router'
 import { useTaskForm } from '@/composables/useTaskForm'
 import type { TaskStatus } from '@/types/task'
 import TaskForm from '@/components/tasks/TaskForm.vue'
+import SfLoadingState from '@/components/ui/SfLoadingState.vue'
 
 const route = useRoute()
 
@@ -52,7 +43,6 @@ const status = computed(() => route.query.status as TaskStatus | undefined)
 const {
   form,
   isLoading,
-  error,
   isEditMode,
   titleExists,
   loadTask,
@@ -61,13 +51,7 @@ const {
 } = useTaskForm({
   projectId,
   taskId,
-  status,
-  onSuccess: () => {
-    // TODO show a toast notification here
-  },
-  onError: (_err) => {
-    // TODO show an error toast here
-  }
+  status
 })
 
 onMounted(async () => {

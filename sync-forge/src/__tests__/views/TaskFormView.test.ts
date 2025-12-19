@@ -51,14 +51,10 @@ describe(`TaskFormView.vue`, () => {
     expect(editWrapper.text()).toContain(`Edit Task`)
   })
 
-  it(`shows loading and error states`, () => {
+  it(`shows loading state`, () => {
     const loadingWrapper = setup({ isLoading: ref(true) })
 
     expect(loadingWrapper.text()).toContain(`Loading task...`)
-
-    const errorWrapper = setup({ error: ref(`An error occurred`) })
-
-    expect(errorWrapper.text()).toContain(`An error occurred`)
   })
 
   it(`calls loadTask on mounted`, async () => {

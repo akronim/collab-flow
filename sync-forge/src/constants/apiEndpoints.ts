@@ -15,7 +15,7 @@ export const CollabFlowApiEndpoints = {
   PROJECT_BY_ID: (id: string) => `/api/projects/${id}`,
 
   TASKS: `/api/tasks`,
-  TASK_BY_ID: (id: string) => `/api/tasks/${id}`,
+  TASK_BY_ID: (projectId: string, id: string) => `/api/tasks/${id}?projectId=${projectId}`,
 
   USERS: `/api/users`,
   USER_BY_ID: (id: string) => `/api/users/${id}`

@@ -111,9 +111,9 @@ describe(`useProjectTaskStore`, () => {
       const store = useProjectTaskStore()
       store.tasks = [...mockTasks]
 
-      await store.updateTask(existingTask.id, updates)
+      await store.updateTask(existingTask.projectId, existingTask.id, updates)
 
-      expect(taskApiService.updateTask).toHaveBeenCalledWith(existingTask.id, updates)
+      expect(taskApiService.updateTask).toHaveBeenCalledWith(existingTask.projectId, existingTask.id, updates)
       expect(store.tasks.find(t => t.id === existingTask.id)?.title).toBe(`Updated Title`)
     })
   })
@@ -128,9 +128,9 @@ describe(`useProjectTaskStore`, () => {
       store.tasks = [...mockTasks]
       const taskToDelete = getFirstMockTask()
 
-      await store.deleteTask(taskToDelete.id)
+      await store.deleteTask(taskToDelete.projectId, taskToDelete.id)
 
-      expect(taskApiService.deleteTask).toHaveBeenCalledWith(taskToDelete.id)
+      expect(taskApiService.deleteTask).toHaveBeenCalledWith(taskToDelete.projectId, taskToDelete.id)
       expect(store.tasks.find(t => t.id === taskToDelete.id)).toBeUndefined()
     })
   })
