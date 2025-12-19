@@ -1,6 +1,6 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest'
 import { setActivePinia, createPinia } from 'pinia'
-import { useTaskStore } from '@/stores'
+import { useProjectTaskStore } from '@/stores'
 import { taskApiService } from '@/services/task.service'
 import ApiCallResult from '@/utils/apiCallResult'
 import { mockTasks } from '../mocks'
@@ -16,7 +16,7 @@ const getFirstMockTask = (): Task => {
   return task
 }
 
-describe(`useTaskStore`, () => {
+describe(`useProjectTaskStore`, () => {
   beforeEach(() => {
     setActivePinia(createPinia())
     vi.clearAllMocks()
@@ -24,7 +24,7 @@ describe(`useTaskStore`, () => {
 
   describe(`initial state`, () => {
     it(`should have empty tasks array initially`, () => {
-      const store = useTaskStore()
+      const store = useProjectTaskStore()
 
       expect(store.tasks).toStrictEqual([])
     })
@@ -36,7 +36,7 @@ describe(`useTaskStore`, () => {
         ApiCallResult.Success(mockTasks, 200)
       )
 
-      const store = useTaskStore()
+      const store = useProjectTaskStore()
       await store.fetchTasksByProjectId(`proj-1`)
 
       expect(taskApiService.getTasksByProjectId).toHaveBeenCalledWith(`proj-1`)
@@ -48,7 +48,7 @@ describe(`useTaskStore`, () => {
         ApiCallResult.Fail(new Error(`Network error`))
       )
 
-      const store = useTaskStore()
+      const store = useProjectTaskStore()
       await store.fetchTasksByProjectId(`proj-1`)
 
       expect(store.tasks).toStrictEqual([])
@@ -73,7 +73,7 @@ describe(`useTaskStore`, () => {
         ApiCallResult.Success(createdTask, 201)
       )
 
-      const store = useTaskStore()
+      const store = useProjectTaskStore()
       const result = await store.addTask(newTaskData)
 
       expect(taskApiService.createTask).toHaveBeenCalledWith(newTaskData)
@@ -86,7 +86,7 @@ describe(`useTaskStore`, () => {
         ApiCallResult.Fail(new Error(`Network error`))
       )
 
-      const store = useTaskStore()
+      const store = useProjectTaskStore()
       const result = await store.addTask({
         projectId: `proj-1`,
         title: `New Task`,
@@ -108,7 +108,7 @@ describe(`useTaskStore`, () => {
         ApiCallResult.Success(updatedTask, 200)
       )
 
-      const store = useTaskStore()
+      const store = useProjectTaskStore()
       store.tasks = [...mockTasks]
 
       await store.updateTask(existingTask.id, updates)
@@ -124,7 +124,7 @@ describe(`useTaskStore`, () => {
         ApiCallResult.Success(undefined, 204)
       )
 
-      const store = useTaskStore()
+      const store = useProjectTaskStore()
       store.tasks = [...mockTasks]
       const taskToDelete = getFirstMockTask()
 
@@ -136,23 +136,22 @@ describe(`useTaskStore`, () => {
   })
 
   describe(`getters`, () => {
-    it(`tasksForCurrentProject should filter and sort tasks by projectId`, () => {
-      const store = useTaskStore()
+    it(`all should return sorted tasks`, () => {
+      const store = useProjectTaskStore()
       store.tasks = mockTasks
 
-      const result = store.tasksForCurrentProject(`proj-1`)
+      const result = store.all
 
-      expect(result.every(t => t.projectId === `proj-1`)).toBe(true)
       expect(result).toStrictEqual([...result].sort((a, b) => a.order - b.order))
     })
 
-    it(`tasksByStatus should filter tasks by projectId and status`, () => {
-      const store = useTaskStore()
+    it(`byStatus should filter tasks by status`, () => {
+      const store = useProjectTaskStore()
       store.tasks = mockTasks
 
-      const result = store.tasksByStatus(`proj-1`, `todo`)
+      const result = store.byStatus(`todo`)
 
-      expect(result.every(t => t.projectId === `proj-1` && t.status === `todo`)).toBe(true)
+      expect(result.every(t => t.status === `todo`)).toBe(true)
     })
   })
 })

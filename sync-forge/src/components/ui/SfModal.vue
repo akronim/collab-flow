@@ -27,7 +27,7 @@
             {{ title }}
           </h2>
         </slot>
-        <BaseButton
+        <SfButton
           variant="ghost"
           size="sm"
           class="absolute top-2 right-2"
@@ -35,7 +35,7 @@
           @click="emit('close')"
         >
           <XIcon class="h-5 w-5" />
-        </BaseButton>
+        </SfButton>
       </header>
 
       <main class="p-6 overflow-y-auto">
@@ -55,7 +55,7 @@
 <script setup lang="ts">
 import { onMounted, onUnmounted } from 'vue'
 import { X as XIcon } from 'lucide-vue-next'
-import BaseButton from '@/components/ui/base/BaseButton.vue'
+import SfButton from './SfButton.vue'
 
 interface Props {
   title?: string

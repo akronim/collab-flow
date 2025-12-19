@@ -4,47 +4,24 @@ import { taskApiService } from '@/services/task.service'
 import { showErrorNotification, showSuccessNotification } from '@/utils/notificationHelper'
 import { NotificationMessages } from '@/constants/notificationMessages'
 
-interface TaskState {
+interface ProjectTaskState {
   tasks: Task[]
 }
 
-export const useTaskStore = defineStore(`tasks`, {
-  state: (): TaskState => ({
+export const useProjectTaskStore = defineStore(`projectTasks`, {
+  state: (): ProjectTaskState => ({
     tasks: []
   }),
 
   getters: {
-    tasksForCurrentProject: (state) => {
-      return (projectId: string): Task[] => {
-        if (!projectId) {
-          return []
-        }
+    all: (state): Task[] => {
+      return [...state.tasks].sort((a, b) => a.order - b.order)
+    },
+    byStatus: (state) => {
+      return (status: Task[`status`]): Task[] => {
         return state.tasks
-          .filter((t) => t.projectId === projectId)
+          .filter((t) => t.status === status)
           .sort((a, b) => a.order - b.order)
-      }
-    },
-    tasksByStatus: (state) => {
-      return (projectId: string, status: Task[`status`]): Task[] => {
-        if (!projectId) {
-          return []
-        }
-        return state.tasks
-          .filter((t) => t.projectId === projectId && t.status === status)
-          .sort((a, b) => a.order - b.order)
-      }
-    },
-    tasksByProjectId: (state) => {
-      return (projectId: string): Task[] => {
-        if (!projectId) {
-          return []
-        }
-        return state.tasks.filter((t) => t.projectId === projectId)
-      }
-    },
-    taskCountByProjectId(): (projectId: string) => number {
-      return (projectId: string) => {
-        return this.tasksByProjectId(projectId).length
       }
     }
   },
@@ -59,7 +36,7 @@ export const useTaskStore = defineStore(`tasks`, {
       }
     },
 
-    async getTaskById(projectId: string, taskId: string): Promise<Task | undefined> {
+    async getTaskById(taskId: string): Promise<Task | undefined> {
       const result = await taskApiService.getTaskById(taskId)
       if (result.isSuccess()) {
         return result.data

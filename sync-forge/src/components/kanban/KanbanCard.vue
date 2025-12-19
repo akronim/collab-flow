@@ -1,5 +1,5 @@
 <template>
-  <BaseCard 
+  <SfCard
     hoverable
     class="cursor-move"
     draggable="true"
@@ -25,7 +25,7 @@
           {{ formattedDate }}
         </span>
         <div class="flex gap-2">
-          <BaseButton
+          <SfButton
             variant="ghost"
             size="sm"
             title="Edit task"
@@ -33,8 +33,8 @@
             @click.stop="emit('edit')"
           >
             <LiSquarePen class="w-4 h-4" />
-          </BaseButton>
-          <BaseButton
+          </SfButton>
+          <SfButton
             variant="ghost"
             size="sm"
             title="Delete task"
@@ -42,11 +42,11 @@
             @click.stop="emit('delete')"
           >
             <LiTrash2 class="w-4 h-4" />
-          </BaseButton>
+          </SfButton>
         </div>
       </div>
     </template>
-  </BaseCard>
+  </SfCard>
 </template>
 
 <script setup lang="ts">
@@ -54,9 +54,8 @@ import { computed } from 'vue'
 import { formatToLocalDayMonthYearTime } from '@/utils/date'
 import type { Task } from '@/types/task'
 import { SquarePen as LiSquarePen, Trash2 as LiTrash2 } from 'lucide-vue-next'
-import BaseButton from '@/components/ui/base/BaseButton.vue'
+import { SfButton, SfCard } from '@/components/ui'
 import { sanitizeHtml } from '@/utils/sanitize'
-import BaseCard from '../ui/base/BaseCard.vue'
 
 interface Props {
   task: Task

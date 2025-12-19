@@ -4,7 +4,7 @@
       <h1 class="mb-6 text-center text-2xl font-bold text-gray-900">
         CollabFlow
       </h1>
-      <BaseButton
+      <SfButton
         variant="outline"
         size="lg"
         full-width
@@ -16,13 +16,13 @@
           class="h-5 w-5"
         >
         Sign in with Google
-      </BaseButton>
+      </SfButton>
     </div>
   </div>
 </template>
 
 <script setup lang="ts">
-import BaseButton from '@/components/ui/base/BaseButton.vue'
+import { SfButton } from '@/components/ui'
 import { AppRoutes } from '@/constants/routes'
 import Logger from '@/utils/logger'
 import { generateCodeChallenge, generateCodeVerifier } from '@/utils/pkce'

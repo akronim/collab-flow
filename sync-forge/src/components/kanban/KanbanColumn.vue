@@ -9,10 +9,10 @@
       <h3 class="font-semibold text-gray-700 uppercase tracking-wider text-xs">
         {{ title }}
       </h3>
-      <BaseBadge>{{ tasks.length }}</BaseBadge>
+      <SfBadge>{{ tasks.length }}</SfBadge>
     </div>
 
-    <BaseButton
+    <SfButton
       variant="secondary"
       size="sm"
       class="mb-4"
@@ -20,7 +20,7 @@
     >
       <LiPlus class="w-4 h-4" />
       Add task
-    </BaseButton>
+    </SfButton>
 
     <div
       ref="dropZone"
@@ -43,8 +43,7 @@ import { ref } from 'vue'
 import KanbanCard from './KanbanCard.vue'
 import type { Task, TaskStatus } from '@/types/task'
 import { Plus as LiPlus } from 'lucide-vue-next'
-import BaseButton from '@/components/ui/base/BaseButton.vue'
-import BaseBadge from '@/components/ui/base/BaseBadge.vue'
+import { SfBadge, SfButton } from '@/components/ui'
 
 interface Props {
   title: string

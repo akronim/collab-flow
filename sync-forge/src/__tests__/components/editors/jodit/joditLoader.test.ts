@@ -1,6 +1,6 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest'
 import Logger from '@/utils/logger'
-import * as loader from '@/components/shared/editors/jodit/joditLoader'
+import * as loader from '@/components/editors/jodit/joditLoader'
 
 vi.mock(import(`@/utils/logger`), async (importOriginal) => {
   const actual = await importOriginal<typeof import('@/utils/logger')>()
@@ -53,7 +53,7 @@ describe(`loadAce`, () => {
       return {}
     })
 
-    const { loadAce } = await import(`@/components/shared/editors/jodit/joditLoader`)
+    const { loadAce } = await import(`@/components/editors/jodit/joditLoader`)
 
     await loadAce()
 
@@ -69,7 +69,7 @@ describe(`loadAce`, () => {
 
     vi.spyOn(Promise, `all`).mockRejectedValueOnce(mockError)
 
-    const { loadAce: loadAceWithError } = await import(`@/components/shared/editors/jodit/joditLoader`)
+    const { loadAce: loadAceWithError } = await import(`@/components/editors/jodit/joditLoader`)
 
     await expect(loadAceWithError()).rejects.toThrow(`ACE Import failed`)
     expect(Logger.error).toHaveBeenCalledWith(`Failed to load Ace editor:`, mockError)
@@ -80,7 +80,7 @@ describe(`loadAce`, () => {
 
     vi.spyOn(Promise, `all`).mockRejectedValueOnce(mockError)
 
-    const { loadAce: loadAceRetry } = await import(`@/components/shared/editors/jodit/joditLoader`)
+    const { loadAce: loadAceRetry } = await import(`@/components/editors/jodit/joditLoader`)
 
     await expect(loadAceRetry()).rejects.toThrow(`ACE Import failed`)
 
@@ -124,7 +124,7 @@ describe(`loadJodit`, () => {
     const mockError = new Error(`Jodit import failed`)
     vi.spyOn(Promise, `all`).mockRejectedValueOnce(mockError)
 
-    const { loadJodit: loadJoditWithError } = await import(`@/components/shared/editors/jodit/joditLoader`)
+    const { loadJodit: loadJoditWithError } = await import(`@/components/editors/jodit/joditLoader`)
 
     await expect(loadJoditWithError()).rejects.toThrow(`Jodit import failed`)
     expect(Logger.error).toHaveBeenCalledWith(`Failed to load Jodit or plugins:`, mockError)
@@ -134,7 +134,7 @@ describe(`loadJodit`, () => {
     const mockError = new Error(`Jodit import failed`)
     vi.spyOn(Promise, `all`).mockRejectedValueOnce(mockError)
 
-    const { loadJodit: loadJoditRetry } = await import(`@/components/shared/editors/jodit/joditLoader`)
+    const { loadJodit: loadJoditRetry } = await import(`@/components/editors/jodit/joditLoader`)
 
     await expect(loadJoditRetry()).rejects.toThrow(`Jodit import failed`)
 
@@ -159,7 +159,7 @@ describe(`loadJodit`, () => {
     })
 
     vi.resetModules()
-    const { loadJodit: loadJoditTracked } = await import(`@/components/shared/editors/jodit/joditLoader`)
+    const { loadJodit: loadJoditTracked } = await import(`@/components/editors/jodit/joditLoader`)
 
     await loadJoditTracked()
 

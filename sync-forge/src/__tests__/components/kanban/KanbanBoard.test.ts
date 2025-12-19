@@ -4,7 +4,7 @@ import KanbanBoard from '@/components/kanban/KanbanBoard.vue'
 import { createTestingPinia } from '@pinia/testing'
 import type { Task } from '@/types/task'
 import KanbanColumn from '@/components/kanban/KanbanColumn.vue'
-import { useTaskStore } from '@/stores'
+import { useProjectTaskStore } from '@/stores'
 import { RouteNames } from '@/constants/routes'
 
 const mockRoute = {
@@ -49,7 +49,7 @@ describe(`KanbanBoard.vue`, () => {
           createTestingPinia({
             createSpy: vi.fn,
             initialState: {
-              tasks: tasksState
+              projectTasks: tasksState
             },
             stubActions: false
           })
@@ -96,22 +96,9 @@ describe(`KanbanBoard.vue`, () => {
     expect(wrapper.find(`.kanban-column`).exists()).toBe(true)
   })
 
-  it(`displays empty columns when projectId is null`, () => {
-    mockRoute.params.projectId = ``
-
+  it(`displays empty state message when store has no tasks`, () => {
     const wrapper = mountWithPinia({
-      tasks: [
-        {
-          id: `1`,
-          status: `backlog`,
-          title: `Task 1`,
-          projectId: `proj-1`,
-          order: 1,
-          description: ``,
-          createdAt: ``,
-          updatedAt: ``
-        }
-      ]
+      tasks: []
     })
 
     expect(wrapper.text()).toContain(`No tasks yet in this project`)
@@ -121,24 +108,14 @@ describe(`KanbanBoard.vue`, () => {
     expect(columns).toHaveLength(4)
   })
 
-  it(`only displays tasks for the current project`, () => {
+  it(`passes tasks to the correct column based on status`, () => {
     const wrapper = mountWithPinia({
       tasks: [
         {
           id: `1`,
           status: `todo`,
-          title: `Project 1 Task`,
+          title: `Todo Task`,
           projectId: `proj-1`,
-          order: 1,
-          description: ``,
-          createdAt: ``,
-          updatedAt: ``
-        },
-        {
-          id: `2`,
-          status: `todo`,
-          title: `Project 2 Task`,
-          projectId: `proj-2`,
           order: 1,
           description: ``,
           createdAt: ``,
@@ -155,7 +132,7 @@ describe(`KanbanBoard.vue`, () => {
     const tasksInTodoColumn = todoColumn?.props(`tasks`) ?? []
 
     expect(tasksInTodoColumn).toHaveLength(1)
-    expect(tasksInTodoColumn[0]?.title).toBe(`Project 1 Task`)
+    expect(tasksInTodoColumn[0]?.title).toBe(`Todo Task`)
   })
 
   it(`navigates to create task when add-task is emitted`, () => {
@@ -212,7 +189,7 @@ describe(`KanbanBoard.vue`, () => {
       tasks: [task]
     })
 
-    const taskStore = useTaskStore()
+    const taskStore = useProjectTaskStore()
 
     const confirmSpy = vi.spyOn(window, `confirm`).mockReturnValue(true)
 

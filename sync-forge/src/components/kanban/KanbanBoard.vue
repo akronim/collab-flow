@@ -1,6 +1,6 @@
 <template>
   <div
-    v-if="taskStore.tasksForCurrentProject(currentProjectId).length === 0"
+    v-if="projectTaskStore.all.length === 0"
     class="w-full text-center py-20"
   >
     <p class="text-gray-500 text-lg">
@@ -20,7 +20,7 @@
       :key="column.status"
       :title="column.title"
       :status="column.status"
-      :tasks="tasksByStatus(currentProjectId, column.status)"
+      :tasks="projectTaskStore.byStatus(column.status)"
       @add-task="navigateToCreateTask(column.status)"
       @move-task="handleMoveTask"
       @edit-task="navigateToEditTask"
@@ -29,10 +29,10 @@
 
     <!-- Floating Add Column (Future Feature Hint) -->
     <div class="flex-shrink-0 w-80">
-      <BaseButton disabled>
+      <SfButton disabled>
         <LiPlus class="w-5 h-5" />
         Add another column
-      </BaseButton>
+      </SfButton>
     </div>
   </div>
 </template>
@@ -41,17 +41,16 @@
 import { computed } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import KanbanColumn from './KanbanColumn.vue'
-import { useTaskStore } from '@/stores'
+import { useProjectTaskStore } from '@/stores'
 import type { TaskStatus } from '@/types/task'
 import Logger from '@/utils/logger'
 import { Plus as LiPlus } from 'lucide-vue-next'
-import BaseButton from '@/components/ui/base/BaseButton.vue'
+import { SfButton } from '@/components/ui'
 import { RouteNames } from '@/constants/routes'
 
 const route = useRoute()
 const router = useRouter()
-const taskStore = useTaskStore()
-const { tasksByStatus } = taskStore
+const projectTaskStore = useProjectTaskStore()
 const currentProjectId = computed(() => route.params.projectId as string)
 
 const columns = [
@@ -91,12 +90,12 @@ const navigateToEditTask = async (taskId: string): Promise<void> => {
 
 const deleteTask = async (taskId: string): Promise<void> => {
   if (confirm(`Delete this task permanently?`)) {
-    await taskStore.deleteTask(taskId)
+    await projectTaskStore.deleteTask(taskId)
   }
 }
 
 const handleMoveTask = async (taskId: string, newStatus: TaskStatus): Promise<void> => {
-  const newOrder = taskStore.tasksByStatus(currentProjectId.value, newStatus).length
-  await taskStore.moveTask(taskId, newStatus, newOrder)
+  const newOrder = projectTaskStore.byStatus(newStatus).length
+  await projectTaskStore.moveTask(taskId, newStatus, newOrder)
 }
 </script>

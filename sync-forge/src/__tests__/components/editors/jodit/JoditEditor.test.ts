@@ -1,6 +1,6 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest'
 import { flushPromises, mount } from '@vue/test-utils'
-import JoditEditor from '@/components/shared/editors/jodit/JoditEditor.vue'
+import JoditEditor from '@/components/editors/jodit/JoditEditor.vue'
 
 const mockJodit = {
   setEditorValue: vi.fn(),
@@ -30,7 +30,7 @@ const mockJoditConstructor = {
   })
 }
 
-vi.mock(`@/components/shared/editors/jodit/joditLoader`, () => ({
+vi.mock(`@/components/editors/jodit/joditLoader`, () => ({
   loadJodit: vi.fn(() => Promise.resolve({
     Jodit: mockJoditConstructor,
     pluginsLoaded: true

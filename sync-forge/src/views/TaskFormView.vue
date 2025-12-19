@@ -29,19 +29,13 @@
       class="bg-white rounded-lg shadow p-6"
       @submit.prevent="saveTask"
     >
-      <div class="mb-4">
-        <label class="block text-sm font-medium text-gray-700 mb-1">
-          Title <span class="text-red-500">*</span>
-        </label>
-        <input
-          v-model="form.title"
-          type="text"
-          required
-          class="w-full px-3 py-2 border border-gray-300 rounded-md 
-                focus:outline-none focus:ring-2 focus:ring-blue-500"
-          placeholder="Enter task title"
-        >
-      </div>
+      <SfInput
+        v-model="form.title"
+        label="Title"
+        required
+        placeholder="Enter task title"
+        class="mb-4"
+      />
 
       <div class="mb-6">
         <label class="block text-sm font-medium text-gray-700 mb-1">
@@ -56,20 +50,20 @@
       </div>
 
       <div class="flex justify-end gap-3">
-        <BaseButton
+        <SfButton
           variant="outline"
           type="button"
           @click="cancel"
         >
           Cancel
-        </BaseButton>
-        <BaseButton
+        </SfButton>
+        <SfButton
           type="submit"
           variant="primary"
           :disabled="isLoading || !titleExists"
         >
           {{ isEditMode ? 'Update' : 'Create' }} Task
-        </BaseButton>
+        </SfButton>
       </div>
     </form>
   </div>
@@ -80,10 +74,10 @@ import { defineAsyncComponent, computed, onMounted } from 'vue'
 import { useRoute } from 'vue-router'
 import { useTaskForm } from '@/composables/useTaskForm'
 import type { TaskStatus } from '@/types/task'
-import BaseButton from '@/components/ui/base/BaseButton.vue'
+import { SfButton, SfInput } from '@/components/ui'
 
 const JoditEditor = defineAsyncComponent(
-  () => import(`@/components/shared/editors/jodit/JoditEditor.vue`)
+  () => import(`@/components/editors/jodit/JoditEditor.vue`)
 )
 
 const route = useRoute()

@@ -30,13 +30,13 @@
         class="flex items-center gap-2"
       >
         <span class="text-sm text-gray-500">Europe/Zagreb</span>
-        <BaseButton
+        <SfButton
           variant="danger"
           :data-test-id="LayoutTestId.BtnLogout"
           @click="handleLogout"
         >
           Logout
-        </BaseButton>
+        </SfButton>
       </div>
     </nav>
   </header>
@@ -46,7 +46,7 @@
 import { useRouter } from 'vue-router'
 import { useAuthStore } from '@/stores'
 import Logger from '@/utils/logger'
-import BaseButton from '@/components/ui/base/BaseButton.vue'
+import { SfButton } from '@/components/ui'
 import { LayoutTestId } from '@/constants/htmlCodes'
 import { RouteNames } from '@/constants/routes'
 

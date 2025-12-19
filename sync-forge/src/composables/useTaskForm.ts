@@ -1,6 +1,6 @@
 import { ref, computed, type Ref } from 'vue'
 import { useRouter } from 'vue-router'
-import { useTaskStore } from '@/stores'
+import { useProjectTaskStore } from '@/stores'
 import type { TaskStatus } from '@/types/task'
 import Logger from '@/utils/logger'
 import { RouteNames } from '@/constants/routes'
@@ -35,7 +35,7 @@ export function useTaskForm(options: UseTaskFormOptions): UseTaskFormReturn {
   const { projectId, taskId, status, onSuccess, onError } = options
 
   const router = useRouter()
-  const taskStore = useTaskStore()
+  const projectTaskStore = useProjectTaskStore()
 
   const form = ref<TaskFormData>({
     title: ``,
@@ -64,7 +64,7 @@ export function useTaskForm(options: UseTaskFormOptions): UseTaskFormReturn {
     error.value = null
 
     try {
-      const task = await taskStore.getTaskById(projectId.value, taskId.value)
+      const task = await projectTaskStore.getTaskById(taskId.value)
 
       if (!task) {
         const errorMsg = `Task not found: ${taskId.value}`
@@ -100,18 +100,18 @@ export function useTaskForm(options: UseTaskFormOptions): UseTaskFormReturn {
     const trimmedDescription = form.value.description.trim()
 
     if (isEditMode.value && taskId?.value) {
-      await taskStore.updateTask(taskId.value, {
+      await projectTaskStore.updateTask(taskId.value, {
         title: trimmedTitle,
         description: trimmedDescription
       })
     } else {
       const targetStatus = status?.value ?? `todo`
-      await taskStore.addTask({
+      await projectTaskStore.addTask({
         projectId: projectId.value,
         title: trimmedTitle,
         description: trimmedDescription,
         status: targetStatus,
-        order: taskStore.tasksByStatus(projectId.value, targetStatus).length
+        order: projectTaskStore.byStatus(targetStatus).length
       })
     }
   }

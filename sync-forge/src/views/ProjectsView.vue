@@ -7,7 +7,7 @@
     </div>
 
     <div class="grid gap-6 sm:grid-cols-2 lg:grid-cols-3">
-      <BaseCard
+      <SfCard
         v-for="project in projects"
         :key="project.id"
         hoverable
@@ -29,24 +29,23 @@
             <span class="text-xs text-gray-500">
               {{ project.taskCount }} tasks
             </span>
-            <BaseButton
+            <SfButton
               variant="outline-blue"
               size="sm"
               @click.stop="openBoard(project.id)"
             >
               Open Board
               <LiExternalLink class="w-4 h-4" />
-            </BaseButton>
+            </SfButton>
           </div>
         </template>
-      </BaseCard>
+      </SfCard>
     </div>
   </div>
 </template>
 
 <script setup lang="ts">
-import BaseButton from '@/components/ui/base/BaseButton.vue'
-import BaseCard from '@/components/ui/base/BaseCard.vue'
+import { SfButton, SfCard } from '@/components/ui'
 import { RouteNames } from '@/constants/routes'
 import { useProjectStore } from '@/stores'
 import { ExternalLink as LiExternalLink } from 'lucide-vue-next'
