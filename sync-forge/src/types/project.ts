@@ -5,3 +5,5 @@ export interface Project {
   createdAt: string
   taskCount: number
 }
+
+export type ProjectFormData = Pick<Project, `name` | `description`>

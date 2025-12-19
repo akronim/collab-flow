@@ -46,4 +46,27 @@ describe(`Project Controller`, () => {
     expect(res.status).toBe(201)
     expect(res.body).toEqual(createdProject)
   })
+
+  it(`PUT /:id should update a project`, async () => {
+    const updatedProject = { id: `1`, name: `Updated Project` }
+    vi.mocked(projectService.updateProject).mockResolvedValue(updatedProject as any)
+
+    const res = await request(app).put(`/1`).send({ name: `Updated Project` })
+    expect(res.status).toBe(200)
+    expect(res.body).toEqual(updatedProject)
+  })
+
+  it(`PUT /:id should return 404 if project to update not found`, async () => {
+    vi.mocked(projectService.updateProject).mockResolvedValue(undefined)
+
+    const res = await request(app).put(`/999`).send({ name: `Updated Project` })
+    expect(res.status).toBe(404)
+  })
+
+  it(`DELETE /:id should delete a project`, async () => {
+    vi.mocked(projectService.deleteProject).mockResolvedValue()
+
+    const res = await request(app).delete(`/1`)
+    expect(res.status).toBe(204)
+  })
 })

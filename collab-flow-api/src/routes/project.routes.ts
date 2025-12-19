@@ -98,4 +98,54 @@ router.get(`/:id`, projectController.getProject)
  */
 router.post(`/`, projectController.createProject)
 
+/**
+ * @swagger
+ * /api/projects/{id}:
+ *   put:
+ *     summary: Update the project by id
+ *     parameters:
+ *       - in: path
+ *         name: id
+ *         schema:
+ *           type: string
+ *         required: true
+ *         description: The project id
+ *     requestBody:
+ *       required: true
+ *       content:
+ *         application/json:
+ *           schema:
+ *             $ref: '#/components/schemas/Project'
+ *     responses:
+ *       200:
+ *         description: The project was updated
+ *         content:
+ *           application/json:
+ *             schema:
+ *               $ref: '#/components/schemas/Project'
+ *       404:
+ *         description: The project was not found
+ */
+router.put(`/:id`, projectController.updateProject)
+
+/**
+ * @swagger
+ * /api/projects/{id}:
+ *   delete:
+ *     summary: Delete the project by id
+ *     parameters:
+ *       - in: path
+ *         name: id
+ *         schema:
+ *           type: string
+ *         required: true
+ *         description: The project id
+ *     responses:
+ *       204:
+ *         description: The project was deleted
+ *       404:
+ *         description: The project was not found
+ */
+router.delete(`/:id`, projectController.deleteProject)
+
 export default router

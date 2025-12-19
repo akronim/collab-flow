@@ -4,6 +4,12 @@
       <h1 class="text-3xl font-bold text-gray-900">
         Projects
       </h1>
+      <SfButton
+        data-testid="create-project-button"
+        @click="handleCreateProject"
+      >
+        Create New Project
+      </SfButton>
     </div>
 
     <div class="grid gap-6 sm:grid-cols-2 lg:grid-cols-3">
@@ -15,9 +21,25 @@
         @click="openBoard(project.id)"
       >
         <template #header>
-          <span class="text-lg font-semibold text-gray-800">
-            {{ project.name }}
-          </span>
+          <div class="flex items-center justify-between">
+            <span class="text-lg font-semibold text-gray-800">
+              {{ project.name }}
+            </span>
+            <div class="flex gap-2">
+              <SfButton
+                variant="secondary"
+                size="sm"
+                :data-testid="`edit-project-${project.id}`"
+                @click.stop="handleEditProject(project)"
+              >
+                Edit
+              </SfButton>
+              <DeleteWithConfirmation
+                :item-code="project.id"
+                @delete="handleDeleteProject"
+              />
+            </div>
+          </div>
         </template>
 
         <p class="text-sm text-gray-600">
@@ -41,22 +63,49 @@
         </template>
       </SfCard>
     </div>
+    <SfModal
+      v-if="isCreateProjectModalOpen"
+      title="Create New Project"
+      @close="handleModalClose"
+    >
+      <ProjectForm
+        @submit="handleProjectSubmit"
+        @cancel="handleModalClose"
+      />
+    </SfModal>
+    <SfModal
+      v-if="isEditProjectModalOpen"
+      title="Edit Project"
+      @close="handleModalClose"
+    >
+      <ProjectForm
+        :project="editingProject"
+        @submit="handleProjectUpdate"
+        @cancel="handleModalClose"
+      />
+    </SfModal>
   </div>
 </template>
 
 <script setup lang="ts">
-import { SfButton, SfCard } from '@/components/ui'
+import { ref, onMounted } from 'vue'
+import { SfButton, SfCard, SfModal } from '@/components/ui'
 import { RouteNames } from '@/constants/routes'
 import { useProjectStore } from '@/stores'
 import { ExternalLink as LiExternalLink } from 'lucide-vue-next'
 import { storeToRefs } from 'pinia'
-import { onMounted } from 'vue'
 import { useRouter } from 'vue-router'
+import ProjectForm from '@/components/projects/ProjectForm.vue'
+import type { Project, ProjectFormData } from '@/types/project'
+import DeleteWithConfirmation from '@/components/shared/DeleteWithConfirmation.vue'
 
 const projectStore = useProjectStore()
 
 const { projects } = storeToRefs(projectStore)
 const router = useRouter()
+const isCreateProjectModalOpen = ref(false)
+const isEditProjectModalOpen = ref(false)
+const editingProject = ref<Project | null>(null)
 
 onMounted(async () => {
   await projectStore.fetchProjects()
@@ -66,9 +115,43 @@ const openBoard = async (projectId: string): Promise<void> => {
   await router.push({
     name: RouteNames.PROJECT_BOARD,
     params: {
-      projectId: projectId
+      projectId
     }
   })
+}
+
+const handleCreateProject = (): void => {
+  isCreateProjectModalOpen.value = true
+}
+
+const handleModalClose = (): void => {
+  isCreateProjectModalOpen.value = false
+  isEditProjectModalOpen.value = false
+  editingProject.value = null
+}
+
+const handleProjectSubmit = async (data: ProjectFormData): Promise<void> => {
+  await projectStore.addProject(data)
+  await projectStore.fetchProjects()
+  handleModalClose()
+}
+
+const handleEditProject = (project: Project): void => {
+  editingProject.value = project
+  isEditProjectModalOpen.value = true
+}
+
+const handleProjectUpdate = async (data: ProjectFormData): Promise<void> => {
+  if (editingProject.value) {
+    await projectStore.updateProject(editingProject.value.id, data)
+    await projectStore.fetchProjects()
+    handleModalClose()
+  }
+}
+
+const handleDeleteProject = async (projectId: string): Promise<void> => {
+  await projectStore.deleteProject(projectId)
+  await projectStore.fetchProjects()
 }
 </script>
 

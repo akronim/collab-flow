@@ -36,9 +36,11 @@ describe(`KanbanCard.vue`, () => {
     expect(wrapper.emitted(`edit`)).toBeDefined()
   })
 
-  it(`emits a delete event on delete button click`, async () => {
+  it(`emits a delete event on delete button click`, () => {
     const wrapper = mount(KanbanCard, { props: { task: MOCK_TASK } })
-    await wrapper.find(`button[title="Delete task"]`).trigger(`click`)
+    
+    // Simulate the delete event from the DeleteWithConfirmation component
+    wrapper.findComponent({ name: `DeleteWithConfirmation` }).vm.$emit(`delete`)
 
     expect(wrapper.emitted(`delete`)).toBeDefined()
   })

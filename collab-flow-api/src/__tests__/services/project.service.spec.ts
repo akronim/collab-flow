@@ -56,4 +56,22 @@ describe(`Project Service`, () => {
     expect(createdProject.id).toBe(`2`)
     expect(createdProject.name).toBe(`New Project`)
   })
+
+  it(`should update a project using the repository`, async () => {
+    const updates: Partial<Project> = { name: `Updated Project` }
+    vi.mocked(projectRepository.update).mockResolvedValue({ ...mockProject, ...updates })
+
+    const updatedProject = await projectService.updateProject(`1`, updates)
+
+    expect(projectRepository.update).toHaveBeenCalledWith(`1`, updates)
+    expect(updatedProject?.name).toBe(`Updated Project`)
+  })
+
+  it(`should delete a project using the repository`, async () => {
+    vi.mocked(projectRepository.remove).mockResolvedValue()
+
+    await projectService.deleteProject(`1`)
+
+    expect(projectRepository.remove).toHaveBeenCalledWith(`1`)
+  })
 })

@@ -29,6 +29,12 @@
         v-if="authStore.isAuthenticated"
         class="flex items-center gap-2"
       >
+        <span
+          v-if="authStore.user"
+          class="text-sm font-medium text-gray-700"
+        >
+          {{ authStore.user.name }}
+        </span>
         <span class="text-sm text-gray-500">Europe/Zagreb</span>
         <SfButton
           variant="danger"

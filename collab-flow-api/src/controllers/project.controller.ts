@@ -19,5 +19,19 @@ export const projectController = {
   createProject: async (req: Request, res: Response): Promise<void> => {
     const newProject = await projectService.createProject(req.body)
     res.status(201).json(newProject)
+  },
+
+  updateProject: async (req: Request, res: Response): Promise<void> => {
+    const updatedProject = await projectService.updateProject(req.params.id, req.body)
+    if (updatedProject) {
+      res.status(200).json(updatedProject)
+    } else {
+      res.status(404).json({ message: `Project not found` })
+    }
+  },
+
+  deleteProject: async (req: Request, res: Response): Promise<void> => {
+    await projectService.deleteProject(req.params.id)
+    res.status(204).send()
   }
 }

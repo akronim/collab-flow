@@ -30,5 +30,29 @@ export const projectRepository = {
     }
     projects.push(newProject)
     return newProject
+  },
+
+  update: async (id: string, projectData: Partial<Omit<Project, `id` | `createdAt` | `taskCount`>>): Promise<Project | undefined> => {
+    const projectIndex = projects.findIndex(p => p.id === id)
+    if (projectIndex === -1) {
+      return undefined
+    }
+    const project = projects[projectIndex]
+    if (!project) {
+      return undefined
+    }
+    const updatedProject = { ...project, ...projectData }
+    projects[projectIndex] = updatedProject
+    return {
+      ...updatedProject,
+      taskCount: tasks.filter(t => t.projectId === id).length
+    }
+  },
+
+  remove: async (id: string): Promise<void> => {
+    const projectIndex = projects.findIndex(p => p.id === id)
+    if (projectIndex !== -1) {
+      projects.splice(projectIndex, 1)
+    }
   }
 }

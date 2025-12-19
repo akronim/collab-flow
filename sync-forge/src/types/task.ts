@@ -10,3 +10,8 @@ export interface Task {
 }
 
 export type TaskStatus = Task[`status`]
+
+export interface TaskFormData {
+  title: string
+  description: string
+}

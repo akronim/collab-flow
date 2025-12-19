@@ -191,14 +191,9 @@ describe(`KanbanBoard.vue`, () => {
 
     const taskStore = useProjectTaskStore()
 
-    const confirmSpy = vi.spyOn(window, `confirm`).mockReturnValue(true)
-
     const columns = wrapper.findAllComponents(KanbanColumn)
     columns[0]?.vm.$emit(`delete-task`, `task-1`)
 
-    expect(confirmSpy).toHaveBeenCalledWith(`Delete this task permanently?`)
     expect(taskStore.deleteTask).toHaveBeenCalledWith(`task-1`)
-
-    confirmSpy.mockRestore()
   })
 })

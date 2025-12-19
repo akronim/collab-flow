@@ -1,7 +1,7 @@
 import type { Project } from '@/types/project'
 import { defineStore } from 'pinia'
 import { projectApiService } from '@/services/project.service'
-import { showErrorNotification } from '@/utils/notificationHelper'
+import { showErrorNotification, showSuccessNotification } from '@/utils/notificationHelper'
 import { NotificationMessages } from '@/constants/notificationMessages'
 
 interface ProjectState {
@@ -41,12 +41,31 @@ export const useProjectStore = defineStore(`projects`, {
       return undefined
     },
 
-    addProject(newProject: Omit<Project, `createdAt`>): void {
-      const project: Project = {
-        ...newProject,
-        createdAt: new Date().toISOString()
+    async addProject(newProject: Omit<Project, `id` | `createdAt` | `taskCount`>): Promise<void> {
+      const result = await projectApiService.createProject(newProject)
+      if (result.isSuccess()) {
+        showSuccessNotification(NotificationMessages.CREATED)
+      } else {
+        showErrorNotification(result.error, NotificationMessages.SAVE_FAILED)
       }
-      this.projects.push(project)
+    },
+
+    async updateProject(id: string, project: Partial<Omit<Project, `id` | `createdAt` | `taskCount`>>): Promise<void> {
+      const result = await projectApiService.updateProject(id, project)
+      if (result.isSuccess()) {
+        showSuccessNotification(NotificationMessages.UPDATED)
+      } else {
+        showErrorNotification(result.error, NotificationMessages.SAVE_FAILED)
+      }
+    },
+
+    async deleteProject(id: string): Promise<void> {
+      const result = await projectApiService.deleteProject(id)
+      if (result.isSuccess()) {
+        showSuccessNotification(NotificationMessages.DELETED)
+      } else {
+        showErrorNotification(result.error, NotificationMessages.DELETE_FAILED)
+      }
     }
   }
 })

@@ -34,15 +34,10 @@
           >
             <LiSquarePen class="w-4 h-4" />
           </SfButton>
-          <SfButton
-            variant="ghost"
-            size="sm"
-            title="Delete task"
-            aria-label="Delete task"
-            @click.stop="emit('delete')"
-          >
-            <LiTrash2 class="w-4 h-4" />
-          </SfButton>
+          <DeleteWithConfirmation
+            :item-code="task.id"
+            @delete="emit('delete')"
+          />
         </div>
       </div>
     </template>
@@ -53,9 +48,10 @@
 import { computed } from 'vue'
 import { formatToLocalDayMonthYearTime } from '@/utils/date'
 import type { Task } from '@/types/task'
-import { SquarePen as LiSquarePen, Trash2 as LiTrash2 } from 'lucide-vue-next'
+import { SquarePen as LiSquarePen } from 'lucide-vue-next'
 import { SfButton, SfCard } from '@/components/ui'
 import { sanitizeHtml } from '@/utils/sanitize'
+import DeleteWithConfirmation from '@/components/shared/DeleteWithConfirmation.vue'
 
 interface Props {
   task: Task

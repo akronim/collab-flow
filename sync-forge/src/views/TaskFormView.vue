@@ -24,61 +24,24 @@
       <p>Loading task...</p>
     </div>
 
-    <form
+    <TaskForm
       v-else
-      class="bg-white rounded-lg shadow p-6"
-      @submit.prevent="saveTask"
-    >
-      <SfInput
-        v-model="form.title"
-        label="Title"
-        required
-        placeholder="Enter task title"
-        class="mb-4"
-      />
-
-      <div class="mb-6">
-        <label class="block text-sm font-medium text-gray-700 mb-1">
-          Description
-        </label>
-        <JoditEditor
-          v-model:editor-model="form.description"
-          :config="{
-            placeholder: 'Add description (optional)'
-          }"
-        />
-      </div>
-
-      <div class="flex justify-end gap-3">
-        <SfButton
-          variant="outline"
-          type="button"
-          @click="cancel"
-        >
-          Cancel
-        </SfButton>
-        <SfButton
-          type="submit"
-          variant="primary"
-          :disabled="isLoading || !titleExists"
-        >
-          {{ isEditMode ? 'Update' : 'Create' }} Task
-        </SfButton>
-      </div>
-    </form>
+      v-model="form"
+      :is-edit-mode="isEditMode"
+      :is-loading="isLoading"
+      :title-exists="titleExists"
+      @submit="saveTask"
+      @cancel="cancel"
+    />
   </div>
 </template>
 
 <script setup lang="ts">
-import { defineAsyncComponent, computed, onMounted } from 'vue'
+import { computed, onMounted } from 'vue'
 import { useRoute } from 'vue-router'
 import { useTaskForm } from '@/composables/useTaskForm'
 import type { TaskStatus } from '@/types/task'
-import { SfButton, SfInput } from '@/components/ui'
-
-const JoditEditor = defineAsyncComponent(
-  () => import(`@/components/editors/jodit/JoditEditor.vue`)
-)
+import TaskForm from '@/components/tasks/TaskForm.vue'
 
 const route = useRoute()
 

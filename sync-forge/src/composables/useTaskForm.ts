@@ -1,14 +1,9 @@
 import { ref, computed, type Ref } from 'vue'
 import { useRouter } from 'vue-router'
 import { useProjectTaskStore } from '@/stores'
-import type { TaskStatus } from '@/types/task'
+import type { TaskStatus, TaskFormData } from '@/types/task'
 import Logger from '@/utils/logger'
 import { RouteNames } from '@/constants/routes'
-
-interface TaskFormData {
-  title: string
-  description: string
-}
 
 interface UseTaskFormOptions {
   projectId: Ref<string>
