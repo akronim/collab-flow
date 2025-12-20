@@ -13,6 +13,7 @@ describe(`Task Service`, () => {
     title: `Test Task`,
     status: `todo`,
     order: 1,
+    assigneeId: null,
     createdAt: new Date().toISOString(),
     updatedAt: new Date().toISOString()
   }
@@ -62,7 +63,8 @@ describe(`Task Service`, () => {
         projectId: `1`,
         title: `New Task`,
         status: `backlog`,
-        order: 2
+        order: 2,
+        assigneeId: null
       }
       vi.mocked(taskRepository.create).mockResolvedValue({ id: `2`, ...newTaskData, createdAt: ``, updatedAt: `` })
 

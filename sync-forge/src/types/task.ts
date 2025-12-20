@@ -5,6 +5,7 @@ export interface Task {
   description?: string
   status: `backlog` | `todo` | `inprogress` | `done`
   order: number // for sorting within column
+  assigneeId: string | null
   createdAt: string
   updatedAt: string
 }

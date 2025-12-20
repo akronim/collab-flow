@@ -104,7 +104,8 @@ export function useTaskForm(options: UseTaskFormOptions): UseTaskFormReturn {
         title: trimmedTitle,
         description: trimmedDescription,
         status: targetStatus,
-        order: projectTaskStore.byStatus(targetStatus).length
+        order: projectTaskStore.byStatus(targetStatus).length,
+        assigneeId: null
       })
     }
   }

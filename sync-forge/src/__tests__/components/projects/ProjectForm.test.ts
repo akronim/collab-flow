@@ -51,6 +51,7 @@ describe(`ProjectForm.vue`, () => {
       name: `Existing Project`,
       description: `An existing project description.`,
       createdAt: ``,
+      updatedAt: ``,
       taskCount: 0
     }
     const wrapper = mount(ProjectForm, {

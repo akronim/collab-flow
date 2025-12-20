@@ -1,4 +1,4 @@
-import { type Project } from '../types/project'
+import { type ProjectRow } from '../types/project'
 import { type Task } from '../types/task'
 import { type User } from '../types/user'
 
@@ -37,20 +37,20 @@ const initialUsers: User[] = [
   }
 ]
 
-const initialProjects: Project[] = [
+const initialProjects: ProjectRow[] = [
   {
     id: `proj-1`,
     name: `SyncForge Frontend`,
     description: `The main frontend application for SyncForge.`,
     createdAt: `2024-01-01T00:00:00.000Z`,
-    taskCount: 3
+    updatedAt: `2024-01-10T00:00:00.000Z`
   },
   {
     id: `proj-2`,
     name: `CollabFlow API`,
     description: `The new backend API for tasks, projects, and users.`,
     createdAt: `2024-01-05T00:00:00.000Z`,
-    taskCount: 2
+    updatedAt: `2024-01-14T00:00:00.000Z`
   }
 ]
 
@@ -62,6 +62,7 @@ const initialTasks: Task[] = [
     description: `Set up JWT authentication with refresh tokens.`,
     status: `done`,
     order: 1,
+    assigneeId: `user-1`,
     createdAt: `2024-01-02T00:00:00.000Z`,
     updatedAt: `2024-01-10T00:00:00.000Z`
   },
@@ -72,6 +73,7 @@ const initialTasks: Task[] = [
     description: `Plan the schema for projects, tasks, and users.`,
     status: `inprogress`,
     order: 2,
+    assigneeId: `user-2`,
     createdAt: `2024-01-03T00:00:00.000Z`,
     updatedAt: `2024-01-12T00:00:00.000Z`
   },
@@ -82,6 +84,7 @@ const initialTasks: Task[] = [
     description: `Configure GitHub Actions for automated testing and deployment.`,
     status: `todo`,
     order: 3,
+    assigneeId: null,
     createdAt: `2024-01-04T00:00:00.000Z`,
     updatedAt: `2024-01-04T00:00:00.000Z`
   },
@@ -92,6 +95,7 @@ const initialTasks: Task[] = [
     description: `Implement REST endpoints for CRUD operations.`,
     status: `inprogress`,
     order: 1,
+    assigneeId: `user-1`,
     createdAt: `2024-01-06T00:00:00.000Z`,
     updatedAt: `2024-01-14T00:00:00.000Z`
   },
@@ -102,6 +106,7 @@ const initialTasks: Task[] = [
     description: `Implement request body validation using Zod.`,
     status: `backlog`,
     order: 2,
+    assigneeId: null,
     createdAt: `2024-01-07T00:00:00.000Z`,
     updatedAt: `2024-01-07T00:00:00.000Z`
   }
@@ -112,7 +117,7 @@ const initialTasks: Task[] = [
  * These are initialized from the seed data.
  */
 export let users: User[] = structuredClone(initialUsers)
-export let projects: Project[] = structuredClone(initialProjects)
+export let projects: ProjectRow[] = structuredClone(initialProjects)
 export let tasks: Task[] = structuredClone(initialTasks)
 
 /**
@@ -120,7 +125,7 @@ export let tasks: Task[] = structuredClone(initialTasks)
  * Useful for tests to get a clean slate.
  */
 export const createUserSeeds = (): User[] => structuredClone(initialUsers)
-export const createProjectSeeds = (): Project[] => structuredClone(initialProjects)
+export const createProjectSeeds = (): ProjectRow[] => structuredClone(initialProjects)
 export const createTaskSeeds = (): Task[] => structuredClone(initialTasks)
 
 /**

@@ -54,7 +54,8 @@ describe(`Task Repository`, () => {
         title: `New Task`,
         description: `A new task description`,
         status: `todo`,
-        order: 10
+        order: 10,
+        assigneeId: null
       }
 
       const result = await taskRepository.create(newTaskData)

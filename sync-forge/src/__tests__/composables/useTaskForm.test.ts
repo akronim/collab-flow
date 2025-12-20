@@ -27,6 +27,7 @@ const createMockTask = (overrides: Partial<Task> = {}): Task => ({
   description: `Test description`,
   status: `todo`,
   order: 0,
+  assigneeId: null,
   createdAt: new Date().toISOString(),
   updatedAt: new Date().toISOString(),
   ...overrides

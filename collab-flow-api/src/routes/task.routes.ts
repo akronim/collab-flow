@@ -37,8 +37,10 @@ const router = Router()
  *         order:
  *           type: number
  *           description: The order of the task
- *         assignee:
- *           $ref: '#/components/schemas/User'
+ *         assigneeId:
+ *           type: string
+ *           nullable: true
+ *           description: The ID of the assigned user
  *         createdAt:
  *           type: string
  *           format: date-time

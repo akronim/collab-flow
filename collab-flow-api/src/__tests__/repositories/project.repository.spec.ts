@@ -1,7 +1,7 @@
 import { describe, it, expect, beforeEach } from 'vitest'
 import { projectRepository } from '@/repositories/project.repository'
 import { resetMockData, projects } from '@/data/mockData'
-import { type Project } from '@/types/project'
+import { type ProjectRow } from '@/types/project'
 
 describe(`Project Repository`, () => {
   beforeEach(() => {
@@ -33,7 +33,7 @@ describe(`Project Repository`, () => {
 
   describe(`create`, () => {
     it(`should create a new project`, async () => {
-      const newProjectData: Omit<Project, `id` | `createdAt` | `taskCount`> = {
+      const newProjectData: Omit<ProjectRow, `id` | `createdAt` | `updatedAt`> = {
         name: `New Project`,
         description: `A brand new project`
       }

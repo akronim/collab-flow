@@ -63,6 +63,7 @@ describe(`ProjectBoardView.vue`, () => {
       name: `Test Project`,
       description: ``,
       createdAt: new Date().toISOString(),
+      updatedAt: new Date().toISOString(),
       taskCount: 0
     }
     vi.mocked(projectApiService.getProjectById).mockResolvedValue(

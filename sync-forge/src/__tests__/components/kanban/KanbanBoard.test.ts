@@ -71,6 +71,7 @@ describe(`KanbanBoard.vue`, () => {
           status: `todo`,
           title: `Test Task`,
           order: 0,
+          assigneeId: null,
           description: ``,
           createdAt: ``,
           updatedAt: ``
@@ -117,6 +118,7 @@ describe(`KanbanBoard.vue`, () => {
           title: `Todo Task`,
           projectId: `proj-1`,
           order: 1,
+          assigneeId: null,
           description: ``,
           createdAt: ``,
           updatedAt: ``
@@ -180,6 +182,7 @@ describe(`KanbanBoard.vue`, () => {
       status: `todo`,
       title: `Test Task`,
       order: 0,
+      assigneeId: null,
       description: ``,
       createdAt: ``,
       updatedAt: ``

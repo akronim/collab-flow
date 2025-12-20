@@ -10,6 +10,7 @@ export const mockTasks: Task[] = [
     status: `todo`,
     projectId: `proj-1`,
     order: 0,
+    assigneeId: null,
     description: ``,
     createdAt: new Date().toISOString(),
     updatedAt: new Date().toISOString()
@@ -20,6 +21,7 @@ export const mockTasks: Task[] = [
     status: `todo`,
     projectId: `proj-1`,
     order: 1,
+    assigneeId: null,
     description: ``,
     createdAt: new Date().toISOString(),
     updatedAt: new Date().toISOString()
@@ -30,6 +32,7 @@ export const mockTasks: Task[] = [
     status: `todo`,
     projectId: `proj-1`,
     order: 2,
+    assigneeId: null,
     description: ``,
     createdAt: new Date().toISOString(),
     updatedAt: new Date().toISOString()
@@ -42,6 +45,7 @@ export const mockProjects: Project[] = [
     name: `Website Redesign`,
     description: `Update marketing site`,
     createdAt: new Date().toISOString(),
+    updatedAt: new Date().toISOString(),
     taskCount: 3
   }
 ]

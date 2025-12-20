@@ -41,7 +41,7 @@ export const useProjectStore = defineStore(`projects`, {
       return undefined
     },
 
-    async addProject(newProject: Omit<Project, `id` | `createdAt` | `taskCount`>): Promise<void> {
+    async addProject(newProject: Omit<Project, `id` | `createdAt` | `updatedAt` | `taskCount`>): Promise<void> {
       const result = await projectApiService.createProject(newProject)
       if (result.isSuccess()) {
         showSuccessNotification(NotificationMessages.CREATED)
@@ -50,7 +50,10 @@ export const useProjectStore = defineStore(`projects`, {
       }
     },
 
-    async updateProject(id: string, project: Partial<Omit<Project, `id` | `createdAt` | `taskCount`>>): Promise<void> {
+    async updateProject(
+      id: string,
+      project: Partial<Omit<Project, `id` | `createdAt` | `updatedAt` | `taskCount`>>
+    ): Promise<void> {
       const result = await projectApiService.updateProject(id, project)
       if (result.isSuccess()) {
         showSuccessNotification(NotificationMessages.UPDATED)

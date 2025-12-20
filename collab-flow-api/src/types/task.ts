@@ -1,5 +1,3 @@
-import { type User } from './user'
-
 export interface Task {
   id: string
   projectId: string
@@ -7,7 +5,7 @@ export interface Task {
   description?: string
   status: `backlog` | `todo` | `inprogress` | `done`
   order: number
-  assignee?: User
+  assigneeId: string | null
   createdAt: string
   updatedAt: string
 }

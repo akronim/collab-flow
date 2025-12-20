@@ -10,6 +10,7 @@ const MOCK_TASK: Task = {
   status: `todo`,
   projectId: `proj-1`,
   order: 0,
+  assigneeId: null,
   createdAt: new Date().toISOString(),
   updatedAt: new Date().toISOString()
 }

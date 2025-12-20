@@ -87,7 +87,8 @@ describe(`useProjectStore`, () => {
       it(`should call createProject and show success notification on success`, async () => {
         const store = useProjectStore()
         const newProject = { name: `New Project`, description: `A new project` }
-        const createdProject = { ...newProject, id: `3`, createdAt: new Date().toISOString(), taskCount: 0 }
+        const now = new Date().toISOString()
+        const createdProject = { ...newProject, id: `3`, createdAt: now, updatedAt: now, taskCount: 0 }
         vi.mocked(projectApiService.createProject).mockResolvedValue(ApiCallResult.Success(createdProject))
 
         await store.addProject(newProject)

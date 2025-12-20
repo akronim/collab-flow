@@ -1,4 +1,4 @@
-import { type Project } from '../types/project'
+import { type Project, type ProjectRow } from '../types/project'
 import { projects, tasks } from '../data/mockData'
 import { randomUUID } from 'crypto'
 
@@ -21,18 +21,22 @@ export const projectRepository = {
     return undefined
   },
 
-  create: async (projectData: Omit<Project, `id` | `createdAt` | `taskCount`>): Promise<Project> => {
-    const newProject: Project = {
+  create: async (projectData: Omit<ProjectRow, `id` | `createdAt` | `updatedAt`>): Promise<Project> => {
+    const now = new Date().toISOString()
+    const newProject: ProjectRow = {
       id: randomUUID(),
       ...projectData,
-      createdAt: new Date().toISOString(),
-      taskCount: 0
+      createdAt: now,
+      updatedAt: now
     }
     projects.push(newProject)
-    return newProject
+    return {
+      ...newProject,
+      taskCount: 0
+    }
   },
 
-  update: async (id: string, projectData: Partial<Omit<Project, `id` | `createdAt` | `taskCount`>>): Promise<Project | undefined> => {
+  update: async (id: string, projectData: Partial<Omit<ProjectRow, `id` | `createdAt` | `updatedAt`>>): Promise<Project | undefined> => {
     const projectIndex = projects.findIndex(p => p.id === id)
     if (projectIndex === -1) {
       return undefined
@@ -41,7 +45,11 @@ export const projectRepository = {
     if (!project) {
       return undefined
     }
-    const updatedProject = { ...project, ...projectData }
+    const updatedProject: ProjectRow = {
+      ...project,
+      ...projectData,
+      updatedAt: new Date().toISOString()
+    }
     projects[projectIndex] = updatedProject
     return {
       ...updatedProject,

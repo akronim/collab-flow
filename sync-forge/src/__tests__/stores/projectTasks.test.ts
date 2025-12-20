@@ -61,7 +61,8 @@ describe(`useProjectTaskStore`, () => {
         projectId: `proj-1`,
         title: `New Task`,
         status: `todo`,
-        order: 0
+        order: 0,
+        assigneeId: null
       }
       const createdTask: Task = {
         ...newTaskData,
@@ -91,7 +92,8 @@ describe(`useProjectTaskStore`, () => {
         projectId: `proj-1`,
         title: `New Task`,
         status: `todo`,
-        order: 0
+        order: 0,
+        assigneeId: null
       })
 
       expect(result).toBeUndefined()
