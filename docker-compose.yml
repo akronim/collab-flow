@@ -1,0 +1,28 @@
+# Docker Compose configuration for CollabFlow development database
+
+services:
+  postgres:
+    image: postgres:16-alpine        # PostgreSQL 16 on lightweight Alpine Linux
+    container_name: collabflow-db    # Fixed name for easy reference
+    ports:
+      - "5432:5432"                   # Map host port 5432 to container port 5432
+    environment:
+      POSTGRES_USER: collab          # Database superuser name
+      POSTGRES_PASSWORD: collab      # Database superuser password
+      POSTGRES_DB: collabflow        # Default database to create on startup
+    volumes:
+      - postgres_data:/var/lib/postgresql/data  # Persist data between restarts
+    restart: unless-stopped          # Auto-restart unless manually stopped
+
+# Named volume for persistent storage (survives container removal)
+volumes:
+  postgres_data:
+
+# Usage:
+#   docker compose up -d      Start PostgreSQL in background
+#   docker compose down       Stop PostgreSQL
+#   docker compose down -v    Stop and DELETE all data (fresh start)
+#   docker compose logs -f    View logs
+#
+# Connection string:
+#   postgresql://collab:collab@localhost:5432/collabflow

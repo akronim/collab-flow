@@ -2,11 +2,12 @@ import { describe, it, expect } from 'vitest'
 import {
   validateSecrets,
   mergeSecrets,
+  mergeDatabase,
   generateEnvContents,
   ENV_KEYS,
   ERROR_MESSAGES,
 } from '../sync'
-import type { SecretsConfig, SharedConfig, PortsConfig } from '../sync'
+import type { SecretsConfig, SharedConfig, PortsConfig, DatabaseConfig } from '../sync'
 
 const validSecrets: SecretsConfig = {
   GOOGLE_CLIENT_ID: '123456789-abcdef.apps.googleusercontent.com',
@@ -16,6 +17,22 @@ const validSecrets: SecretsConfig = {
 const baseSecrets: SecretsConfig = {
   GOOGLE_CLIENT_ID: 'base-client-id',
   GOOGLE_CLIENT_SECRET: 'base-client-secret',
+}
+
+const validDatabase: DatabaseConfig = {
+  host: 'localhost',
+  port: 5432,
+  user: 'test_user',
+  password: 'test_password',
+  name: 'test_db',
+}
+
+const baseDatabase: DatabaseConfig = {
+  host: 'base-host',
+  port: 5432,
+  user: 'base-user',
+  password: 'base-password',
+  name: 'base-db',
 }
 
 const sharedConfig: SharedConfig = {
@@ -97,11 +114,34 @@ describe('mergeSecrets', () => {
   })
 })
 
+describe('mergeDatabase', () => {
+  it('should return base database config when no local config provided', () => {
+    const result = mergeDatabase(baseDatabase)
+    expect(result).toEqual(baseDatabase)
+  })
+
+  it('should return base database config when local config is undefined', () => {
+    const result = mergeDatabase(baseDatabase, undefined)
+    expect(result).toEqual(baseDatabase)
+  })
+
+  it('should override base database config with local config', () => {
+    const localDatabase = { host: 'local-host', password: 'local-password' }
+    const result = mergeDatabase(baseDatabase, localDatabase)
+    expect(result).toEqual({
+      ...baseDatabase,
+      host: 'local-host',
+      password: 'local-password',
+    })
+  })
+})
+
 describe(`generateEnvContents`, () => {
   const input = {
     env: `development`,
     shared: sharedConfig,
     ports: portsConfig,
+    database: validDatabase,
     secrets: validSecrets,
     sessionSecret: `test-session-secret-hex`,
     internalJwtSecret: `test-internal-jwt-secret-hex`,
@@ -119,6 +159,7 @@ describe(`generateEnvContents`, () => {
 
     expect(apiEnv).toContain(`${ENV_KEYS.PORT}=3002`)
     expect(apiEnv).toContain(`${ENV_KEYS.NODE_ENV}=development`)
+    expect(apiEnv).toContain(`${ENV_KEYS.DATABASE_URL}=postgresql://test_user:test_password@localhost:5432/test_db`)
     expect(apiEnv).toContain(`${ENV_KEYS.GOOGLE_CLIENT_ID}=${validSecrets.GOOGLE_CLIENT_ID}`)
     expect(apiEnv).toContain(`${ENV_KEYS.INTERNAL_JWT_SECRET}=test-internal-jwt-secret-hex`)
     expect(apiEnv.endsWith(`\n`)).toBe(true)

@@ -6,9 +6,18 @@ export interface Config {
   [key: string]: EnvironmentConfig;
 }
 
+export interface DatabaseConfig {
+  host: string;
+  port: number;
+  user: string;
+  password: string;
+  name: string;
+}
+
 export interface EnvironmentConfig {
   shared: SharedConfig;
   ports: PortsConfig;
+  database: DatabaseConfig;
   secrets: SecretsConfig;
 }
 
@@ -35,6 +44,7 @@ export interface SecretsConfig {
 export type LocalConfig = {
   [key: string]: {
     secrets?: Partial<SecretsConfig>;
+    database?: Partial<DatabaseConfig>;
   };
 };
 
@@ -47,6 +57,7 @@ export const ENV_KEYS = {
   NODE_ENV: `NODE_ENV`,
   CORS_ORIGIN: `CORS_ORIGIN`,
   COLLAB_FLOW_API_URL: `COLLAB_FLOW_API_URL`,
+  DATABASE_URL: `DATABASE_URL`,
   GOOGLE_CLIENT_ID: `GOOGLE_CLIENT_ID`,
   GOOGLE_CLIENT_SECRET: `GOOGLE_CLIENT_SECRET`,
   REDIRECT_URI: `REDIRECT_URI`,
@@ -66,6 +77,7 @@ export interface GenerateEnvInput {
   env: string;
   shared: SharedConfig;
   ports: PortsConfig;
+  database: DatabaseConfig;
   secrets: SecretsConfig;
   sessionSecret: string;
   internalJwtSecret: string;
@@ -96,17 +108,29 @@ export const mergeSecrets = (
   }
 }
 
+export const mergeDatabase = (
+  baseDatabase: DatabaseConfig,
+  localDatabase?: Partial<DatabaseConfig>
+): DatabaseConfig => {
+  return {
+    ...baseDatabase,
+    ...localDatabase,
+  }
+}
+
 export const generateEnvContents = (input: GenerateEnvInput): Record<string, string> => {
-  const { env, shared, ports, secrets, sessionSecret, internalJwtSecret, encryptionKey } = input
+  const { env, shared, ports, database, secrets, sessionSecret, internalJwtSecret, encryptionKey } = input
 
   const collabFlowApiUrl = `http://localhost:${ports.collab_flow_api}`
   const googleOauthBackendUrl = `http://localhost:${ports.google_oauth_backend}`
   const syncForgeUrl = `http://localhost:${ports.sync_forge}`
+  const databaseUrl = `postgresql://${database.user}:${database.password}@${database.host}:${database.port}/${database.name}`
 
   return {
     'collab-flow-api': [
       `${ENV_KEYS.PORT}=${ports.collab_flow_api}`,
       `${ENV_KEYS.NODE_ENV}=${env}`,
+      `${ENV_KEYS.DATABASE_URL}=${databaseUrl}`,
       `${ENV_KEYS.GOOGLE_CLIENT_ID}=${secrets.GOOGLE_CLIENT_ID}`,
       `${ENV_KEYS.INTERNAL_JWT_SECRET}=${internalJwtSecret}`,
     ].join(`\n`) + `\n`,
@@ -164,13 +188,21 @@ export const run = (options: RunOptions = {}): void => {
 
   const localConfigPath = path.resolve(__dirname, 'config.local.json')
   let mergedSecrets = envConfig.secrets
+  let mergedDatabase = envConfig.database
+
   try {
     if (fs.existsSync(localConfigPath)) {
       const localConfigFile = fs.readFileSync(localConfigPath, 'utf-8')
       const localConfig: LocalConfig = JSON.parse(localConfigFile)
+      
       if (localConfig[env]?.secrets) {
         mergedSecrets = mergeSecrets(envConfig.secrets, localConfig[env]?.secrets)
         console.log(`🤫 Merged secrets from config.local.json for [${env}]`)
+      }
+
+      if (localConfig[env]?.database) {
+        mergedDatabase = mergeDatabase(envConfig.database, localConfig[env]?.database)
+        console.log(`🗄️  Merged database config from config.local.json for [${env}]`)
       }
     }
   } catch (error) {
@@ -188,6 +220,7 @@ export const run = (options: RunOptions = {}): void => {
     env,
     shared: envConfig.shared,
     ports: envConfig.ports,
+    database: mergedDatabase,
     secrets: mergedSecrets,
     sessionSecret,
     internalJwtSecret,

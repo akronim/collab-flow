@@ -20,6 +20,7 @@ The goal of this setup is to separate three distinct types of configuration:
 ### `config.local.json`
 -   **Purpose:** This is your **local secrets and overrides file**. It is for your machine only.
 -   **Contents:** It holds the **real, sensitive values** for the secrets defined as placeholders in `config.json`. The script merges this file's contents over the base configuration at runtime.
+-   **Database Overrides:** You can also override the default database connection settings here (e.g., if you are using a non-Docker database or connecting to an external server).
 -   **Git Status:** **NEVER committed** to Git. This file is listed in the root `.gitignore`.
 
 ### `config.local.json.example`

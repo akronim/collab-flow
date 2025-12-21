@@ -13,6 +13,13 @@
       "google_oauth_backend": 3001,
       "sync_forge": 5173
     },
+    "database": {
+      "host": "localhost",
+      "port": 5432,
+      "user": "collab",
+      "password": "collab",
+      "name": "collabflow"
+    },
     "secrets": {
       "GOOGLE_CLIENT_ID": "your-google-client-id.apps.googleusercontent.com",
       "GOOGLE_CLIENT_SECRET": "your-google-client-secret"
