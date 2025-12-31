@@ -64,9 +64,16 @@ describe(`Project Controller`, () => {
   })
 
   it(`DELETE /:id should delete a project`, async () => {
-    vi.mocked(projectService.deleteProject).mockResolvedValue()
+    vi.mocked(projectService.deleteProject).mockResolvedValue(true)
 
     const res = await request(app).delete(`/1`)
     expect(res.status).toBe(204)
+  })
+
+  it(`DELETE /:id should return 404 if project not found`, async () => {
+    vi.mocked(projectService.deleteProject).mockResolvedValue(false)
+
+    const res = await request(app).delete(`/999`)
+    expect(res.status).toBe(404)
   })
 })

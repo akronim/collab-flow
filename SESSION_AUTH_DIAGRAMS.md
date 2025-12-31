@@ -20,13 +20,16 @@ flowchart TB
     end
 
     subgraph Storage
-        SS[(Session Store<br/>In-Memory → PostgreSQL)]
+        SS[(Session Store<br/>PostgreSQL)]
+        DB[(Database<br/>PostgreSQL)]
     end
 
     FE <-->|Session Cookie<br/>+ CSRF Token| GW
     GW <-->|Internal JWT<br/>5-min expiry| API
     GW <--> Google
     GW <--> SS
+    GW -->|Find/Create User| DB
+    API <--> DB
 ```
 
 ---
@@ -41,6 +44,9 @@ flowchart LR
 
     subgraph google-oauth-backend
         direction TB
+        HLM[helmet]
+        CORS[cors]
+        JSON[express.json]
         CP[cookie-parser]
         ES[express-session]
         CSRF[CSRF Middleware]
@@ -53,10 +59,13 @@ flowchart LR
         ROUTES[API Routes]
     end
 
-    B -->|1. Request + Session Cookie| CP
+    B -->|1. Request + Session Cookie| HLM
+    HLM --> CORS
+    CORS --> JSON
+    JSON --> CP
     CP --> ES
-    ES -->|2. Validate session<br/>populate req.session| CSRF
-    CSRF -->|3. Validate CSRF token| RS
+    ES -->|2. Load session<br/>from PostgreSQL| CSRF
+    CSRF -->|3. Validate CSRF token<br/>on POST/PUT/PATCH/DELETE| RS
     RS -->|4. Check userId exists| GWM
     GWM -->|5. Create internal JWT<br/>from session data| AUTH
     AUTH -->|6. Verify JWT| ROUTES
@@ -73,7 +82,8 @@ sequenceDiagram
     participant FE as sync-forge
     participant GW as google-oauth-backend
     participant G as Google
-    participant SS as Session Store
+    participant DB as PostgreSQL (users)
+    participant SS as Session Store (PostgreSQL)
 
     U->>FE: Click "Sign in with Google"
     FE->>FE: Generate PKCE (verifier + challenge)
@@ -87,6 +97,8 @@ sequenceDiagram
     G-->>GW: Google tokens
     GW->>G: Fetch user info
     G-->>GW: {id, email, name}
+    GW->>DB: findOrCreateUser(email, googleId, name)
+    DB-->>GW: User with internal UUID
     GW->>GW: req.session.regenerate()
     GW->>GW: Encrypt Google refresh token
     GW->>SS: Store session {userId, email, name, encryptedToken}
@@ -107,7 +119,7 @@ sequenceDiagram
 sequenceDiagram
     participant FE as sync-forge
     participant GW as google-oauth-backend
-    participant SS as Session Store
+    participant SS as Session Store (PostgreSQL)
     participant API as collab-flow-api
 
     FE->>GW: POST /api/projects<br/>Cookie: collabflow.sid<br/>X-CSRF-Token: xxx<br/>[req body]
@@ -133,9 +145,10 @@ sequenceDiagram
 sequenceDiagram
     participant FE as sync-forge
     participant GW as google-oauth-backend
-    participant SS as Session Store
+    participant SS as Session Store (PostgreSQL)
 
     FE->>GW: POST /api/auth/logout<br/>Cookie: collabflow.sid<br/>X-CSRF-Token: xxx
+    GW->>GW: Validate CSRF token<br/>(header vs cookie)
     GW->>SS: Get userId from session
     SS-->>GW: userId
     GW->>SS: destroyAllByUserId(userId)

@@ -7,13 +7,19 @@ import {
   handleGetInternalToken
 } from '../../controllers/auth.controller'
 import * as AuthService from '../../services/auth.service'
-import { sessionStore } from '../../services/sessionStore.service'
+import * as UserService from '../../services/user.service'
+import { sessionStore } from '../../middleware/session.middleware'
 import * as Encryption from '../../utils/encryption'
 import { AppError } from '../../utils/errors'
 
 // Mock services
 vi.mock(`../../services/auth.service`)
-vi.mock(`../../services/sessionStore.service`)
+vi.mock(`../../services/user.service`)
+vi.mock(`../../middleware/session.middleware`, () => ({
+  sessionStore: {
+    destroyAllByUserId: vi.fn((_: string, cb?: (err?: Error) => void) => cb?.())
+  }
+}))
 vi.mock(`../../utils/encryption`)
 
 describe(`Auth Controller`, () => {
@@ -47,23 +53,44 @@ describe(`Auth Controller`, () => {
 
   // --- Tests for handleTokenRequest ---
   describe(`handleTokenRequest`, () => {
-    it(`should create a session and return success on valid code`, async () => {
+    it(`should create a session with internal UUID and return success on valid code`, async () => {
       const mockGoogleTokens = { access_token: `google_access`, refresh_token: `google_refresh` }
-      const mockUserData = { sub: `123`, email: `test@example.com`, name: `Test User` }
+      const mockGoogleUserData = { sub: `google-123`, email: `test@example.com`, name: `Test User`, picture: `https://example.com/pic.jpg` }
+      const mockCollabFlowUser = {
+        id: `internal-uuid-456`,
+        googleUserId: `google-123`,
+        email: `test@example.com`,
+        name: `Test User`,
+        avatar: `https://example.com/pic.jpg`,
+        role: `member`,
+        status: `active`,
+        createdAt: `2024-01-01T00:00:00.000Z`,
+        updatedAt: `2024-01-01T00:00:00.000Z`
+      }
       const mockEncryptedToken = `encrypted_token`
 
       vi.spyOn(AuthService, `exchangeCodeForToken`).mockResolvedValue(mockGoogleTokens as any)
-      vi.spyOn(AuthService, `validateAccessToken`).mockResolvedValue(mockUserData as any)
+      vi.spyOn(AuthService, `validateAccessToken`).mockResolvedValue(mockGoogleUserData as any)
+      vi.spyOn(UserService, `findOrCreateUser`).mockResolvedValue(mockCollabFlowUser)
       vi.spyOn(Encryption, `encrypt`).mockReturnValue(mockEncryptedToken)
 
       req.body = { code: `valid_code`, codeVerifier: `valid_verifier` }
 
       await handleTokenRequest(req as Request<Record<string, never>, any, any>, res as Response, next)
 
+      // Verify findOrCreateUser was called with Google data
+      expect(UserService.findOrCreateUser).toHaveBeenCalledWith({
+        googleUserId: mockGoogleUserData.sub,
+        email: mockGoogleUserData.email,
+        name: mockGoogleUserData.name,
+        avatar: mockGoogleUserData.picture
+      })
+
       expect(req.session!.regenerate).toHaveBeenCalled()
-      expect(req.session!.userId).toBe(mockUserData.sub)
-      expect(req.session!.email).toBe(mockUserData.email)
-      expect(req.session!.name).toBe(mockUserData.name)
+      // Session should use internal UUID, not Google sub
+      expect(req.session!.userId).toBe(mockCollabFlowUser.id)
+      expect(req.session!.email).toBe(mockCollabFlowUser.email)
+      expect(req.session!.name).toBe(mockCollabFlowUser.name)
       expect(Encryption.encrypt).toHaveBeenCalledWith(mockGoogleTokens.refresh_token, expect.any(String))
       expect(req.session!.encryptedGoogleRefreshToken).toBe(mockEncryptedToken)
       expect(req.session!.save).toHaveBeenCalled()

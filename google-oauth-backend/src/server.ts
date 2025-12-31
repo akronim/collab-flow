@@ -6,6 +6,8 @@ import helmet from 'helmet'
 import { errorMiddleware } from './middleware/error.middleware'
 import { csrfMiddleware } from './middleware/csrf.middleware'
 import { sessionMiddleware } from './middleware/session.middleware'
+import { setupGracefulShutdown } from './server/graceful-shutdown'
+import { closeDefaultConnection } from './db'
 import config from './config'
 import Logger from './utils/logger'
 
@@ -41,9 +43,11 @@ app.use(`/api`, apiRouter)
 
 app.use(errorMiddleware)
 
-app.listen(config.port, () => {
+const server = app.listen(config.port, () => {
   Logger.log(`Backend running on http://localhost:${config.port}`)
-  Logger.log(`API routes available under /api`) 
+  Logger.log(`API routes available under /api`)
 })
+
+setupGracefulShutdown(server, closeDefaultConnection)
 
 export default app

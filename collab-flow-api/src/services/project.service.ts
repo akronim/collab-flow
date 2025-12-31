@@ -18,7 +18,7 @@ export const projectService = {
     return await projectRepository.update(id, projectData)
   },
 
-  deleteProject: async (id: string): Promise<void> => {
-    await projectRepository.remove(id)
+  deleteProject: async (id: string): Promise<boolean> => {
+    return await projectRepository.remove(id)
   }
 }

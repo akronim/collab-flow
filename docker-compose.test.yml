@@ -1,0 +1,33 @@
+services:
+  postgres_test:
+    image: postgres:16-alpine
+    container_name: collabflow-db-test
+    ports:
+      - "5433:5432"       # Map host port 5433 to container port 5432
+    environment:
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: postgres
+      POSTGRES_DB: collab_flow_test
+    tmpfs:
+      - /var/lib/postgresql/data   # In-memory DB, cleared on stop
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U postgres"]
+      interval: 5s
+      timeout: 5s
+      retries: 5
+
+# Usage:
+
+# Start the test PostgreSQL container in the background
+# docker compose -f docker-compose.test.yml up -d
+
+# Stop the test container
+# docker compose -f docker-compose.test.yml down
+
+# View logs of the running test container
+# docker compose -f docker-compose.test.yml logs -f
+
+# Connection string for your test database
+# postgresql://postgres:postgres@localhost:5433/collab_flow_test
+
+# sudo docker exec -it collabflow-db-test psql -U postgres -d collab_flow_test

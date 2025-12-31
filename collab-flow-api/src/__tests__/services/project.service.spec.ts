@@ -70,11 +70,21 @@ describe(`Project Service`, () => {
     expect(updatedProject?.name).toBe(`Updated Project`)
   })
 
-  it(`should delete a project using the repository`, async () => {
-    vi.mocked(projectRepository.remove).mockResolvedValue()
+  it(`should delete a project using the repository and return true`, async () => {
+    vi.mocked(projectRepository.remove).mockResolvedValue(true)
 
-    await projectService.deleteProject(`1`)
+    const result = await projectService.deleteProject(`1`)
 
     expect(projectRepository.remove).toHaveBeenCalledWith(`1`)
+    expect(result).toBe(true)
+  })
+
+  it(`should return false when deleting non-existent project`, async () => {
+    vi.mocked(projectRepository.remove).mockResolvedValue(false)
+
+    const result = await projectService.deleteProject(`999`)
+
+    expect(projectRepository.remove).toHaveBeenCalledWith(`999`)
+    expect(result).toBe(false)
   })
 })

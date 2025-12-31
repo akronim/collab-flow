@@ -1,8 +1,12 @@
 import session from 'express-session'
 import ms from 'ms'
 import config from '../config'
-import { sessionStore } from '../services/sessionStore.service'
+import { getDefaultDb } from '../db'
+import { PostgresSessionStore } from '../services/postgresSessionStore.service'
 import { SESSION_COOKIE_NAME } from '../constants'
+
+// Use PostgreSQL session store with default database connection
+const sessionStore = new PostgresSessionStore(getDefaultDb().sql)
 
 export const sessionMiddleware = session({
   store: sessionStore,
@@ -17,3 +21,6 @@ export const sessionMiddleware = session({
     maxAge: ms(config.session.maxAge)
   }
 })
+
+// Export for logout-all-devices functionality
+export { sessionStore }

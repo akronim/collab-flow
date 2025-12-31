@@ -1,4 +1,4 @@
-import { describe, it, expect, vi } from 'vitest'
+import { describe, it, expect, vi, beforeEach } from 'vitest'
 import request from 'supertest'
 import express from 'express'
 import userRoutes from '@/routes/user.routes'
@@ -12,6 +12,10 @@ app.use(express.json())
 app.use(userRoutes)
 
 describe(`User Controller`, () => {
+  beforeEach(() => {
+    vi.clearAllMocks()
+  })
+
   it(`GET / should return all users`, async () => {
     const mockUsers = [{ id: `1`, name: `Test User` }]
     vi.mocked(userService.getAllUsers).mockResolvedValue(mockUsers as any)

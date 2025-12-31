@@ -22,6 +22,30 @@ export interface UserInfo {
   gender?: string; // Optional field
 }
 
+// collab-flow-api User response
+export interface CollabFlowUser {
+  id: string;
+  googleUserId?: string;
+  name: string;
+  email: string;
+  avatar?: string;
+  role: string;
+  title?: string;
+  organization?: string;
+  status: string;
+  lastLogin?: string;
+  createdAt: string;
+  updatedAt: string;
+}
+
+// Request body for find-or-create endpoint
+export interface FindOrCreateRequest {
+  googleUserId: string;
+  email: string;
+  name: string;
+  avatar?: string;
+}
+
 declare global {
   // eslint-disable-next-line @typescript-eslint/no-namespace
   namespace Express {

@@ -3,6 +3,7 @@ export type UserStatus = `active` | `inactive` | `suspended`
 
 export interface User {
   id: string
+  googleUserId?: string
   name: string
   email: string
   avatar?: string

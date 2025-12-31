@@ -1,6 +1,10 @@
-# Sync-Forge: Unauthenticated Startup Flow
+# CollabFlow: Authentication Flow Analysis
 
-This document details the specific flow of events when the `sync-forge` application starts and no user is authenticated.
+This document details the authentication flows in the CollabFlow application.
+
+## Unauthenticated Startup Flow
+
+This section covers the specific flow of events when the `sync-forge` application starts and no user is authenticated.
 
 **Assumed starting condition:** The user navigates to the root URL (`/`).
 
@@ -11,7 +15,7 @@ This document details the specific flow of events when the `sync-forge` applicat
    - `apiClient` sends request with `withCredentials: true` (cookies sent, but none exist yet)
    - CSRF interceptor skipped (only applies to POST/PUT/PATCH/DELETE)
 5. Backend receives `GET /api/auth/me`
-   - Middleware chain: helmet → cors → cookieParser → sessionMiddleware → csrfMiddleware
+   - Middleware chain: helmet → cors → express.json() → cookieParser → sessionMiddleware → csrfMiddleware
    - `sessionMiddleware`: no session cookie → `req.session` empty
    - `csrfMiddleware`:
      - No `collabflow.csrf` cookie in request → generates new CSRF token
@@ -73,7 +77,7 @@ This document details the specific flow of events when the `sync-forge` applicat
     - `apiClient` sends request with `withCredentials: true`
     - CSRF interceptor: POST request → reads `collabflow.csrf` cookie, attaches to `x-csrf-token` header
 13. Backend receives `POST /api/auth/token`
-    - Middleware chain: helmet → cors → cookieParser → sessionMiddleware → csrfMiddleware
+    - Middleware chain: helmet → cors → express.json() → cookieParser → sessionMiddleware → csrfMiddleware
     - `sessionMiddleware`: no session cookie → creates empty session
     - `csrfMiddleware`:
       - `collabflow.csrf` cookie exists in request (set during earlier GET /api/auth/me)
@@ -87,12 +91,17 @@ This document details the specific flow of events when the `sync-forge` applicat
       - Calls `validateAccessToken(access_token)` in `auth.service.ts`
         - GET to Google `https://www.googleapis.com/oauth2/v3/userinfo` with Bearer token
         - Returns `{ id, email, name, ... }`
+      - Calls `findOrCreateUser()` in `user.service.ts`
+        - Queries `users` table by email
+        - If user exists: updates `last_login`, links `google_user_id` if missing
+        - If not exists: creates new user with internal UUID, role='member', status='active'
+        - Returns user with internal `id` (UUID used for all DB relationships)
       - `req.session.regenerate()` - prevents session fixation attacks
       - Stores in session: `userId`, `email`, `name`
       - If `refresh_token` exists → encrypts with AES-256-GCM, stores as `encryptedGoogleRefreshToken` (for later refreshing Google access token without re-authentication)
-      - `req.session.save()` - persists session to store
+      - `req.session.save()` - persists session to PostgreSQL via `PostgresSessionStore`
       - **CSRF Token Rotation:** A new `collabflow.csrf` cookie is generated and sent with the response.
-      - Response: `res.status(200).json({ success: true })` (`auth.controller.ts:56`)
+      - Response: `res.status(200).json({ success: true })` (`auth.controller.ts:83`)
       - `express-session` automatically sets `Set-Cookie: collabflow.sid=...` header (configured in `session.middleware.ts`)
         - httpOnly: true (not accessible by JavaScript), secure in production, sameSite: lax
         - Used to identify user's session on subsequent requests
@@ -127,8 +136,8 @@ This document details the specific flow of events when the `sync-forge` applicat
    - Cookies sent: `collabflow.sid` (session), `collabflow.csrf` (CSRF token)
    - CSRF interceptor skipped (GET request)
 3. `google-oauth-backend` receives `GET /api/projects`
-   - Middleware chain: helmet → cors → cookieParser → sessionMiddleware → csrfMiddleware
-   - `sessionMiddleware`: has `collabflow.sid` cookie → loads session data
+   - Middleware chain: helmet → cors → express.json() → cookieParser → sessionMiddleware → csrfMiddleware
+   - `sessionMiddleware`: has `collabflow.sid` cookie → loads session data from PostgreSQL
    - `csrfMiddleware`: GET → skips validation
    - Routes: `authRoutes` don't match → falls through to `gatewayRouter`
    - `gatewayRouter`: `requireSession` middleware → checks `req.session.userId` exists → passes
@@ -148,13 +157,54 @@ This document details the specific flow of events when the `sync-forge` applicat
 
 ## Logout Flow
 
-*TODO*
+**Scenario:** User clicks "Logout" button in AppHeader.
+
+1. User clicks logout button → `authStore.logout()` called
+2. `logout()` calls `authApiService.logout()` → `POST /api/auth/logout`
+   - CSRF interceptor attaches `x-csrf-token` header
+   - Cookies sent: `collabflow.sid`, `collabflow.csrf`
+3. Backend receives `POST /api/auth/logout`
+   - Middleware chain validates CSRF token
+   - `handleLogout` controller in `auth.controller.ts`:
+     - Gets `userId` from `req.session`
+     - Calls `sessionStore.destroyAllByUserId(userId)` in `postgresSessionStore.service.ts`
+     - This deletes ALL sessions for the user from PostgreSQL (`DELETE FROM sessions WHERE user_id = $1`)
+     - Effect: Logs out from ALL devices, not just current session
+   - Response: `204 No Content` (empty body)
+4. Frontend receives 204 response
+   - `authStore.logout()` sets `this.user = null`
+   - Redirects to `/login` via `router.push('/login')`
+5. Subsequent requests have no valid session → 401 responses
 
 ---
 
 ## Session Expiry Handling
 
-*TODO*
+**Session lifetime:** Configured via `SESSION_MAX_AGE` (default: 7 days)
+
+### How Sessions Expire
+
+1. **PostgreSQL Session Store** (`postgresSessionStore.service.ts`)
+   - Sessions stored in `sessions` table with `expires_at` timestamp
+   - `get()` method checks expiry on read:
+     - If `expires_at < NOW()`: deletes session row, returns `undefined`
+     - If valid: returns session data
+   - On-read cleanup means expired sessions are deleted when accessed
+
+2. **No Background Cleanup**
+   - Expired sessions only deleted when accessed
+   - Recommendation: Add scheduled job `DELETE FROM sessions WHERE expires_at < NOW()`
+
+### Frontend Handling of Expired Sessions
+
+1. User makes API request (e.g., `GET /api/projects`)
+2. `collabflow.sid` cookie sent, but session expired/deleted in PostgreSQL
+3. `sessionMiddleware`: Cookie exists but session not found → `req.session` is empty
+4. `requireSession` middleware: No `userId` in session → returns 401 Unauthorized
+5. `apiClient` response interceptor catches 401:
+   - Exception: `/api/auth/me` endpoint (401 expected for unauthenticated users)
+   - For other endpoints: redirects to `/login`
+6. User must re-authenticate via Google OAuth
 
 ---
 
@@ -165,4 +215,35 @@ The backend stores `encryptedGoogleRefreshToken` and has `refreshAccessToken()` 
 
 ### 2. `requireSession` vs Route-Level Protection
 The gateway uses `requireSession` middleware for all proxied routes. This is good, but it means ALL downstream routes require auth. If you ever need a public API endpoint, you'd need to restructure.
+
+### 3. No Rate Limiting
+Auth endpoints (`/api/auth/token`, `/api/auth/logout`) have no rate limiting protection against brute force attacks.
+
+### 4. No Input Validation
+The `POST /api/auth/token` endpoint doesn't validate the shape of `{ code, codeVerifier }` with a schema (Zod/Joi).
+
+### 5. Session Store Cleanup
+Expired sessions are only deleted on access (on-read cleanup). A scheduled cleanup job would prevent table bloat.
+
+---
+
+## PostgreSQL Session Store Details
+
+The session store is implemented in `postgresSessionStore.service.ts` and uses the `sessions` table:
+
+```sql
+CREATE TABLE sessions (
+  sid VARCHAR(255) PRIMARY KEY,           -- Session ID from cookie
+  user_id UUID REFERENCES users(id),      -- Links to users table for destroyAllByUserId()
+  data TEXT NOT NULL,                     -- JSON: {userId, email, name, encryptedGoogleRefreshToken}
+  expires_at TIMESTAMP WITH TIME ZONE     -- Expiry time
+);
+```
+
+**Key Methods:**
+- `get(sid)`: Load session, delete if expired
+- `set(sid, session, callback)`: Upsert session data
+- `destroy(sid)`: Delete single session
+- `touch(sid, session)`: Update expiry without rewriting data
+- `destroyAllByUserId(userId)`: Delete all sessions for user (logout from all devices)
 

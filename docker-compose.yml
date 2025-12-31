@@ -13,16 +13,31 @@ services:
     volumes:
       - postgres_data:/var/lib/postgresql/data  # Persist data between restarts
     restart: unless-stopped          # Auto-restart unless manually stopped
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U collab -d collabflow"]
+      interval: 5s
+      timeout: 5s
+      retries: 5
 
 # Named volume for persistent storage (survives container removal)
 volumes:
   postgres_data:
 
 # Usage:
-#   docker compose up -d      Start PostgreSQL in background
-#   docker compose down       Stop PostgreSQL
-#   docker compose down -v    Stop and DELETE all data (fresh start)
-#   docker compose logs -f    View logs
-#
-# Connection string:
-#   postgresql://collab:collab@localhost:5432/collabflow
+
+# Start the development PostgreSQL container in the background
+# docker compose -f docker-compose.yml up -d
+
+# Stop the development container
+# docker compose -f docker-compose.yml down
+
+# Stop and DELETE all data (fresh start)
+# docker compose -f docker-compose.yml down -v
+
+# View logs of the running container
+# docker compose -f docker-compose.yml logs -f
+
+# Connection string for your dev database
+# postgresql://collab:collab@localhost:5432/collabflow
+
+# docker exec -it collabflow-db psql -U collab -d collabflow

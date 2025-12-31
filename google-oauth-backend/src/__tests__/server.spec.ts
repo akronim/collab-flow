@@ -1,17 +1,22 @@
 // google-oauth-backend/src/__tests__/server.spec.ts
 
-import { describe, it, expect, vi, beforeEach, type Mocked } from 'vitest'
+import { describe, it, expect, vi, beforeEach, type Mocked, type Mock } from 'vitest'
 import request from 'supertest' // <-- ADDED SuperAgentTest import
 import app from '../server'
 import { googleApi } from '../utils/axios'
+import { findOrCreateUser } from '../services/user.service'
 import { apiEndpoints, ErrorMessages } from '../constants'
 import type TestAgent from 'supertest/lib/agent'
+import type { CollabFlowUser } from '../types'
 
 vi.mock(`../config`, () => ({
   default: {
     nodeEnv: `test`,
     port: `3001`,
     collabFlowApiUrl: `http://localhost:3002`,
+    db: {
+      url: `postgres://test:test@localhost:5432/test`
+    },
     google: {
       clientId: `test_client_id`,
       clientSecret: `test_client_secret`,
@@ -34,6 +39,67 @@ vi.mock(`../config`, () => ({
   }
 }))
 
+// Mock the database module to avoid real connections in tests
+vi.mock(`../db`, () => {
+  const mockSessions = new Map<string, { data: string; expires_at: string; user_id: string | null }>()
+
+  const mockSql = async (strings: TemplateStringsArray, ...values: unknown[]): Promise<unknown[]> => {
+    const query = strings.join(`?`)
+
+    // Handle SELECT for session get
+    if (query.includes(`SELECT`)) {
+      const sid = values[0] as string
+      const session = mockSessions.get(sid)
+      return session ? [session] : []
+    }
+
+    // Handle INSERT/UPDATE (UPSERT) for session set
+    if (query.includes(`INSERT`)) {
+      const [sid, data, expiresAt, userId] = values as [string, string, Date | string, string | null]
+      mockSessions.set(sid, {
+        data,
+        expires_at: expiresAt instanceof Date ? expiresAt.toISOString() : String(expiresAt),
+        user_id: userId
+      })
+      return []
+    }
+
+    // Handle DELETE for session destroy
+    if (query.includes(`DELETE`)) {
+      const idOrUserId = values[0] as string
+      // Check if deleting by sid or user_id
+      if (query.includes(`user_id`)) {
+        for (const [sid, session] of mockSessions.entries()) {
+          if (session.user_id === idOrUserId) {
+            mockSessions.delete(sid)
+          }
+        }
+      } else {
+        mockSessions.delete(idOrUserId)
+      }
+      return []
+    }
+
+    // Handle UPDATE for session touch
+    if (query.includes(`UPDATE`)) {
+      const [expiresAt, sid] = values as [Date | string, string]
+      const session = mockSessions.get(sid)
+      if (session) {
+        session.expires_at = expiresAt instanceof Date ? expiresAt.toISOString() : String(expiresAt)
+      }
+      return []
+    }
+
+    return []
+  }
+
+  return {
+    createDb: vi.fn(() => ({ sql: mockSql, end: vi.fn() })),
+    getDefaultDb: vi.fn(() => ({ sql: mockSql, end: vi.fn() })),
+    closeDefaultConnection: vi.fn()
+  }
+})
+
 vi.mock(`../utils/axios`, () => ({
   googleApi: {
     post: vi.fn(),
@@ -49,7 +115,12 @@ vi.mock(`../services/tokenStore.service`, () => ({
   }
 }))
 
+vi.mock(`../services/user.service`, () => ({
+  findOrCreateUser: vi.fn()
+}))
+
 const mockedGoogleApi = googleApi as Mocked<typeof googleApi>
+const mockedFindOrCreateUser = findOrCreateUser as Mock
 
 describe(`Backend API Tests`, () => {
   const API_BASE_PATH = `/api`
@@ -119,9 +190,22 @@ describe(`Backend API Tests`, () => {
         data: {
           sub: `google_id_123`,
           email: `test@example.com`,
-          name: `Test User`
+          name: `Test User`,
+          picture: `https://example.com/avatar.jpg`
         }
       })
+      const mockUser: CollabFlowUser = {
+        id: `internal-uuid-456`,
+        googleUserId: `google_id_123`,
+        email: `test@example.com`,
+        name: `Test User`,
+        avatar: `https://example.com/avatar.jpg`,
+        role: `member`,
+        status: `active`,
+        createdAt: `2024-01-01T00:00:00.000Z`,
+        updatedAt: `2024-01-01T00:00:00.000Z`
+      }
+      mockedFindOrCreateUser.mockResolvedValueOnce(mockUser)
 
       const response = await agent
         .post(`${API_BASE_PATH}${apiEndpoints.TOKEN}`)

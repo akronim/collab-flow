@@ -139,6 +139,7 @@ export const generateEnvContents = (input: GenerateEnvInput): Record<string, str
       `${ENV_KEYS.NODE_ENV}=${env}`,
       `${ENV_KEYS.CORS_ORIGIN}=${syncForgeUrl}`,
       `${ENV_KEYS.COLLAB_FLOW_API_URL}=${collabFlowApiUrl}`,
+      `${ENV_KEYS.DATABASE_URL}=${databaseUrl}`,
       `${ENV_KEYS.GOOGLE_CLIENT_ID}=${secrets.GOOGLE_CLIENT_ID}`,
       `${ENV_KEYS.GOOGLE_CLIENT_SECRET}=${secrets.GOOGLE_CLIENT_SECRET}`,
       `${ENV_KEYS.REDIRECT_URI}=${syncForgeUrl}/auth/callback`,

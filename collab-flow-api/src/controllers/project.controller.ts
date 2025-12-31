@@ -31,7 +31,11 @@ export const projectController = {
   },
 
   deleteProject: async (req: Request, res: Response): Promise<void> => {
-    await projectService.deleteProject(req.params.id)
-    res.status(204).send()
+    const deleted = await projectService.deleteProject(req.params.id)
+    if (deleted) {
+      res.status(204).send()
+    } else {
+      res.status(404).json({ message: `Project not found` })
+    }
   }
 }
